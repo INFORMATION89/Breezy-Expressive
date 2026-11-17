@@ -1,6 +1,6 @@
 # Breezy Expressive (working title): Plan
 
-> Status: **approved direction, starting M0**. Change anything at any time.
+> Status: **M0 and M1 done** (skeleton, data layer + rules engine). Next: M2. Change anything at any time.
 
 A practical, city-life weather app for Android 12+, built from scratch with Material 3 Expressive.
 It has grown beyond a Breezy Weather fork: it's **its own app** that reuses Breezy Weather's proven data
@@ -83,7 +83,7 @@ The UI shows the cache instantly and refreshes in the background. Saved data loa
 |---|---|---|
 | UI | Jetpack Compose + Material 3 `1.5.x` (Expressive APIs) | Expressive components, shapes and motion |
 | Navigation | Navigation 3 | Modern, type-safe, simple back stack |
-| Network | Retrofit 3 + OkHttp + kotlinx.serialization | Lets us reuse Breezy's API interfaces almost unchanged |
+| Network | OkHttp + kotlinx.serialization | Only a few endpoints, so Retrofit isn't worth its weight; Breezy's field lists and mappings are reused |
 | Storage | DataStore + JSON cache files | Avoids a database for a handful of locations |
 | Background | WorkManager | Live Update refresh, alert checks |
 | Location | Platform `LocationManager` | Works on de-Googled phones, no Play Services dependency |
@@ -394,8 +394,8 @@ and what to do about the weather at each point.
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | Project skeleton | Builds and runs; theme with both font voices, Appearance settings object, the 3-page pager + floating toolbar shell, Settings screen stub; LICENSE + README with credits |
-| M1 | Data layer + rules engine | Open-Meteo fetch + cache, summary sentence and "what to bring" rules, unit tests on parsing, merging and rules |
+| M0 ✅ | Project skeleton | Builds and runs; theme with both font voices, Appearance settings object, the 3-page pager + floating toolbar shell, Settings screen stub; LICENSE + README with credits |
+| M1 ✅ | Data layer + rules engine | Open-Meteo fetch + cache, summary sentence and "what to bring" rules, unit tests on parsing, merging and rules |
 | M2 | Materials + Forecast page | Weather gradient + grain (with slider), glass cards, real data, no-scroll layout; gesture conflicts tested |
 | M3 | Locations page + search + GPS | Rich cards, star/reorder/delete, card-to-detail expand transition |
 | M4 | Your Day | Timeline of the day's weather turning points, routines, bring chips |

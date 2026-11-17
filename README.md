@@ -3,7 +3,7 @@
 A practical, city-life weather app for Android 12+, built with Jetpack Compose and Material 3 Expressive.
 Made so you understand the weather at a glance, without reading numbers.
 
-> **Status:** early development (milestone M0, the app skeleton). See [docs/PLAN.md](docs/PLAN.md) for the plan.
+> **Status:** early development (M1 done: data layer and rules engine; screens use sample data until M2). See [docs/PLAN.md](docs/PLAN.md) for the plan.
 
 ## Planned for v1
 
