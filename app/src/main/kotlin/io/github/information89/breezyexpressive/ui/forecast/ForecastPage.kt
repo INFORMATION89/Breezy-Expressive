@@ -199,7 +199,7 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
     if (hours.size < 2) return
     val labeled = hours.indices.filter { it % 3 == 0 }
 
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
@@ -393,7 +393,7 @@ private fun SunCurveCard(sun: SunInfo, weather: Weather, text: WeatherText, now:
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val night = Color(0xFF5B73D6)
     val day = DataColors.sun
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
     val labelStyle = AppType.voices.monoLabel.copy(color = muted)
     val sunIcon = painterResource(R.drawable.ic_w_sunny)
     val moonIcon = painterResource(R.drawable.ic_w_clear_night)

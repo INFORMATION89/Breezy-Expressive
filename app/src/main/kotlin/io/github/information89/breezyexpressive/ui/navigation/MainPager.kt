@@ -113,8 +113,6 @@ fun MainPager(onOpenSettings: () -> Unit) {
     }
 
     val hazeState = rememberHazeState()
-    // The toolbar blurs everything under it (background and page content), cards blur only the background.
-    val toolbarHaze = rememberHazeState()
     val scrollActivity = remember { ScrollActivity() }
     val toolbarVisibility = remember { HideOnScroll() }
     // Coming to a page always shows the toolbar again.
@@ -136,7 +134,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
         LocalContentColor provides conditionScheme.onSurface,
     ) {
         Box(Modifier.fillMaxSize()) {
-          Box(Modifier.fillMaxSize().hazeSource(toolbarHaze)) {
+          Box(Modifier.fillMaxSize()) {
             WeatherBackground(
                 colors = mood,
                 grain = appearance.grain,
@@ -182,7 +180,8 @@ fun MainPager(onOpenSettings: () -> Unit) {
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
             ) {
-                CompositionLocalProvider(LocalGlassSource provides toolbarHaze) {
+                // Blurs only the background (capturing the whole page every frame made scrolling lag).
+                CompositionLocalProvider(LocalGlassSource provides hazeState) {
                     PageToolbar(
                         selected = pages[pagerState.currentPage],
                         onSelect = { page -> scope.launch { pagerState.animateScrollToPage(page.ordinal) } },

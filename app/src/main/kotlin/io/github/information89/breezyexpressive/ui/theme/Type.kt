@@ -16,7 +16,7 @@ import io.github.information89.breezyexpressive.R
 
 /*
  * Two type voices:
- *  - Data voice (sans, Roboto Flex): numbers, labels, UI. Display/headline styles use its expanded width.
+ *  - Data voice (sans, Roboto Flex): headings in a heavy, tightly spaced grotesk; body and labels regular.
  *  - Narrative voice (serif, Roboto Serif): sentences that explain the weather.
  * To try another font, change only the families below.
  */
@@ -56,15 +56,15 @@ private val MonoFamily = FontFamily(mono(400), mono(500), mono(600))
 private val Base = Typography()
 
 val DataTypography = Typography(
-    displayLarge = Base.displayLarge.copy(fontFamily = ExpandedFamily),
-    displayMedium = Base.displayMedium.copy(fontFamily = ExpandedFamily),
-    displaySmall = Base.displaySmall.copy(fontFamily = ExpandedFamily),
-    headlineLarge = Base.headlineLarge.copy(fontFamily = ExpandedFamily),
-    headlineMedium = Base.headlineMedium.copy(fontFamily = ExpandedFamily),
-    headlineSmall = Base.headlineSmall.copy(fontFamily = ExpandedFamily),
-    titleLarge = Base.titleLarge.copy(fontFamily = DataFamily),
-    titleMedium = Base.titleMedium.copy(fontFamily = DataFamily),
-    titleSmall = Base.titleSmall.copy(fontFamily = DataFamily),
+    displayLarge = Base.displayLarge.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    displayMedium = Base.displayMedium.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    displaySmall = Base.displaySmall.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    headlineLarge = Base.headlineLarge.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    headlineMedium = Base.headlineMedium.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    headlineSmall = Base.headlineSmall.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.03).em),
+    titleLarge = Base.titleLarge.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.01).em),
+    titleMedium = Base.titleMedium.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.01).em),
+    titleSmall = Base.titleSmall.copy(fontFamily = DataFamily, fontWeight = FontWeight(700), letterSpacing = (-0.01).em),
     bodyLarge = Base.bodyLarge.copy(fontFamily = DataFamily),
     bodyMedium = Base.bodyMedium.copy(fontFamily = DataFamily),
     bodySmall = Base.bodySmall.copy(fontFamily = DataFamily),
