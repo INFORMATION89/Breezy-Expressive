@@ -61,15 +61,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import io.github.information89.breezyexpressive.R
 import io.github.information89.breezyexpressive.appContainer
 import io.github.information89.breezyexpressive.ui.forecast.ForecastPage
 import io.github.information89.breezyexpressive.ui.forecast.ForecastViewModel
 import io.github.information89.breezyexpressive.ui.locations.LocationsPage
 import io.github.information89.breezyexpressive.ui.material.GlassStrength
-import io.github.information89.breezyexpressive.ui.material.LocalGlassSource
+import io.github.information89.breezyexpressive.ui.material.LocalSky
+import io.github.information89.breezyexpressive.ui.material.SkyState
 import io.github.information89.breezyexpressive.ui.material.LocalScrollActivity
 import io.github.information89.breezyexpressive.ui.material.ScrollActivity
 import io.github.information89.breezyexpressive.ui.material.WeatherBackground
@@ -113,7 +112,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
         MoodColors(top = scheme.surfaceContainerHigh, bottom = scheme.surface, light = scheme.surfaceContainerHighest, bloom = scheme.primaryContainer, accent = scheme.primary)
     }
 
-    val hazeState = rememberHazeState()
+    val sky = remember { SkyState() }
     val scrollActivity = remember { ScrollActivity() }
     val toolbarVisibility = remember { HideOnScroll() }
     // Coming to a page always shows the toolbar again.
@@ -130,7 +129,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
     val conditionScheme = if (appearance.weatherTint) conditionColorScheme(accent, dark = true) else scheme
     MaterialExpressiveTheme(colorScheme = conditionScheme, motionScheme = MotionScheme.expressive(), typography = MaterialTheme.typography) {
     CompositionLocalProvider(
-        LocalGlassSource provides hazeState,
+        LocalSky provides sky,
         LocalScrollActivity provides scrollActivity,
         LocalContentColor provides conditionScheme.onSurface,
     ) {
@@ -141,9 +140,8 @@ fun MainPager(onOpenSettings: () -> Unit) {
                 grain = appearance.grain,
                 animated = appearance.animatedBackground,
                 scrollActivity = scrollActivity,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeSource(hazeState),
+                sky = sky,
+                modifier = Modifier.fillMaxSize(),
             )
 
             HorizontalPager(
@@ -181,15 +179,12 @@ fun MainPager(onOpenSettings: () -> Unit) {
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
             ) {
-                // Blurs only the background (capturing the whole page every frame made scrolling lag).
-                CompositionLocalProvider(LocalGlassSource provides hazeState) {
-                    PageToolbar(
-                        selected = pages[pagerState.currentPage],
-                        onSelect = { page -> scope.launch { pagerState.animateScrollToPage(page.ordinal) } },
-                        onOpenSettings = onOpenSettings,
-                        modifier = Modifier.glass(CircleShape, GlassStrength.Regular),
-                    )
-                }
+                PageToolbar(
+                    selected = pages[pagerState.currentPage],
+                    onSelect = { page -> scope.launch { pagerState.animateScrollToPage(page.ordinal) } },
+                    onOpenSettings = onOpenSettings,
+                    modifier = Modifier.glass(CircleShape, GlassStrength.Regular),
+                )
             }
         }
     }

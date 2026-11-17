@@ -31,7 +31,6 @@ Requirements: Android Studio (or JDK 17+) and the Android SDK with API 37.
   [Roboto Serif](https://github.com/googlefonts/roboto-serif), SIL Open Font License 1.1
   (see [third_party/fonts](third_party/fonts)).
 - Weather icons: [Material Symbols](https://github.com/google/material-design-icons), Apache License 2.0.
-- Frosted glass: [Haze](https://github.com/chrisbanes/haze), Apache License 2.0.
 
 ## License
 

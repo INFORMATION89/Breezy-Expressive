@@ -105,3 +105,21 @@ Auto-static in battery saver, with system animations off, and on slow phones.
 
   Positive overrun = a missed frame: roughly the slowest 10 % of frames miss on both tests.
   Also: toolbar's selected pill now uses `CircleShape` to match the toolbar.
+- **2026-11-17:** Step 2 done: new renderer, same look. `ui/material/Sky.kt`: `SkyRenderer` draws
+  the old shader's math on the CPU into a 1/8-size bitmap (3 rotating buffers, off the main
+  thread, only when inputs change); `Grain` is one repeated white/black noise tile.
+  `WeatherBackground` scales the bitmap up + grain (AGSL removed, one path for Android 12+).
+  `Glass.kt`: a `Modifier.Node` draws the same bitmap at the panel's window position + tint +
+  grain + hairline, invalidating only its draw when the position changes. Haze removed
+  (dependency, README credit). Baseline profile regenerated. Dropped: the 4x4 Bayer dithering
+  and the slightly stronger grain on the orb (not visible in side-by-side screenshots).
+  Drift, scroll pause and 20 s stop unchanged (step 4).
+
+  | Test           | CPU P50 | P90     | P95     | P99     | Overrun P50 | P90     | P95    | P99    |
+  |----------------|---------|---------|---------|---------|-------------|---------|--------|--------|
+  | forecastScroll | 5.9 ms  | 11.9 ms | 12.9 ms | 17.2 ms | -5.5 ms     | 0.3 ms  | 1.4 ms | 8.0 ms |
+  | pageSwipe      | 6.2 ms  | 10.7 ms | 12.3 ms | 16.3 ms | -6.4 ms     | -1.1 ms | 0.6 ms | 6.0 ms |
+
+  Page swipe clearly better (median CPU 8.0 -> 6.2 ms, missed frames ~10 % -> ~5 %). Scrolling
+  only slightly better: its slow frames come mostly from elsewhere (card content/charts), worth
+  a trace before step 3. Open: the Blur setting now only changes tint opacity.

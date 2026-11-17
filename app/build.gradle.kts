@@ -87,8 +87,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
-    implementation(libs.haze)
-    implementation(libs.haze.blur)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
