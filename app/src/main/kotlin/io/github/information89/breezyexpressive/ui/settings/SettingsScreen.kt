@@ -92,6 +92,12 @@ fun SettingsScreen(
                     onCheckedChange = { value -> onAppearanceChange { it.copy(dynamicColor = value) } },
                 )
                 SwitchItem(
+                    title = stringResource(R.string.settings_weather_tint),
+                    summary = stringResource(R.string.settings_weather_tint_summary),
+                    checked = appearance.weatherTint,
+                    onCheckedChange = { value -> onAppearanceChange { it.copy(weatherTint = value) } },
+                )
+                SwitchItem(
                     title = stringResource(R.string.settings_animated_background),
                     checked = appearance.animatedBackground,
                     onCheckedChange = { value -> onAppearanceChange { it.copy(animatedBackground = value) } },
@@ -114,6 +120,14 @@ fun SettingsScreen(
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+
+                SliderItem(
+                    title = stringResource(R.string.settings_blur),
+                    value = appearance.blur,
+                    startLabel = stringResource(R.string.settings_blur_off),
+                    endLabel = stringResource(R.string.settings_blur_full),
+                    onValueChange = { value -> onAppearanceChange { it.copy(blur = value) } },
                 )
             }
 
@@ -193,4 +207,29 @@ private fun ThemeModePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) 
             }
         }
     }
+}
+
+@Composable
+private fun SliderItem(
+    title: String,
+    value: Float,
+    startLabel: String,
+    endLabel: String,
+    onValueChange: (Float) -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = {
+            Column {
+                // Local state while dragging; saved once when the drag ends.
+                var current by remember(value) { mutableFloatStateOf(value) }
+                Slider(value = current, onValueChange = { current = it }, onValueChangeFinished = { onValueChange(current) })
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(startLabel, style = MaterialTheme.typography.labelMedium)
+                    Text(endLabel, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
 }

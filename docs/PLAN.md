@@ -1,6 +1,6 @@
 # Breezy Expressive (working title): Plan
 
-> Status: **M0 and M1 done** (skeleton, data layer + rules engine). Next: M2. Change anything at any time.
+> Status: **M0–M2 done** (skeleton, data layer + rules engine, materials + Forecast page). Next: M3 (locations, search, GPS). Change anything at any time.
 
 A practical, city-life weather app for Android 12+, built from scratch with Material 3 Expressive.
 It has grown beyond a Breezy Weather fork: it's **its own app** that reuses Breezy Weather's proven data
@@ -396,7 +396,7 @@ and what to do about the weather at each point.
 |---|---|---|
 | M0 ✅ | Project skeleton | Builds and runs; theme with both font voices, Appearance settings object, the 3-page pager + floating toolbar shell, Settings screen stub; LICENSE + README with credits |
 | M1 ✅ | Data layer + rules engine | Open-Meteo fetch + cache, summary sentence and "what to bring" rules, unit tests on parsing, merging and rules |
-| M2 | Materials + Forecast page | Weather gradient + grain (with slider), glass cards, real data, no-scroll layout; gesture conflicts tested |
+| M2 ✅ | Materials + Forecast page | Weather gradient + grain (with slider), glass cards, real data, no-scroll layout; gesture conflicts tested |
 | M3 | Locations page + search + GPS | Rich cards, star/reorder/delete, card-to-detail expand transition |
 | M4 | Your Day | Timeline of the day's weather turning points, routines, bring chips |
 | M5 | Air quality, pollen, details | All tiles and detail sheets |

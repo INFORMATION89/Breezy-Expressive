@@ -11,11 +11,8 @@
     <string name="back">Back</string>
 
     <!-- Placeholders (M0 shell) -->
-    <string name="placeholder_forecast">The forecast for your current or starred location will live here.</string>
     <string name="placeholder_your_day">A timeline of today: what to bring and when.</string>
     <string name="placeholder_locations">Search and your saved places, with the weather at a glance.</string>
-    <string name="placeholder_sample_temperature">23°</string>
-    <string name="placeholder_sample_summary">Warm and sunny, storms likely after 6 pm.</string>
 
     <!-- Settings -->
     <string name="settings_appearance">Appearance</string>
@@ -29,6 +26,11 @@
     <string name="settings_grain">Grain</string>
     <string name="settings_grain_off">Off</string>
     <string name="settings_grain_strong">Strong</string>
+    <string name="settings_weather_tint">Weather colors</string>
+    <string name="settings_weather_tint_summary">Background follows the weather and time of day</string>
+    <string name="settings_blur">Glass blur</string>
+    <string name="settings_blur_off">Tint only</string>
+    <string name="settings_blur_full">Frosted</string>
     <string name="settings_about">About</string>
     <string name="settings_about_credit">Built on data code from Breezy Weather (LGPL-3.0). Weather data by Open-Meteo.</string>
 </resources>

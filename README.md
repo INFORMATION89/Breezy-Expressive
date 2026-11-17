@@ -3,7 +3,7 @@
 A practical, city-life weather app for Android 12+, built with Jetpack Compose and Material 3 Expressive.
 Made so you understand the weather at a glance, without reading numbers.
 
-> **Status:** early development (M1 done: data layer and rules engine; screens use sample data until M2). See [docs/PLAN.md](docs/PLAN.md) for the plan.
+> **Status:** early development (M2 done: live Forecast page with weather background and frosted glass; locations come in M3). See [docs/PLAN.md](docs/PLAN.md) for the plan.
 
 ## Planned for v1
 
@@ -30,6 +30,8 @@ Requirements: Android Studio (or JDK 17+) and the Android SDK with API 37.
 - Fonts: [Roboto Flex](https://github.com/googlefonts/roboto-flex) and
   [Roboto Serif](https://github.com/googlefonts/roboto-serif), SIL Open Font License 1.1
   (see [third_party/fonts](third_party/fonts)).
+- Weather icons: [Material Symbols](https://github.com/google/material-design-icons), Apache License 2.0.
+- Frosted glass: [Haze](https://github.com/chrisbanes/haze), Apache License 2.0.
 
 ## License
 
