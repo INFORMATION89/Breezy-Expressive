@@ -42,25 +42,29 @@ import io.github.information89.breezyexpressive.R
 import io.github.information89.breezyexpressive.data.store.Appearance
 import io.github.information89.breezyexpressive.data.store.ThemeMode
 import io.github.information89.breezyexpressive.ui.theme.AppType
+import io.github.information89.breezyexpressive.ui.components.CardShape
+import io.github.information89.breezyexpressive.ui.material.glass
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 
 @Composable
 fun SettingsScreen(
     appearance: Appearance,
     onAppearanceChange: ((Appearance) -> Appearance) -> Unit,
-    onBack: () -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    // A page of the main pager: transparent over the sky, glass groups like the other pages.
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = Color.Transparent,
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -139,6 +143,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                 )
             }
+            Spacer(Modifier.height(96.dp)) // clears the floating toolbar
         }
     }
 }
@@ -155,13 +160,7 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(content = content)
-    }
+    Column(Modifier.fillMaxWidth().glass(CardShape), content = content)
 }
 
 @Composable

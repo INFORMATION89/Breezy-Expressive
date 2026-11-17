@@ -6,18 +6,14 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import io.github.information89.breezyexpressive.data.store.Appearance
-import io.github.information89.breezyexpressive.ui.settings.SettingsScreen
 import kotlinx.serialization.Serializable
 
 @Serializable
 data object MainKey : NavKey
 
-@Serializable
-data object SettingsKey : NavKey
-
 /**
- * Top-level navigation. The three swipeable pages live inside [MainPager];
- * Navigation 3 only handles screens that open on top of them (Settings, later location details).
+ * Top-level navigation. The swipeable pages (Settings included) live inside [MainPager];
+ * Navigation 3 only handles screens that open on top of them (later: location details).
  */
 @Composable
 fun AppRoot(
@@ -31,14 +27,7 @@ fun AppRoot(
         onBack = { backStack.removeLastOrNull() },
         entryProvider = entryProvider {
             entry<MainKey> {
-                MainPager(onOpenSettings = { backStack.add(SettingsKey) })
-            }
-            entry<SettingsKey> {
-                SettingsScreen(
-                    appearance = appearance,
-                    onAppearanceChange = onAppearanceChange,
-                    onBack = { backStack.removeLastOrNull() },
-                )
+                MainPager(appearance = appearance, onAppearanceChange = onAppearanceChange)
             }
         },
     )

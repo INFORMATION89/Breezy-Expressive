@@ -29,9 +29,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import io.github.information89.breezyexpressive.ui.theme.conditionColorScheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -79,12 +76,28 @@ import io.github.information89.breezyexpressive.ui.material.glass
 import io.github.information89.breezyexpressive.ui.theme.LocalAppearance
 import io.github.information89.breezyexpressive.ui.theme.isDarkTheme
 import io.github.information89.breezyexpressive.ui.yourday.YourDayPage
+import io.github.information89.breezyexpressive.ui.settings.SettingsScreen
+import io.github.information89.breezyexpressive.data.store.Appearance
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 enum class Page(@param:StringRes val label: Int, val icon: ImageVector) {
     FORECAST(R.string.page_forecast, Icons.Rounded.Home),
     YOUR_DAY(R.string.page_your_day, Icons.Rounded.DateRange),
     LOCATIONS(R.string.page_locations, Icons.Rounded.LocationOn),
+    SETTINGS(R.string.settings, Icons.Rounded.Settings),
 }
 
 /**
@@ -92,7 +105,10 @@ enum class Page(@param:StringRes val label: Int, val icon: ImageVector) {
  * with an Expressive floating toolbar made of glass that hides while scrolling down.
  */
 @Composable
-fun MainPager(onOpenSettings: () -> Unit) {
+fun MainPager(
+    appearance: Appearance,
+    onAppearanceChange: ((Appearance) -> Appearance) -> Unit,
+) {
     val pages = Page.entries
     val pagerState = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()
@@ -101,7 +117,6 @@ fun MainPager(onOpenSettings: () -> Unit) {
     val forecastViewModel: ForecastViewModel = viewModel { ForecastViewModel(context.appContainer.weatherRepository) }
     val forecast by forecastViewModel.state.collectAsStateWithLifecycle()
 
-    val appearance = LocalAppearance.current
     val dark = appearance.isDarkTheme()
     val scheme = MaterialTheme.colorScheme
     val mood = if (appearance.weatherTint) {
@@ -157,6 +172,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
                     Page.FORECAST -> ForecastPage(forecast, onRefresh = forecastViewModel::refresh)
                     Page.YOUR_DAY -> YourDayPage(forecast)
                     Page.LOCATIONS -> LocationsPage()
+                    Page.SETTINGS -> SettingsScreen(appearance, onAppearanceChange)
                 }
             }
 
@@ -180,9 +196,9 @@ fun MainPager(onOpenSettings: () -> Unit) {
                     .padding(bottom = 16.dp),
             ) {
                 PageToolbar(
-                    selected = pages[pagerState.currentPage],
+                    // Live pager position (e.g. 0.4 = 40% of the way from Forecast to Your day).
+                    position = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onSelect = { page -> scope.launch { pagerState.animateScrollToPage(page.ordinal) } },
-                    onOpenSettings = onOpenSettings,
                     modifier = Modifier.glass(CircleShape, GlassStrength.Regular),
                 )
             }
@@ -193,9 +209,8 @@ fun MainPager(onOpenSettings: () -> Unit) {
 
 @Composable
 private fun PageToolbar(
-    selected: Page,
+    position: () -> Float,
     onSelect: (Page) -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     HorizontalFloatingToolbar(
@@ -204,41 +219,61 @@ private fun PageToolbar(
         colors = FloatingToolbarDefaults.standardFloatingToolbarColors(toolbarContainerColor = Color.Transparent),
         expandedShadowElevation = 0.dp,
         collapsedShadowElevation = 0.dp,
-        trailingContent = {
-            IconButton(onClick = onOpenSettings) {
-                Icon(
-                    Icons.Rounded.Settings,
-                    contentDescription = stringResource(R.string.settings),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
         shape = CircleShape,
         content = {
             Page.entries.forEach { page ->
-                val isSelected = page == selected
-                val label = stringResource(page.label)
-                ToggleButton(
-                    checked = isSelected,
-                    onCheckedChange = { onSelect(page) },
-                    colors = ToggleButtonDefaults.colors(containerColor = Color.Transparent),
-                    // Selected pill matches the toolbar's full rounding (default checked shape is squarer).
-                    shapes = ToggleButtonShapes(
-                        shape = ToggleButtonDefaults.shape,
-                        pressedShape = ToggleButtonDefaults.pressedShape,
-                        checkedShape = CircleShape,
-                    ),
-                ) {
-                    // The label is only shown (and announced) on the selected page.
-                    Icon(page.icon, contentDescription = if (isSelected) null else label)
-                    AnimatedVisibility(visible = isSelected) {
-                        Text(label, modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
-                Spacer(Modifier.width(4.dp))
+                if (page.ordinal > 0) Spacer(Modifier.width(4.dp))
+                PageTab(page, position, onClick = { onSelect(page) })
             }
         },
     )
+}
+
+/**
+ * One page in the toolbar. Follows the finger: while swiping between pages the current pill
+ * shrinks and fades as the next one grows, and goes back if the swipe is let go.
+ * [position] is read here, so only these small items recompose while the pager moves.
+ */
+@Composable
+private fun PageTab(page: Page, position: () -> Float, onClick: () -> Unit) {
+    val selection = (1f - abs(position() - page.ordinal)).coerceIn(0f, 1f) // 1 = fully selected
+    val isSelected = selection > 0.5f
+    val scheme = MaterialTheme.colorScheme
+    val container = scheme.primary.copy(alpha = selection)
+    val content = lerp(scheme.onSurfaceVariant, scheme.onPrimary, selection)
+    val label = stringResource(page.label)
+
+    Row(
+        modifier = Modifier
+            .height(40.dp)
+            .clip(CircleShape)
+            .drawBehind { drawRect(container) }
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // The label is only announced on the selected page; the icon names the others.
+        Icon(page.icon, contentDescription = if (isSelected) null else label, tint = content)
+        if (selection > 0f) {
+            Text(
+                label,
+                color = content,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .clipToBounds()
+                    .layout { measurable, constraints ->
+                        // Full-size label, revealed by the selection amount (the pill grows with it).
+                        val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                        val width = (placeable.width * selection).roundToInt()
+                        layout(width, placeable.height) { placeable.placeRelative(0, 0) }
+                    }
+                    .graphicsLayer { alpha = selection }
+                    .then(if (isSelected) Modifier else Modifier.clearAndSetSemantics {}),
+            )
+        }
+    }
 }
 
 /** Hides on scroll down, shows on scroll up (only vertical scrolling counts). */
