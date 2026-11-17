@@ -28,6 +28,7 @@ import io.github.information89.breezyexpressive.insight.TempFeel
 import io.github.information89.breezyexpressive.insight.UvLevel
 import io.github.information89.breezyexpressive.ui.material.glass
 import io.github.information89.breezyexpressive.ui.theme.AppType
+import io.github.information89.breezyexpressive.ui.material.GlassTheme
 
 /** Editorial corner radius: soft, but tighter than default Material cards. */
 val CardShape = RoundedCornerShape(16.dp)
@@ -42,16 +43,18 @@ fun WeatherCard(
     index: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .glass(CardShape)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        SectionLabel(title, index)
-        Spacer(Modifier.height(2.dp))
-        content()
+    GlassTheme {
+        Column(
+            modifier
+                .fillMaxWidth()
+                .glass(CardShape)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            SectionLabel(title, index)
+            Spacer(Modifier.height(2.dp))
+            content()
+        }
     }
 }
 

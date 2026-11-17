@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import io.github.information89.breezyexpressive.ui.components.WeatherIcon
 import io.github.information89.breezyexpressive.ui.forecast.ForecastUiState
 import io.github.information89.breezyexpressive.ui.material.glass
+import io.github.information89.breezyexpressive.ui.material.GlassTheme
 import io.github.information89.breezyexpressive.ui.text.WeatherText
 import io.github.information89.breezyexpressive.ui.text.rememberWeatherText
 import io.github.information89.breezyexpressive.ui.theme.AppType
@@ -127,17 +128,19 @@ private fun BringChip(item: BringItem, text: WeatherText) {
         item.until != null -> stringResource(R.string.bring_until, text.time(item.until))
         else -> null
     }
-    Row(
-        Modifier
-            .glass(CircleShape, glow = false)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
-        Column(Modifier.padding(start = 8.dp)) {
-            Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
-            if (whenText != null) {
-                Text(whenText.uppercase(), style = AppType.voices.monoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    GlassTheme {
+        Row(
+            Modifier
+                .glass(CircleShape, glow = false)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Column(Modifier.padding(start = 8.dp)) {
+                Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
+                if (whenText != null) {
+                    Text(whenText.uppercase(), style = AppType.voices.monoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }

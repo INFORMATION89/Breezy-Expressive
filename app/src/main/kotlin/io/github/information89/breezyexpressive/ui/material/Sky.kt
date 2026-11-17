@@ -62,9 +62,10 @@ internal class SkyRenderer(val width: Int, val height: Int) {
 
     fun render(p: SkyParams): ImageBitmap {
         val aspect = width.toFloat() / height
+        // One luminous orb in the upper middle of the screen (a sun or moon), breathing slowly.
         val cx = 0.5f + 0.03f * sin(p.time * 0.17f)
-        val cy = 0.97f + 0.015f * cos(p.time * 0.13f)
-        val r = 0.26f + 0.015f * sin(p.time * 0.5f)
+        val cy = 0.36f + 0.02f * cos(p.time * 0.13f)
+        val r = 0.27f + 0.015f * sin(p.time * 0.5f)
         val haloDiv = r * r * 4f
         val coreDiv = r * r * 0.55f
 
@@ -79,11 +80,11 @@ internal class SkyRenderer(val width: Int, val height: Int) {
             val row = y * width
             for (x in 0 until width) {
                 val u = (x + 0.5f) / width
-                // One luminous orb low on the screen: wide halo, then bright core.
+                // Wide halo, then bright core.
                 val px = (u - cx) * aspect
                 val d2 = px * px + py * py
                 val halo = 0.85f * exp(-d2 / haloDiv)
-                val core = 0.72f * exp(-d2 / coreDiv)
+                val core = 0.85f * exp(-d2 / coreDiv)
                 var cr = mix(mix(baseR, p.bloom.red, halo), p.light.red, core)
                 var cg = mix(mix(baseG, p.bloom.green, halo), p.light.green, core)
                 var cb = mix(mix(baseB, p.bloom.blue, halo), p.light.blue, core)

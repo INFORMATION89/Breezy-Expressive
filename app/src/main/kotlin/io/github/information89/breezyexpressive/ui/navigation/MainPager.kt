@@ -65,6 +65,8 @@ import io.github.information89.breezyexpressive.ui.forecast.ForecastViewModel
 import io.github.information89.breezyexpressive.ui.locations.LocationsPage
 import io.github.information89.breezyexpressive.ui.material.GlassStrength
 import io.github.information89.breezyexpressive.ui.material.LocalSky
+import io.github.information89.breezyexpressive.ui.material.LocalDayGlass
+import io.github.information89.breezyexpressive.ui.material.GlassTheme
 import io.github.information89.breezyexpressive.ui.material.SkyState
 import io.github.information89.breezyexpressive.ui.material.LocalScrollActivity
 import io.github.information89.breezyexpressive.ui.material.ScrollActivity
@@ -119,15 +121,17 @@ fun MainPager(
 
     val dark = appearance.isDarkTheme()
     val scheme = MaterialTheme.colorScheme
+    // Debug previews (Settings > Debug) override the live sky and/or time of day.
+    val isDay = SkyPreview.isDay.value ?: forecast.weather?.current?.isDay ?: true
     val mood = if (appearance.weatherTint) {
-        val preview = SkyPreview.override.value
-        if (preview != null) WeatherMood.colors(preview.first, preview.second)
-        else WeatherMood.colors(forecast.insights?.now?.sky, forecast.weather?.current?.isDay ?: true)
+        WeatherMood.colors(SkyPreview.sky.value ?: forecast.insights?.now?.sky, isDay)
     } else {
         MoodColors(top = scheme.surfaceContainerHigh, bottom = scheme.surface, light = scheme.surfaceContainerHighest, bloom = scheme.primaryContainer, accent = scheme.primary)
     }
 
     val sky = remember { SkyState() }
+    // White glass with dark text by day (only while the sky follows the weather).
+    val dayGlass = appearance.weatherTint && isDay
     val scrollActivity = remember { ScrollActivity() }
     val toolbarVisibility = remember { HideOnScroll() }
     // Coming to a page always shows the toolbar again.
@@ -145,6 +149,7 @@ fun MainPager(
     MaterialExpressiveTheme(colorScheme = conditionScheme, motionScheme = MotionScheme.expressive(), typography = MaterialTheme.typography) {
     CompositionLocalProvider(
         LocalSky provides sky,
+        LocalDayGlass provides dayGlass,
         LocalScrollActivity provides scrollActivity,
         LocalContentColor provides conditionScheme.onSurface,
     ) {
@@ -195,12 +200,14 @@ fun MainPager(
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
             ) {
+                GlassTheme {
                 PageToolbar(
                     // Live pager position (e.g. 0.4 = 40% of the way from Forecast to Your day).
                     position = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onSelect = { page -> scope.launch { pagerState.animateScrollToPage(page.ordinal) } },
                     modifier = Modifier.glass(CircleShape, GlassStrength.Regular),
                 )
+                }
             }
         }
     }
@@ -276,16 +283,17 @@ private fun PageTab(page: Page, position: () -> Float, onClick: () -> Unit) {
     }
 }
 
-/** Hides on scroll down, shows on scroll up (only vertical scrolling counts). */
+/** Hides when content scrolls down, shows when it scrolls up (only real vertical movement counts). */
 private class HideOnScroll : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
     var visible by androidx.compose.runtime.mutableStateOf(true)
 
-    override fun onPreScroll(
+    override fun onPostScroll(
+        consumed: androidx.compose.ui.geometry.Offset,
         available: androidx.compose.ui.geometry.Offset,
         source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
     ): androidx.compose.ui.geometry.Offset {
-        if (kotlin.math.abs(available.y) > kotlin.math.abs(available.x) && kotlin.math.abs(available.y) > 4f) {
-            visible = available.y > 0
+        if (kotlin.math.abs(consumed.y) > kotlin.math.abs(consumed.x) && kotlin.math.abs(consumed.y) > 1f) {
+            visible = consumed.y > 0
         }
         return androidx.compose.ui.geometry.Offset.Zero
     }

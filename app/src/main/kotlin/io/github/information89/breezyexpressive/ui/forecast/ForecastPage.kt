@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.material3.Button
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -102,22 +103,26 @@ fun ForecastPage(
                     )
                 },
             ) {
+                // Normally fits on one screen; still scrolls with large fonts or small phones.
+                // No stretch effect when there's nothing to scroll.
+                val scroll = rememberScrollState()
+                val overscroll = rememberOverscrollEffect()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scroll, overscrollEffect = if (scroll.maxValue > 0) overscroll else null)
                         .statusBarsPadding()
                         .navigationBarsPadding()
                         .padding(horizontal = 16.dp)
-                        .padding(top = 12.dp, bottom = 104.dp), // room for the floating toolbar
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .padding(top = 8.dp, bottom = 104.dp), // room for the floating toolbar
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Header(state)
                     Hero(state, weather, insights, text)
                     TimelineCard(weather, insights, text, state.now)
                     RainCard(insights, text)
                     // Same height for both small sections.
-                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         insights.uv?.let { UvCard(it, weather, text, Modifier.weight(1f).fillMaxHeight()) }
                         insights.air?.let { AirCard(it, Modifier.weight(1f).fillMaxHeight()) }
                     }
@@ -200,14 +205,8 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
     val labeled = hours.indices.filter { it % 3 == 0 }
 
     val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val ink = MaterialTheme.colorScheme.onSurface
-    val accent = MaterialTheme.colorScheme.primary
-    val dataStyle = AppType.voices.monoData.copy(color = ink)
-    val labelStyle = AppType.voices.monoLabel.copy(color = muted)
     val nowLabel = stringResource(R.string.time_now).uppercase()
     val icons = labeled.map { painterResource(weatherIconRes(hours[it].weatherCode, hours[it].isDay)) }
-    val iconTints = labeled.map { weatherIconTint(hours[it].weatherCode, hours[it].isDay) }
     val sunEvents = remember(weather, now) {
         weather.daily.flatMap { d -> listOfNotNull(d.sunrise?.let { it to true }, d.sunset?.let { it to false }) }
             .filter { it.first > hours.first().time && it.first < hours.last().time }
@@ -215,12 +214,19 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
     val description = text.hourlyHeadline(insights.hourly)
 
     WeatherCard(stringResource(R.string.card_next_hours), index = "01") {
+        // Colors from inside the card: glass content has its own scheme (dark text on day glass).
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        val ink = MaterialTheme.colorScheme.onSurface
+        val accent = MaterialTheme.colorScheme.primary
+        val dataStyle = AppType.voices.monoData.copy(color = ink)
+        val labelStyle = AppType.voices.monoLabel.copy(color = muted)
+        val iconTints = labeled.map { weatherIconTint(hours[it].weatherCode, hours[it].isDay) }
         Text(description, style = AppType.voices.narrativeSmall)
         Spacer(Modifier.height(2.dp))
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(128.dp)
+                .height(108.dp)
                 .semantics { contentDescription = description },
         ) {
             val pad = 14.dp.toPx()
@@ -229,11 +235,11 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
 
             val iconPx = 18.dp.toPx()
             val tempRow = 22.dp.toPx()
-            val curveTop = 46.dp.toPx()
-            val curveBottom = 74.dp.toPx()
-            val baseline = 100.dp.toPx()
-            val rainMax = 18.dp.toPx()
-            val timeRow = 108.dp.toPx()
+            val curveTop = 44.dp.toPx()
+            val curveBottom = 64.dp.toPx()
+            val baseline = 82.dp.toPx()
+            val rainMax = 16.dp.toPx()
+            val timeRow = 90.dp.toPx()
             val hair = 1.dp.toPx()
 
             val temps = hours.map { it.temperature ?: 0.0 }
@@ -350,8 +356,8 @@ private fun AirCard(air: AirOutlook, modifier: Modifier) {
     val segments = listOf(AirLevel.GOOD, AirLevel.MODERATE, AirLevel.SENSITIVE, AirLevel.UNHEALTHY, AirLevel.VERY_UNHEALTHY)
         .map { DataColors.air(it) }
     val marker = DataColors.air(air.level)
-    val ring = MaterialTheme.colorScheme.surface
     WeatherCard(stringResource(R.string.card_air), modifier, index = "04") {
+        val ring = MaterialTheme.colorScheme.surface
         Spacer(Modifier.height(10.dp))
         Canvas(
             Modifier
@@ -389,22 +395,21 @@ private fun SunCurveCard(sun: SunInfo, weather: Weather, text: WeatherText, now:
     val dayStart = today.date
     val sunrise = sun.sunrise
     val sunset = sun.sunset
-    val ink = MaterialTheme.colorScheme.onSurface
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val night = Color(0xFF5B73D6)
     val day = DataColors.sun
     val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
-    val labelStyle = AppType.voices.monoLabel.copy(color = muted)
     val sunIcon = painterResource(R.drawable.ic_w_sunny)
     val moonIcon = painterResource(R.drawable.ic_w_clear_night)
     val daylight = stringResource(R.string.daylight, text.duration(sunset - sunrise))
     val description = "${text.sunTitle(sun)}. $daylight"
 
     WeatherCard(stringResource(R.string.card_sunrise_sunset), index = "05") {
+        val ink = MaterialTheme.colorScheme.onSurface
+        val labelStyle = AppType.voices.monoLabel.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(112.dp)
+                .height(84.dp)
                 .semantics { contentDescription = description },
         ) {
             val top = 8.dp.toPx()

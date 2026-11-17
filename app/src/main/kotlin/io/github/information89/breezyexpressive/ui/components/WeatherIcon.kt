@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import io.github.information89.breezyexpressive.ui.material.LocalOnDayGlass
+import io.github.information89.breezyexpressive.ui.material.deepened
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -27,8 +29,11 @@ fun weatherIconRes(code: WeatherCode?, isDay: Boolean): Int = when (code) {
 }
 
 @Composable
-fun weatherIconTint(code: WeatherCode?, isDay: Boolean): Color =
-    DataColors.icon(code, isDay, neutral = MaterialTheme.colorScheme.onSurface, night = DataColors.moon)
+fun weatherIconTint(code: WeatherCode?, isDay: Boolean): Color {
+    val tint = DataColors.icon(code, isDay, neutral = MaterialTheme.colorScheme.onSurface, night = DataColors.moon)
+    // Pale moon/snow colors fade on white glass: keep the hue, deepen it.
+    return if (LocalOnDayGlass.current) tint.deepened(maxLightness = 0.55f) else tint
+}
 
 /** Weather icon colored by condition: sun gold, moon silver-blue, rain blue, storms violet, snow ice. */
 @Composable

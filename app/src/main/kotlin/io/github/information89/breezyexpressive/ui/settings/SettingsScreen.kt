@@ -44,6 +44,13 @@ import io.github.information89.breezyexpressive.data.store.ThemeMode
 import io.github.information89.breezyexpressive.ui.theme.AppType
 import io.github.information89.breezyexpressive.ui.components.CardShape
 import io.github.information89.breezyexpressive.ui.material.glass
+import io.github.information89.breezyexpressive.ui.material.GlassTheme
+import io.github.information89.breezyexpressive.ui.material.SkyPreview
+import io.github.information89.breezyexpressive.insight.Sky
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 
@@ -143,6 +150,10 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                 )
             }
+            if (SkyPreview.isAvailable(LocalContext.current)) {
+                SectionTitle("Debug")
+                SettingsGroup { SkyPreviewControls() }
+            }
             Spacer(Modifier.height(96.dp)) // clears the floating toolbar
         }
     }
@@ -160,7 +171,7 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().glass(CardShape), content = content)
+    GlassTheme { Column(Modifier.fillMaxWidth().glass(CardShape), content = content) }
 }
 
 @Composable
@@ -176,6 +187,38 @@ private fun SwitchItem(
         trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )
+}
+
+/** Debug builds only: preview any sky and time of day. Not translated on purpose. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SkyPreviewControls() {
+    val sky by SkyPreview.sky
+    val isDay by SkyPreview.isDay
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Preview sky", style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = sky == null, onClick = { SkyPreview.sky.value = null }, label = { Text("Live") })
+            Sky.entries.forEach { option ->
+                FilterChip(
+                    selected = sky == option,
+                    onClick = { SkyPreview.sky.value = option },
+                    label = { Text(option.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }) },
+                )
+            }
+        }
+        Text("Time of day", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(null to "Live", true to "Day", false to "Night").forEach { (value, label) ->
+                FilterChip(selected = isDay == value, onClick = { SkyPreview.isDay.value = value }, label = { Text(label) })
+            }
+        }
+        Text(
+            "Changes the sky, glass and colors only; the forecast text stays live.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
