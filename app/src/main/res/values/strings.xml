@@ -11,7 +11,6 @@
     <string name="back">Back</string>
 
     <!-- Placeholders (M0 shell) -->
-    <string name="placeholder_your_day">A timeline of today: what to bring and when.</string>
     <string name="placeholder_locations">Search and your saved places, with the weather at a glance.</string>
 
     <!-- Settings -->

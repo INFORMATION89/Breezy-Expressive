@@ -26,20 +26,17 @@ fun weatherIconRes(code: WeatherCode?, isDay: Boolean): Int = when (code) {
     WeatherCode.WIND -> R.drawable.ic_w_air
 }
 
+@Composable
+fun weatherIconTint(code: WeatherCode?, isDay: Boolean): Color =
+    DataColors.icon(code, isDay, neutral = MaterialTheme.colorScheme.onSurfaceVariant, night = DataColors.moon)
+
 /** Weather icon with a color that hints at the condition (sun warm, rain blue, storms violet). */
 @Composable
 fun WeatherIcon(code: WeatherCode?, isDay: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp, contentDescription: String? = null) {
-    val tint = when (code) {
-        null, WeatherCode.CLEAR, WeatherCode.PARTLY_CLOUDY -> if (isDay) Color(0xFFFFB02E) else MaterialTheme.colorScheme.secondary
-        WeatherCode.RAIN -> Color(0xFF4A9FE0)
-        WeatherCode.THUNDER, WeatherCode.THUNDERSTORM -> Color(0xFF9A7BE0)
-        WeatherCode.SNOW, WeatherCode.SLEET, WeatherCode.HAIL -> Color(0xFF8CC8F0)
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
     Icon(
         painter = painterResource(weatherIconRes(code, isDay)),
         contentDescription = contentDescription,
-        tint = tint,
+        tint = weatherIconTint(code, isDay),
         modifier = modifier.size(size),
     )
 }

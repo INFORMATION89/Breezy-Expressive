@@ -4,13 +4,17 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import io.github.information89.breezyexpressive.insight.Sky
 
-/** Three colors for the abstract background: top, accent blob, bottom. */
+/**
+ * Colors for the background: a glowing [core] in the middle (sun, moon, rain light…),
+ * fading through [mid] into darker [edge]s.
+ */
 @Immutable
-data class MoodColors(val top: Color, val accent: Color, val bottom: Color)
+data class MoodColors(val core: Color, val mid: Color, val edge: Color)
 
 /**
  * The background's mood for each kind of sky, in light and dark versions.
- * Warm for sun, cool for rain, deep for night.
+ * Night glows like the moon, sun glows gold, rain glows steel-blue, storms violet.
+ * Dark-theme cores stay mid-bright so white text on glass keeps its contrast.
  */
 object WeatherMood {
 
@@ -19,7 +23,7 @@ object WeatherMood {
             Sky.SUNNY -> SUNNY
             Sky.CLEAR_NIGHT -> CLEAR_NIGHT
             Sky.PARTLY_CLOUDY -> if (isDay) PARTLY_DAY else PARTLY_NIGHT
-            Sky.CLOUDY, Sky.WINDY -> CLOUDY
+            Sky.CLOUDY, Sky.WINDY -> if (isDay) CLOUDY else CLOUDY_NIGHT
             Sky.RAINY -> RAINY
             Sky.STORMY -> STORMY
             Sky.SNOWY, Sky.SLEETY -> SNOWY
@@ -29,16 +33,17 @@ object WeatherMood {
         return if (dark) pair.second else pair.first
     }
 
-    private fun mood(top: Long, accent: Long, bottom: Long) = MoodColors(Color(top), Color(accent), Color(bottom))
+    private fun mood(core: Long, mid: Long, edge: Long) = MoodColors(Color(core), Color(mid), Color(edge))
 
     // (light, dark)
-    private val SUNNY = mood(0xFFFFD9A0, 0xFFFFB59A, 0xFFFFEEDD) to mood(0xFF5A3418, 0xFF6E2E2A, 0xFF22150F)
-    private val CLEAR_NIGHT = mood(0xFFC9C8F2, 0xFFB9A9E8, 0xFFE6E4F7) to mood(0xFF1B1D4A, 0xFF35215C, 0xFF0C0E22)
-    private val PARTLY_DAY = mood(0xFFFFE1B8, 0xFFC9D6E8, 0xFFEEF1F6) to mood(0xFF4A3826, 0xFF2F3A4C, 0xFF171B22)
-    private val PARTLY_NIGHT = mood(0xFFD0D2E6, 0xFFBCC3DA, 0xFFE8E9F1) to mood(0xFF22263F, 0xFF332C4A, 0xFF101220)
-    private val CLOUDY = mood(0xFFD5DCE4, 0xFFC2CBD6, 0xFFECEFF3) to mood(0xFF2E3640, 0xFF3A4250, 0xFF15181E)
-    private val RAINY = mood(0xFFBFD3DD, 0xFFA3C3CF, 0xFFE3ECF0) to mood(0xFF1F3540, 0xFF1F4A55, 0xFF0E171C)
-    private val STORMY = mood(0xFFC7C0D8, 0xFFA9A0C4, 0xFFE4E1EC) to mood(0xFF2B2340, 0xFF43305A, 0xFF120F18)
-    private val SNOWY = mood(0xFFE3EEF7, 0xFFCFE0EF, 0xFFF7FAFC) to mood(0xFF2A3A4A, 0xFF3B4F63, 0xFF141B23)
-    private val FOGGY = mood(0xFFE6E1D8, 0xFFD6D2CA, 0xFFF2F0EC) to mood(0xFF3A3833, 0xFF34322E, 0xFF181715)
+    private val SUNNY = mood(0xFFFFF4DC, 0xFFFFC98E, 0xFFF0A070) to mood(0xFFD08A42, 0xFF5E2E16, 0xFF0F0805)
+    private val CLEAR_NIGHT = mood(0xFFF2F4FF, 0xFFB9C2EA, 0xFF8E99C9) to mood(0xFFA4B0E0, 0xFF1E2550, 0xFF04050C)
+    private val PARTLY_DAY = mood(0xFFFFF6E8, 0xFFC3D4EA, 0xFF9DB3CF) to mood(0xFFBE9E70, 0xFF2C3D55, 0xFF080B10)
+    private val PARTLY_NIGHT = mood(0xFFF0F2FA, 0xFFC3C8DE, 0xFF9CA3C2) to mood(0xFF95A0C8, 0xFF1E2440, 0xFF05060C)
+    private val CLOUDY = mood(0xFFF7F9FB, 0xFFCBD3DC, 0xFFA7B2BE) to mood(0xFF8E98A6, 0xFF27303C, 0xFF07090C)
+    private val CLOUDY_NIGHT = mood(0xFFEFF1F6, 0xFFC2C8D3, 0xFF9AA3B3) to mood(0xFF8592B4, 0xFF1D2433, 0xFF05060A)
+    private val RAINY = mood(0xFFEEF5FA, 0xFFA9C7DA, 0xFF7FA3BA) to mood(0xFF6494B8, 0xFF16334A, 0xFF03070B)
+    private val STORMY = mood(0xFFF3EFFA, 0xFFC4B6E0, 0xFF9886BD) to mood(0xFF9A80D0, 0xFF2C1E4A, 0xFF050308)
+    private val SNOWY = mood(0xFFFFFFFF, 0xFFD6E6F3, 0xFFAFC7DA) to mood(0xFFA8BED6, 0xFF2E4258, 0xFF080B10)
+    private val FOGGY = mood(0xFFFBFAF7, 0xFFDCD7CD, 0xFFB8B2A6) to mood(0xFFA49E90, 0xFF35322D, 0xFF0B0A09)
 }

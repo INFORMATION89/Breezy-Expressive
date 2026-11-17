@@ -64,9 +64,9 @@ fun WeatherBackground(
     scrollActivity: ScrollActivity,
     modifier: Modifier = Modifier,
 ) {
-    val top by animateColorAsState(colors.top, tween(1200), label = "top")
-    val accent by animateColorAsState(colors.accent, tween(1200), label = "accent")
-    val bottom by animateColorAsState(colors.bottom, tween(1200), label = "bottom")
+    val core by animateColorAsState(colors.core, tween(1200), label = "core")
+    val mid by animateColorAsState(colors.mid, tween(1200), label = "mid")
+    val edge by animateColorAsState(colors.edge, tween(1200), label = "edge")
     val grainAlpha = grain.coerceIn(0f, 1f) * 0.14f
 
     val context = LocalContext.current
@@ -83,25 +83,25 @@ fun WeatherBackground(
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
                     delay(66)
-                    if (!scrollActivity.isScrollingRecently()) time.floatValue += 0.066f
+                    if (!scrollActivity.isScrollingRecently()) time.floatValue += 0.066f // seconds
                 }
             }
         }
     }
 
     if (Build.VERSION.SDK_INT >= 33) {
-        ShaderBackground(top, accent, bottom, grainAlpha, { time.floatValue }, modifier)
+        ShaderBackground(core, mid, edge, grainAlpha, { time.floatValue }, modifier)
     } else {
-        FallbackBackground(top, accent, bottom, grainAlpha, modifier)
+        FallbackBackground(core, mid, edge, grainAlpha, modifier)
     }
 }
 
 @RequiresApi(33)
 @Composable
 private fun ShaderBackground(
-    top: Color,
-    accent: Color,
-    bottom: Color,
+    core: Color,
+    mid: Color,
+    edge: Color,
     grainAlpha: Float,
     time: () -> Float,
     modifier: Modifier,
@@ -113,9 +113,9 @@ private fun ShaderBackground(
             onDrawBehind {
                 shader.setFloatUniform("resolution", size.width, size.height)
                 shader.setFloatUniform("time", time()) // read in draw: redraws without recomposition
-                shader.setColorUniform("top", top.toArgb())
-                shader.setColorUniform("accent", accent.toArgb())
-                shader.setColorUniform("bottom", bottom.toArgb())
+                shader.setColorUniform("core", core.toArgb())
+                shader.setColorUniform("mid", mid.toArgb())
+                shader.setColorUniform("edge", edge.toArgb())
                 shader.setFloatUniform("grain", grainAlpha)
                 drawRect(brush)
             }
@@ -124,11 +124,11 @@ private fun ShaderBackground(
 }
 
 @Composable
-private fun FallbackBackground(top: Color, accent: Color, bottom: Color, grainAlpha: Float, modifier: Modifier) {
+private fun FallbackBackground(core: Color, mid: Color, edge: Color, grainAlpha: Float, modifier: Modifier) {
     val noise = remember { noiseTile() }
     Box(
         modifier.drawWithCache {
-            val gradient = Brush.verticalGradient(listOf(top, accent, bottom))
+            val gradient = Brush.radialGradient(listOf(core, mid, edge), center = Offset(size.width / 2, size.height * 0.42f), radius = size.maxDimension * 0.75f)
             val grainBrush = ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated))
             onDrawBehind {
                 drawRect(gradient)
@@ -151,9 +151,9 @@ private fun noiseTile(size: Int = 128): ImageBitmap {
 private const val BACKGROUND_SHADER = """
 uniform float2 resolution;
 uniform float time;
-layout(color) uniform half4 top;
-layout(color) uniform half4 accent;
-layout(color) uniform half4 bottom;
+layout(color) uniform half4 core;
+layout(color) uniform half4 mid;
+layout(color) uniform half4 edge;
 uniform float grain;
 
 float hash(float2 p) {
@@ -165,17 +165,26 @@ float hash(float2 p) {
 half4 main(float2 coord) {
     float2 uv = coord / resolution;
     float aspect = resolution.x / resolution.y;
-    float t = time * 0.12;
 
-    // Vertical base: top color into bottom color.
-    half3 color = mix(top.rgb, bottom.rgb, smoothstep(0.0, 1.0, uv.y));
+    // A glowing point in the middle (sun, moon...), breathing slowly and drifting a little.
+    float2 center = float2(0.5 + 0.03 * sin(time * 0.21), 0.42 + 0.025 * cos(time * 0.17));
+    float2 p = float2((uv.x - center.x) * aspect, uv.y - center.y);
+    float d = length(p);
+    float radius = 0.55 + 0.04 * sin(time * 0.6);
 
-    // Two soft blobs drifting slowly.
-    float2 p = float2(uv.x * aspect, uv.y);
-    float2 blob1 = float2((0.25 + 0.18 * sin(t * 1.3)) * aspect, 0.22 + 0.10 * cos(t));
-    float2 blob2 = float2((0.85 + 0.12 * cos(t * 0.8)) * aspect, 0.60 + 0.14 * sin(t * 1.1));
-    color = mix(color, accent.rgb, 0.85 * smoothstep(0.75, 0.0, distance(p, blob1)));
-    color = mix(color, top.rgb, 0.55 * smoothstep(0.6, 0.0, distance(p, blob2)));
+    // Sky-like base: mid color fading to the darker edge color, deeper toward the bottom.
+    half3 color = mix(mid.rgb, edge.rgb, smoothstep(0.15, 1.05, d + 0.25 * max(uv.y - 0.5, 0.0)));
+
+    // Core glow.
+    float glow = exp(-(d * d) / (radius * radius * 0.45));
+    color = mix(color, core.rgb, glow * 0.85);
+
+    // Soft concentric halos moving outward, like light through haze.
+    float rings = 0.5 + 0.5 * sin(d * 16.0 - time * 0.7);
+    color += core.rgb * rings * 0.07 * exp(-d * 2.2);
+
+    // Darker edges.
+    color = mix(color, edge.rgb, 0.55 * smoothstep(0.55, 1.25, d));
 
     // Static film grain.
     color += (hash(floor(coord)) - 0.5) * grain;

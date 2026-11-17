@@ -4,9 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -38,23 +37,33 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.information89.breezyexpressive.R
-import io.github.information89.breezyexpressive.data.model.Daily
-import io.github.information89.breezyexpressive.data.model.Hourly
 import io.github.information89.breezyexpressive.data.model.Weather
 import io.github.information89.breezyexpressive.insight.Insights
+import io.github.information89.breezyexpressive.insight.RainOutlook
+import io.github.information89.breezyexpressive.insight.SunInfo
+import io.github.information89.breezyexpressive.insight.UvOutlook
 import io.github.information89.breezyexpressive.insight.uvLevel
-import io.github.information89.breezyexpressive.ui.components.WeatherIcon
-import io.github.information89.breezyexpressive.ui.material.glass
+import io.github.information89.breezyexpressive.ui.components.DataColors
+import io.github.information89.breezyexpressive.ui.components.WeatherCard
+import io.github.information89.breezyexpressive.ui.components.weatherIconRes
+import io.github.information89.breezyexpressive.ui.components.weatherIconTint
 import io.github.information89.breezyexpressive.ui.text.WeatherText
 import io.github.information89.breezyexpressive.ui.text.rememberWeatherText
 import io.github.information89.breezyexpressive.ui.theme.AppType
@@ -65,8 +74,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Forecast: compact hero + cards. Words first, numbers second and smaller (PLAN.md 5.0).
- * Everything important fits on the first screen; extras (7 days, data source) are below.
+ * Forecast: compact hero + four cards, all on the first screen.
+ * Words first, numbers second and smaller (PLAN.md 5.0); each card glows in its data's color.
  */
 @Composable
 fun ForecastPage(
@@ -97,167 +106,221 @@ fun ForecastPage(
                     )
                 },
             ) {
-                ForecastContent(state, weather, insights, text)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 14.dp)
+                        .padding(top = 12.dp, bottom = 104.dp), // room for the floating toolbar
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Hero(state, weather, insights, text)
+                    TimelineCard(weather, insights, text, state.now)
+                    RainCard(insights, text)
+                    // Same height for both small cards.
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        insights.uv?.let { UvCard(it, weather, text, Modifier.weight(1f).fillMaxHeight()) }
+                        insights.sun?.let { SunCard(it, text, Modifier.weight(1f).fillMaxHeight()) }
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun ForecastContent(state: ForecastUiState, weather: Weather, insights: Insights, text: WeatherText) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(top = 24.dp, bottom = 112.dp), // room for the floating toolbar
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Hero(state, weather, insights, text)
-        HourlyCard(weather, insights, text, state.now)
-        RainCard(insights, text)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            insights.uv?.let { UvCard(it, weather, text, Modifier.weight(1f)) }
-            insights.sun?.let { SunCard(it, text, Modifier.weight(1f)) }
-        }
-        DaysCard(weather, text, state.now)
-        Footer(weather, text)
     }
 }
 
 // region Hero
 
+/** Words on the left (where, what, the sentence), the big temperature on the right. */
 @Composable
 private fun Hero(state: ForecastUiState, weather: Weather, insights: Insights, text: WeatherText) {
     val current = weather.current
     val today = weather.daily.lastOrNull { it.date <= state.now }
-    Column(Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
-        Text(
-            state.location.name,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f)) {
             Text(
-                text.temperature(current?.temperature),
-                style = AppType.voices.heroTemperature.copy(fontSize = 64.sp, lineHeight = 64.sp),
-                color = MaterialTheme.colorScheme.primary,
+                state.location.name,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(text.skyTitle(insights.now.sky), style = MaterialTheme.typography.titleLarge)
-                if (today != null) {
-                    Text(
-                        stringResource(R.string.high_low, text.temperature(today.temperatureMax), text.temperature(today.temperatureMin)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Text(text.skyTitle(insights.now.sky), style = MaterialTheme.typography.titleLarge)
+            if (today != null) {
+                Text(
+                    stringResource(R.string.high_low, text.temperature(today.temperatureMax), text.temperature(today.temperatureMin)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text.summary(insights.summary),
+                style = AppType.voices.narrativeMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (state.error != null) {
+                Text(
+                    stringResource(R.string.stale_weather, text.time(weather.updatedAt)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
-            text.summary(insights.summary),
-            style = AppType.voices.narrativeMedium,
-            modifier = Modifier.semantics { heading() },
+            text.temperature(current?.temperature),
+            style = AppType.voices.heroTemperature,
+            color = MaterialTheme.colorScheme.primary,
         )
-        if (state.error != null) {
-            Text(
-                stringResource(R.string.stale_weather, text.time(weather.updatedAt)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+    }
+}
+
+// endregion
+
+// region Next hours timeline
+
+/**
+ * The next 12 hours as a timeline: a temperature line colored from cool to warm,
+ * rain drawn as a band underneath, sunrise/sunset marked, icons and times every 3 hours.
+ */
+@Composable
+private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText, now: Long) {
+    val hours = remember(weather, now) { weather.hourly.filter { it.time + 3600 > now }.take(13) }
+    if (hours.size < 2) return
+    val labeled = hours.indices.filter { it % 3 == 0 }
+
+    val measurer = rememberTextMeasurer()
+    val timeStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val tempStyle = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.onSurface)
+    val nowLabel = stringResource(R.string.time_now)
+    val icons = labeled.map { painterResource(weatherIconRes(hours[it].weatherCode, hours[it].isDay)) }
+    val iconTints = labeled.map { weatherIconTint(hours[it].weatherCode, hours[it].isDay) }
+    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val marker = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+    val sunEvents = remember(weather, now) {
+        weather.daily.flatMap { listOfNotNull(it.sunrise, it.sunset) }
+            .filter { it > hours.first().time && it < hours.last().time }
+    }
+    val description = text.hourlyHeadline(insights.hourly)
+
+    WeatherCard(
+        stringResource(R.string.card_next_hours),
+        dataTint = DataColors.feel(insights.now.feel),
+    ) {
+        Text(description, style = AppType.voices.narrativeSmall)
+        Spacer(Modifier.height(2.dp))
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(126.dp)
+                .semantics { contentDescription = description },
+        ) {
+            val pad = 16.dp.toPx()
+            val usable = size.width - 2 * pad
+            fun x(index: Float) = pad + usable * index / (hours.size - 1)
+
+            val iconPx = 22.dp.toPx()
+            val tempRow = 26.dp.toPx()
+            val curveTop = 50.dp.toPx()
+            val curveBottom = 78.dp.toPx()
+            val rainTop = 84.dp.toPx()
+            val rainBottom = 104.dp.toPx()
+            val timeRow = 110.dp.toPx()
+
+            val temps = hours.map { it.temperature ?: 0.0 }
+            val minT = temps.min()
+            val maxT = temps.max().coerceAtLeast(minT + 1)
+            fun y(t: Double) = (curveBottom - (t - minT) / (maxT - minT) * (curveBottom - curveTop)).toFloat()
+
+            // Rain band: one bar per hour, height = chance.
+            val barWidth = (usable / (hours.size - 1)) * 0.55f
+            hours.forEachIndexed { i, hour ->
+                val chance = (hour.precipitationProbability ?: 0) / 100f
+                val cx = x(i.toFloat())
+                drawRoundRect(track, Offset(cx - barWidth / 2, rainTop), Size(barWidth, rainBottom - rainTop), CornerRadius(barWidth / 2))
+                if (chance > 0.05f) {
+                    val h = (rainBottom - rainTop) * chance
+                    drawRoundRect(DataColors.rain, Offset(cx - barWidth / 2, rainBottom - h), Size(barWidth, h), CornerRadius(minOf(barWidth, h) / 2))
+                }
+            }
+
+            // Sunrise / sunset markers.
+            sunEvents.forEach { event ->
+                val ex = x(((event - hours.first().time) / 3600f))
+                drawLine(marker, Offset(ex, curveTop - 6.dp.toPx()), Offset(ex, rainBottom), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+            }
+
+            // Temperature line, colored by temperature.
+            val path = Path()
+            hours.forEachIndexed { i, hour ->
+                val px = x(i.toFloat())
+                val py = y(hour.temperature ?: minT)
+                if (i == 0) {
+                    path.moveTo(px, py)
+                } else {
+                    val prevX = x((i - 1).toFloat())
+                    val prevY = y(hours[i - 1].temperature ?: minT)
+                    val midX = (prevX + px) / 2
+                    path.cubicTo(midX, prevY, midX, py, px, py)
+                }
+            }
+            val stops = hours.mapIndexed { i, h -> (x(i.toFloat()) / size.width) to DataColors.temperature(h.temperature ?: minT) }
+            drawPath(path, Brush.horizontalGradient(colorStops = stops.toTypedArray()), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+
+            // Labeled points: icon, temperature, dot, time.
+            labeled.forEachIndexed { n, i ->
+                val px = x(i.toFloat())
+                val hour = hours[i]
+                with(icons[n]) {
+                    translate(px - iconPx / 2, 0f) {
+                        draw(Size(iconPx, iconPx), colorFilter = ColorFilter.tint(iconTints[n]))
+                    }
+                }
+                val temp = measurer.measure(text.temperature(hour.temperature), tempStyle)
+                drawText(temp, topLeft = Offset(px - temp.size.width / 2f, tempRow))
+                val dotColor = DataColors.temperature(hour.temperature ?: minT)
+                drawCircle(dotColor, if (i == 0) 5.dp.toPx() else 3.5.dp.toPx(), Offset(px, y(hour.temperature ?: minT)))
+                val time = measurer.measure(if (i == 0) nowLabel else text.hourLabel(hour.time), timeStyle)
+                drawText(time, topLeft = Offset(px - time.size.width / 2f, timeRow))
+            }
         }
     }
 }
 
 // endregion
 
-// region Cards
-
-@Composable
-private fun ForecastCard(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val shape = MaterialTheme.shapes.extraLarge
-    Column(
-        modifier
-            .fillMaxWidth()
-            .glass(shape)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.semantics { heading() },
-        )
-        content()
-    }
-}
-
-@Composable
-private fun HourlyCard(weather: Weather, insights: Insights, text: WeatherText, now: Long) {
-    val hours = remember(weather, now) { weather.hourly.filter { it.time + 3600 > now }.take(24) }
-    ForecastCard(stringResource(R.string.card_next_hours)) {
-        Text(text.hourlyHeadline(insights.hourly), style = AppType.voices.narrativeSmall)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(hours, key = { it.time }) { hour ->
-                HourItem(hour, if (hour === hours.first()) stringResource(R.string.time_now) else text.hourLabel(hour.time), text)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HourItem(hour: Hourly, label: String, text: WeatherText) {
-    Column(
-        Modifier.width(52.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        WeatherIcon(hour.weatherCode, hour.isDay)
-        Text(text.temperature(hour.temperature), style = MaterialTheme.typography.titleMedium)
-        val chance = hour.precipitationProbability ?: 0
-        Text(
-            if (chance >= 20) "$chance%" else " ",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF4A9FE0),
-        )
-    }
-}
+// region Other cards
 
 @Composable
 private fun RainCard(insights: Insights, text: WeatherText) {
     val rain = insights.rain
-    val barColor = Color(0xFF4A9FE0)
+    val kind = when (rain) {
+        is RainOutlook.Dry -> null
+        is RainOutlook.Now -> rain.episode.kind
+        is RainOutlook.Later -> rain.episode.kind
+    }
+    val barColor = DataColors.precip(kind ?: io.github.information89.breezyexpressive.insight.PrecipKind.RAIN)
     val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    ForecastCard(stringResource(R.string.card_precipitation)) {
-        Text(text.rainHeadline(rain), style = MaterialTheme.typography.headlineSmall)
+    WeatherCard(stringResource(R.string.card_precipitation), dataTint = DataColors.precip(kind)) {
+        Text(text.rainHeadline(rain), style = MaterialTheme.typography.titleLarge)
         Text(text.rainDetail(rain), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (rain.bars.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Canvas(
                 Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(34.dp),
             ) {
                 val bars = rain.bars
-                val gap = 6.dp.toPx()
+                val gap = 5.dp.toPx()
                 val barWidth = (size.width - gap * (bars.size - 1)) / bars.size
                 bars.forEachIndexed { i, bar ->
                     val x = i * (barWidth + gap)
                     drawRoundRect(trackColor, Offset(x, 0f), Size(barWidth, size.height), CornerRadius(barWidth / 2))
                     // Proportional height, so 5% never looks like 40%; tiny chances get a thin sliver.
                     val chance = bar.probability / 100f
-                    val h = (size.height * chance).coerceAtLeast(if (chance > 0f) 4.dp.toPx() else 0f)
+                    val h = (size.height * chance).coerceAtLeast(if (chance > 0f) 3.dp.toPx() else 0f)
                     if (h > 0f) {
                         drawRoundRect(barColor, Offset(x, size.height - h), Size(barWidth, h), CornerRadius(minOf(barWidth, h) / 2))
                     }
@@ -284,30 +347,24 @@ private fun RainCard(insights: Insights, text: WeatherText) {
 }
 
 @Composable
-private fun UvCard(uv: io.github.information89.breezyexpressive.insight.UvOutlook, weather: Weather, text: WeatherText, modifier: Modifier) {
+private fun UvCard(uv: UvOutlook, weather: Weather, text: WeatherText, modifier: Modifier) {
     val isDay = weather.current?.isDay ?: true
     val index = weather.current?.uvIndex ?: 0.0
-    ForecastCard(stringResource(R.string.card_uv), modifier) {
+    val level = uvLevel(index)
+    val color = DataColors.uv(level)
+    WeatherCard(stringResource(R.string.card_uv), modifier, dataTint = if (isDay) color else Color.Unspecified) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text.uv(uvLevel(index)),
-                style = MaterialTheme.typography.headlineSmall,
+                text.uv(level),
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Expressive shape badge carries the number, secondary to the word.
-            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                Surface(
-                    shape = MaterialShapes.Cookie9Sided.toShape(),
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    modifier = Modifier.size(40.dp),
-                ) {}
-                Text(
-                    "${index.roundToInt()}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
+            // Expressive shape badge in the UV color carries the number, secondary to the word.
+            Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                Surface(shape = MaterialShapes.Cookie9Sided.toShape(), color = color, modifier = Modifier.size(34.dp)) {}
+                Text("${index.roundToInt()}", style = MaterialTheme.typography.titleSmall, color = Color(0xFF1B1B1B))
             }
         }
         Text(text.uvAdvice(uv, isDay), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -315,19 +372,20 @@ private fun UvCard(uv: io.github.information89.breezyexpressive.insight.UvOutloo
 }
 
 @Composable
-private fun SunCard(sun: io.github.information89.breezyexpressive.insight.SunInfo, text: WeatherText, modifier: Modifier) {
+private fun SunCard(sun: SunInfo, text: WeatherText, modifier: Modifier) {
+    val isDay = sun.dayProgress != null
+    val glow = if (isDay) DataColors.sun else DataColors.moon
     val arcColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-    val sunColor = Color(0xFFFFB02E)
-    ForecastCard(stringResource(R.string.card_sun), modifier) {
+    WeatherCard(stringResource(R.string.card_sun), modifier, dataTint = glow) {
         Text(text.sunTitle(sun), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(34.dp),
         ) {
             // Half-circle arc that always fits inside the canvas, dot included.
             val stroke = 3.dp.toPx()
-            val dot = 7.dp.toPx()
+            val dot = 6.dp.toPx()
             val r = minOf(size.width / 2, size.height) - dot
             val center = Offset(size.width / 2, size.height - stroke)
             drawArc(
@@ -337,78 +395,10 @@ private fun SunCard(sun: io.github.information89.breezyexpressive.insight.SunInf
             )
             sun.dayProgress?.let { progress ->
                 val angle = (180f + 180f * progress) * PI / 180
-                drawCircle(sunColor, dot, Offset(center.x + r * cos(angle).toFloat(), center.y + r * sin(angle).toFloat()))
+                drawCircle(glow, dot, Offset(center.x + r * cos(angle).toFloat(), center.y + r * sin(angle).toFloat()))
             }
         }
         Text(text.sunDetail(sun), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun DaysCard(weather: Weather, text: WeatherText, now: Long) {
-    val days = remember(weather, now) { weather.daily.filter { it.date + 86_400 > now }.take(7) }
-    if (days.isEmpty()) return
-    val weekMin = days.mapNotNull { it.temperatureMin }.minOrNull() ?: return
-    val weekMax = days.mapNotNull { it.temperatureMax }.maxOrNull() ?: return
-    ForecastCard(stringResource(R.string.card_days)) {
-        days.forEach { day -> DayRow(day, text, weekMin, weekMax) }
-    }
-}
-
-@Composable
-private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Double) {
-    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-        Text(text.dayName(day.date), style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(56.dp))
-        WeatherIcon(day.weatherCode, isDay = true, size = 22.dp)
-        val chance = day.precipitationProbabilityMax ?: 0
-        Text(
-            if (chance >= 30) "$chance%" else "",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF4A9FE0),
-            modifier = Modifier.width(40.dp).padding(start = 4.dp),
-        )
-        Text(
-            text.temperature(day.temperatureMin),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(36.dp),
-        )
-        Canvas(
-            Modifier
-                .weight(1f)
-                .height(8.dp)
-                .padding(horizontal = 8.dp),
-        ) {
-            val span = (weekMax - weekMin).coerceAtLeast(1.0)
-            val start = (((day.temperatureMin ?: weekMin) - weekMin) / span).toFloat() * size.width
-            val end = (((day.temperatureMax ?: weekMax) - weekMin) / span).toFloat() * size.width
-            drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
-            drawRoundRect(
-                Brush.horizontalGradient(listOf(Color(0xFF6FB6E8), Color(0xFFFFB02E), Color(0xFFFF7A59)), startX = 0f, endX = size.width),
-                topLeft = Offset(start, 0f),
-                size = Size((end - start).coerceAtLeast(size.height), size.height),
-                cornerRadius = CornerRadius(size.height / 2),
-            )
-        }
-        Text(text.temperature(day.temperatureMax), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(32.dp))
-    }
-}
-
-@Composable
-private fun Footer(weather: Weather, text: WeatherText) {
-    Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-        Text(
-            stringResource(R.string.data_source, "Open-Meteo"),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text.coverage(weather),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -100,7 +101,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
     val mood = if (appearance.weatherTint) {
         WeatherMood.colors(forecast.insights?.now?.sky, forecast.weather?.current?.isDay ?: true, dark)
     } else {
-        MoodColors(scheme.surfaceContainerHigh, scheme.primaryContainer, scheme.surface)
+        MoodColors(core = scheme.primaryContainer, mid = scheme.surfaceContainerHigh, edge = scheme.surface)
     }
 
     val hazeState = rememberHazeState()
@@ -144,7 +145,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
             ) { index ->
                 when (pages[index]) {
                     Page.FORECAST -> ForecastPage(forecast, onRefresh = forecastViewModel::refresh)
-                    Page.YOUR_DAY -> YourDayPage()
+                    Page.YOUR_DAY -> YourDayPage(forecast)
                     Page.LOCATIONS -> LocationsPage()
                 }
             }
@@ -154,7 +155,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars.add(WindowInsets(top = 24.dp)))
-                    .background(Brush.verticalGradient(listOf(mood.top.copy(alpha = 0.95f), mood.top.copy(alpha = 0f)))),
+                    .background(Brush.verticalGradient(listOf(lerp(mood.mid, mood.edge, 0.6f).copy(alpha = 0.95f), lerp(mood.mid, mood.edge, 0.6f).copy(alpha = 0f)))),
             )
           }
 

@@ -151,4 +151,18 @@
     <string name="missing_alerts">no weather alerts</string>
     <string name="missing_air">no air quality</string>
     <string name="list_separator">", "</string>
+    <!-- Your day: what to bring -->
+    <string name="card_bring">What to bring</string>
+    <string name="bring_nothing">Nothing special today</string>
+    <string name="bring_umbrella">Umbrella</string>
+    <string name="bring_rain_jacket">Rain jacket</string>
+    <string name="bring_jacket">Jacket</string>
+    <string name="bring_warm_layers">Warm layers</string>
+    <string name="bring_sunscreen">Sunscreen</string>
+    <string name="bring_water">Water</string>
+    <string name="bring_mask">Mask</string>
+    <string name="bring_from">from %1$s</string>
+    <string name="bring_until">until %1$s</string>
+    <string name="bring_from_until">%1$s–%2$s</string>
+    <string name="your_day_week">The week ahead</string>
 </resources>
