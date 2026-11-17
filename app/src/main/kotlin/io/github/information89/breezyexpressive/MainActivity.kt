@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.information89.breezyexpressive.data.store.Appearance
+import io.github.information89.breezyexpressive.ui.material.SkyPreview
 import io.github.information89.breezyexpressive.ui.navigation.AppRoot
 import io.github.information89.breezyexpressive.ui.theme.BreezyTheme
 import io.github.information89.breezyexpressive.ui.theme.isDarkTheme
@@ -21,11 +22,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        SkyPreview.readFrom(this, intent)
         val appearanceStore = appContainer.appearanceStore
         setContent {
             val appearance by appearanceStore.appearance.collectAsStateWithLifecycle(initialValue = Appearance())
             val scope = rememberCoroutineScope()
-            val dark = appearance.isDarkTheme()
+            // Vivid weather skies always carry white text, so the system bar icons stay light there.
+            val dark = appearance.isDarkTheme() || appearance.weatherTint
 
             // Keep system bar icons readable when the in-app theme differs from the system theme.
             LaunchedEffect(dark) {

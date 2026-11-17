@@ -34,7 +34,7 @@ enum class GlassStrength { Clear, Regular }
 fun Modifier.glass(
     shape: Shape,
     strength: GlassStrength = GlassStrength.Clear,
-    glow: Boolean = true,
+    glow: Boolean = false,
 ): Modifier {
     val source = LocalGlassSource.current
     val appearance = LocalAppearance.current
@@ -42,22 +42,23 @@ fun Modifier.glass(
     val dark = scheme.surface.luminanceApprox() < 0.5f
     val blur = appearance.blur.coerceIn(0f, 1f)
 
+    // Same hue as the sky behind: a slightly deeper (dark) or lighter (light) translucent panel.
     val baseAlpha = when (strength) {
-        GlassStrength.Clear -> if (dark) 0.06f else 0.16f
-        GlassStrength.Regular -> if (dark) 0.30f else 0.45f
-    } + (1f - blur) * 0.2f
-    val tint = scheme.surface.copy(alpha = baseAlpha)
+        GlassStrength.Clear -> if (dark) 0.12f else 0.28f
+        GlassStrength.Regular -> if (dark) 0.22f else 0.45f
+    } + (1f - blur) * 0.15f
+    val tint = (if (dark) Color.Black else Color.White).copy(alpha = baseAlpha)
 
     val style = remember(tint, blur, appearance.grain) {
         HazeBlurStyle {
             blurEnabled(blur > 0f)
-            blurRadius((14 * blur).dp)
+            blurRadius((24 * blur).dp)
             noiseFactor(appearance.grain * 0.12f)
             colorEffects(listOf(HazeColorEffect.tint(tint)))
             fallbackColorEffect(HazeColorEffect.tint(tint.copy(alpha = 0.7f)))
         }
     }
-    val edge = Color.White.copy(alpha = if (dark) 0.07f else 0.45f)
+    val edge = Color.White.copy(alpha = if (dark) 0.12f else 0.5f)
     val glowColor = scheme.primary.copy(alpha = if (dark) 0.16f else 0.12f)
 
     return this

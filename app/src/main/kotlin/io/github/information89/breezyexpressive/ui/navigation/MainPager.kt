@@ -73,6 +73,7 @@ import io.github.information89.breezyexpressive.ui.material.LocalScrollActivity
 import io.github.information89.breezyexpressive.ui.material.ScrollActivity
 import io.github.information89.breezyexpressive.ui.material.WeatherBackground
 import io.github.information89.breezyexpressive.ui.material.WeatherMood
+import io.github.information89.breezyexpressive.ui.material.SkyPreview
 import io.github.information89.breezyexpressive.ui.material.MoodColors
 import io.github.information89.breezyexpressive.ui.material.glass
 import io.github.information89.breezyexpressive.ui.theme.LocalAppearance
@@ -104,9 +105,11 @@ fun MainPager(onOpenSettings: () -> Unit) {
     val dark = appearance.isDarkTheme()
     val scheme = MaterialTheme.colorScheme
     val mood = if (appearance.weatherTint) {
-        WeatherMood.colors(forecast.insights?.now?.sky, forecast.weather?.current?.isDay ?: true, dark)
+        val preview = SkyPreview.override.value
+        if (preview != null) WeatherMood.colors(preview.first, preview.second)
+        else WeatherMood.colors(forecast.insights?.now?.sky, forecast.weather?.current?.isDay ?: true)
     } else {
-        MoodColors(core = scheme.primaryContainer, mid = scheme.surfaceContainerHigh, edge = scheme.surface, accent = scheme.primary)
+        MoodColors(top = scheme.surfaceContainerHigh, bottom = scheme.surface, light = scheme.surfaceContainerHighest, bloom = scheme.primaryContainer, accent = scheme.primary)
     }
 
     val hazeState = rememberHazeState()
@@ -124,7 +127,8 @@ fun MainPager(onOpenSettings: () -> Unit) {
 
     // For now the whole main screen takes its colors from the conditions, not the wallpaper.
     val accent by animateColorAsState(mood.accent, tween(1200), label = "accent")
-    val conditionScheme = if (appearance.weatherTint) conditionColorScheme(accent, dark) else scheme
+    // Vivid skies always carry white text, in light and dark theme alike (like the system weather apps).
+    val conditionScheme = if (appearance.weatherTint) conditionColorScheme(accent, dark = true) else scheme
     MaterialExpressiveTheme(colorScheme = conditionScheme, motionScheme = MotionScheme.expressive(), typography = MaterialTheme.typography) {
     CompositionLocalProvider(
         LocalGlassSource provides hazeState,
@@ -164,7 +168,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars.add(WindowInsets(top = 24.dp)))
-                    .background(Brush.verticalGradient(listOf(lerp(mood.mid, mood.edge, 0.6f).copy(alpha = 0.95f), lerp(mood.mid, mood.edge, 0.6f).copy(alpha = 0f)))),
+                    .background(Brush.verticalGradient(listOf(mood.top.copy(alpha = 0.9f), mood.top.copy(alpha = 0f)))),
             )
           }
 

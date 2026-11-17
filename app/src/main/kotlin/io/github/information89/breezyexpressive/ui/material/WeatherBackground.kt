@@ -5,6 +5,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -53,7 +54,8 @@ class ScrollActivity : NestedScrollConnection {
 val LocalScrollActivity = staticCompositionLocalOf { ScrollActivity() }
 
 /**
- * Abstract, slowly drifting gradient in the weather's mood, with film grain.
+ * A full-color sky in the weather's mood: top-to-bottom gradient, a soft sun/moon light at the top,
+ * a slowly drifting color bloom rising from the bottom, grain, and black edges at night.
  * Android 13+: one AGSL shader pass. Android 12: static gradient + tiled noise.
  */
 @Composable
@@ -64,10 +66,12 @@ fun WeatherBackground(
     scrollActivity: ScrollActivity,
     modifier: Modifier = Modifier,
 ) {
-    val core by animateColorAsState(colors.core, tween(1200), label = "core")
-    val mid by animateColorAsState(colors.mid, tween(1200), label = "mid")
-    val edge by animateColorAsState(colors.edge, tween(1200), label = "edge")
-    val grainAlpha = grain.coerceIn(0f, 1f) * 0.14f
+    val top by animateColorAsState(colors.top, tween(1200), label = "top")
+    val bottom by animateColorAsState(colors.bottom, tween(1200), label = "bottom")
+    val light by animateColorAsState(colors.light, tween(1200), label = "light")
+    val bloom by animateColorAsState(colors.bloom, tween(1200), label = "bloom")
+    val vignette by animateFloatAsState(colors.vignette, tween(1200), label = "vignette")
+    val grainAlpha = grain.coerceIn(0f, 1f) * 0.12f
 
     val context = LocalContext.current
     val systemAnimationsOff = remember {
@@ -90,52 +94,40 @@ fun WeatherBackground(
     }
 
     if (Build.VERSION.SDK_INT >= 33) {
-        ShaderBackground(core, mid, edge, grainAlpha, { time.floatValue }, modifier)
+        val shader = remember { RuntimeShader(BACKGROUND_SHADER) }
+        Box(
+            modifier.drawWithCache {
+                val brush = ShaderBrush(shader)
+                onDrawBehind {
+                    shader.setFloatUniform("resolution", size.width, size.height)
+                    shader.setFloatUniform("time", time.floatValue) // read in draw: no recomposition
+                    shader.setColorUniform("top", top.toArgb())
+                    shader.setColorUniform("bottom", bottom.toArgb())
+                    shader.setColorUniform("light", light.toArgb())
+                    shader.setColorUniform("bloom", bloom.toArgb())
+                    shader.setFloatUniform("vignette", vignette)
+                    shader.setFloatUniform("grain", grainAlpha)
+                    drawRect(brush)
+                }
+            },
+        )
     } else {
-        FallbackBackground(core, mid, edge, grainAlpha, modifier)
+        val noise = remember { noiseTile() }
+        Box(
+            modifier.drawWithCache {
+                val gradient = Brush.verticalGradient(listOf(top, bottom))
+                val bloomBrush = Brush.radialGradient(listOf(bloom, Color.Transparent), center = Offset(size.width / 2, size.height * 1.05f), radius = size.width)
+                val vignetteBrush = Brush.radialGradient(listOf(Color.Transparent, Color.Black), center = Offset(size.width / 2, size.height / 2), radius = size.maxDimension * 0.75f)
+                val grainBrush = ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated))
+                onDrawBehind {
+                    drawRect(gradient)
+                    drawRect(bloomBrush, alpha = 0.7f)
+                    if (vignette > 0f) drawRect(vignetteBrush, alpha = vignette)
+                    if (grainAlpha > 0f) drawRect(grainBrush, alpha = grainAlpha * 2f)
+                }
+            },
+        )
     }
-}
-
-@RequiresApi(33)
-@Composable
-private fun ShaderBackground(
-    core: Color,
-    mid: Color,
-    edge: Color,
-    grainAlpha: Float,
-    time: () -> Float,
-    modifier: Modifier,
-) {
-    val shader = remember { RuntimeShader(BACKGROUND_SHADER) }
-    Box(
-        modifier.drawWithCache {
-            val brush = ShaderBrush(shader)
-            onDrawBehind {
-                shader.setFloatUniform("resolution", size.width, size.height)
-                shader.setFloatUniform("time", time()) // read in draw: redraws without recomposition
-                shader.setColorUniform("core", core.toArgb())
-                shader.setColorUniform("mid", mid.toArgb())
-                shader.setColorUniform("edge", edge.toArgb())
-                shader.setFloatUniform("grain", grainAlpha)
-                drawRect(brush)
-            }
-        },
-    )
-}
-
-@Composable
-private fun FallbackBackground(core: Color, mid: Color, edge: Color, grainAlpha: Float, modifier: Modifier) {
-    val noise = remember { noiseTile() }
-    Box(
-        modifier.drawWithCache {
-            val gradient = Brush.radialGradient(listOf(core, mid, edge), center = Offset(size.width / 2, size.height * 0.42f), radius = size.maxDimension * 0.75f)
-            val grainBrush = ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated))
-            onDrawBehind {
-                drawRect(gradient)
-                if (grainAlpha > 0f) drawRect(grainBrush, alpha = grainAlpha * 2f)
-            }
-        },
-    )
 }
 
 private fun noiseTile(size: Int = 128): ImageBitmap {
@@ -151,9 +143,11 @@ private fun noiseTile(size: Int = 128): ImageBitmap {
 private const val BACKGROUND_SHADER = """
 uniform float2 resolution;
 uniform float time;
-layout(color) uniform half4 core;
-layout(color) uniform half4 mid;
-layout(color) uniform half4 edge;
+layout(color) uniform half4 top;
+layout(color) uniform half4 bottom;
+layout(color) uniform half4 light;
+layout(color) uniform half4 bloom;
+uniform float vignette;
 uniform float grain;
 
 float hash(float2 p) {
@@ -166,21 +160,20 @@ half4 main(float2 coord) {
     float2 uv = coord / resolution;
     float aspect = resolution.x / resolution.y;
 
-    // A glowing point in the middle (sun, moon...), breathing slowly and drifting a little.
-    float2 center = float2(0.5 + 0.03 * sin(time * 0.21), 0.42 + 0.025 * cos(time * 0.17));
-    float2 p = float2((uv.x - center.x) * aspect, uv.y - center.y);
-    float d = length(p);
-    float radius = 0.55 + 0.04 * sin(time * 0.6);
+    // Sky: top color into bottom color.
+    half3 color = mix(top.rgb, bottom.rgb, smoothstep(0.0, 1.0, uv.y));
 
-    // Sky-like base: mid color fading to the darker edge color, deeper toward the bottom.
-    half3 color = mix(mid.rgb, edge.rgb, smoothstep(0.15, 1.05, d + 0.25 * max(uv.y - 0.5, 0.0)));
+    // Soft sun / moon light at the top, drifting a little.
+    float2 g = float2((uv.x - 0.5 - 0.05 * sin(time * 0.15)) * aspect, uv.y + 0.04);
+    color = mix(color, light.rgb, 0.5 * exp(-dot(g, g) / 0.07));
 
-    // Core glow.
-    float glow = exp(-(d * d) / (radius * radius * 0.45));
-    color = mix(color, core.rgb, glow * 0.85);
+    // Color bloom rising from the bottom, breathing and swaying slowly.
+    float2 b = float2((uv.x - 0.5 - 0.18 * sin(time * 0.23)) * aspect * 0.8, uv.y - 1.08 - 0.03 * sin(time * 0.4));
+    color = mix(color, bloom.rgb, 0.8 * exp(-dot(b, b) / (0.20 + 0.03 * sin(time * 0.5))));
 
-    // Darker edges.
-    color = mix(color, edge.rgb, 0.55 * smoothstep(0.55, 1.25, d));
+    // Night only: edges fade to black.
+    float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.45);
+    color *= 1.0 - vignette * smoothstep(0.18, 0.62, length(v) * 1.1);
 
     // Static film grain.
     color += (hash(floor(coord)) - 0.5) * grain;

@@ -83,8 +83,8 @@ fun conditionColorScheme(accent: Color, dark: Boolean): ColorScheme {
         darkColorScheme(
             background = Color(0xFF0E0F12),
             surface = Color(0xFF0E0F12),
-            onSurface = Color(0xFFECEEF2),
-            onSurfaceVariant = Color(0xFFB2B7C0),
+            onSurface = Color(0xFFFFFFFF),
+            onSurfaceVariant = Color(0xB8FFFFFF), // translucent white, reads on any sky
             surfaceContainerLowest = Color(0xFF0A0B0D),
             surfaceContainerLow = Color(0xFF15171B),
             surfaceContainer = Color(0xFF1A1C21),
