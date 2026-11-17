@@ -15,6 +15,8 @@ import io.github.information89.breezyexpressive.insight.Sky
 object SkyPreview {
     val sky = mutableStateOf<Sky?>(null)
     val isDay = mutableStateOf<Boolean?>(null)
+    /** Feeds made-up rain (starting in ~50 min, peaking heavy) into the precipitation timeline. */
+    val rain = mutableStateOf(false)
 
     fun isAvailable(context: Context) = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 

@@ -71,6 +71,12 @@ class WeatherText(private val context: Context, private val zone: ZoneId, privat
     /** Local clock time, e.g. "3:05 AM" or "03:05". */
     fun clock(epoch: Long): String = hourMinuteFormat.format(local(epoch))
 
+    // Chart and label times without AM/PM ("5:57", "6"); sentences keep the full format.
+    private val shortClockFormat = DateTimeFormatter.ofPattern(if (is24h) "H:mm" else "h:mm", locale)
+    private val shortHourFormat = DateTimeFormatter.ofPattern(if (is24h) "H" else "h", locale)
+    fun clockShort(epoch: Long): String = shortClockFormat.format(local(epoch))
+    fun hourShort(epoch: Long): String = shortHourFormat.format(local(epoch))
+
     /** Coordinates as a technical detail, e.g. "19.43°N 99.13°W". */
     fun coordinates(latitude: Double, longitude: Double): String {
         val lat = String.format(locale, "%.2f°%s", kotlin.math.abs(latitude), if (latitude >= 0) "N" else "S")

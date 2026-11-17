@@ -132,3 +132,9 @@ Auto-static in battery saver, with system animations off, and on slow phones.
   - Forecast fits on one screen above the toolbar; no overscroll when nothing scrolls.
   - Settings › Debug (debug builds): preview any sky and Day/Night independently.
   - Still open: the Blur slider only changes tint opacity now.
+- **2026-11-17:** Forecast layout after the Seoul reference: sun path on the sky under the hero
+  (horizon edge to edge, day so far in orange, sunrise/sunset times, daylight left in the
+  middle); cards with a bold title + short muted summary, 24 dp corners, no section indexes or
+  extra sentences; next hours as columns; UV and Air quality side by side on color scales;
+  precipitation as a timeline (Light/Moderate/Heavy, 15-min data when in range, start callout)
+  that shrinks to a banner when dry. Label/chart times drop AM/PM. Debug: Preview rain switch.

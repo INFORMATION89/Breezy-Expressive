@@ -18,6 +18,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.geometry.CornerRadius
+import io.github.information89.breezyexpressive.insight.RainOutlook
+import io.github.information89.breezyexpressive.insight.PrecipEpisode
+import io.github.information89.breezyexpressive.insight.Intensity
+import io.github.information89.breezyexpressive.data.model.Minutely
+import io.github.information89.breezyexpressive.ui.material.SkyPreview
+import io.github.information89.breezyexpressive.insight.PrecipKind
+import io.github.information89.breezyexpressive.insight.UvLevel
+import io.github.information89.breezyexpressive.data.model.WeatherCode
+import io.github.information89.breezyexpressive.ui.components.CardShape
+import io.github.information89.breezyexpressive.ui.material.GlassTheme
+import io.github.information89.breezyexpressive.ui.material.glass
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -119,14 +137,14 @@ fun ForecastPage(
                 ) {
                     Header(state)
                     Hero(state, weather, insights, text)
-                    TimelineCard(weather, insights, text, state.now)
-                    RainCard(insights, text)
+                    insights.sun?.let { SunPath(it, weather, text, state.now) }
+                    NextHoursCard(weather, insights, text, state.now)
                     // Same height for both small sections.
                     Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        insights.uv?.let { UvCard(it, weather, text, Modifier.weight(1f).fillMaxHeight()) }
+                        UvCard(weather, text, Modifier.weight(1f).fillMaxHeight())
                         insights.air?.let { AirCard(it, Modifier.weight(1f).fillMaxHeight()) }
                     }
-                    insights.sun?.let { SunCurveCard(it, weather, text, state.now) }
+                    Precipitation(weather, insights.rain, text, state.now)
                 }
             }
         }
@@ -192,117 +210,113 @@ private fun Hero(state: ForecastUiState, weather: Weather, insights: Insights, t
 
 // endregion
 
-// region 01 Next hours: blueprint timeline
+// region Sun path (on the sky, under the hero)
 
 /**
- * The next 12 hours drawn like a technical diagram: a thin temperature line over a dotted baseline,
- * rain as fine vertical ticks, sunrise/sunset marked, icons and data every 3 hours in monospace.
+ * The sun's path today, drawn straight on the sky like the Seoul reference: a thin curve over a
+ * horizon line, the part of the day already gone traced in sun orange up to "now", sunrise on the
+ * left, sunset on the right, and the sun's strength (UV) in the middle.
  */
 @Composable
-private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText, now: Long) {
-    val hours = remember(weather, now) { weather.hourly.filter { it.time + 3600 > now }.take(13) }
-    if (hours.size < 2) return
-    val labeled = hours.indices.filter { it % 3 == 0 }
-
-    val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
-    val nowLabel = stringResource(R.string.time_now).uppercase()
-    val icons = labeled.map { painterResource(weatherIconRes(hours[it].weatherCode, hours[it].isDay)) }
-    val sunEvents = remember(weather, now) {
-        weather.daily.flatMap { d -> listOfNotNull(d.sunrise?.let { it to true }, d.sunset?.let { it to false }) }
-            .filter { it.first > hours.first().time && it.first < hours.last().time }
+private fun SunPath(sun: SunInfo, weather: Weather, text: WeatherText, now: Long) {
+    val sunrise = sun.sunrise
+    val sunset = sun.sunset
+    if (sunset <= sunrise) return
+    val ink = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val orange = DataColors.sun
+    val isDay = now in sunrise..sunset
+    val center = if (isDay) {
+        stringResource(R.string.daylight_left, text.duration(sunset - now))
+    } else {
+        stringResource(R.string.daylight, text.duration(sunset - sunrise))
     }
-    val description = text.hourlyHeadline(insights.hourly)
+    // Text sits right on the sky, sometimes over the bright glow: a soft shadow keeps it readable.
+    val onSky = TextStyle(shadow = Shadow(Color.Black.copy(alpha = 0.3f), blurRadius = 16f))
+    val description = "${stringResource(R.string.sunrise)} ${text.clock(sunrise)}, ${stringResource(R.string.sunset)} ${text.clock(sunset)}. $center"
 
-    WeatherCard(stringResource(R.string.card_next_hours), index = "01") {
-        // Colors from inside the card: glass content has its own scheme (dark text on day glass).
-        val muted = MaterialTheme.colorScheme.onSurfaceVariant
-        val ink = MaterialTheme.colorScheme.onSurface
-        val accent = MaterialTheme.colorScheme.primary
-        val dataStyle = AppType.voices.monoData.copy(color = ink)
-        val labelStyle = AppType.voices.monoLabel.copy(color = muted)
-        val iconTints = labeled.map { weatherIconTint(hours[it].weatherCode, hours[it].isDay) }
-        Text(description, style = AppType.voices.narrativeSmall)
-        Spacer(Modifier.height(2.dp))
+    Column(Modifier.semantics(mergeDescendants = true) { contentDescription = description }) {
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(108.dp)
-                .semantics { contentDescription = description },
+                .height(88.dp)
+                // The horizon runs edge to edge, past the page padding.
+                .layout { measurable, constraints ->
+                    val bleed = 16.dp.roundToPx()
+                    val width = constraints.maxWidth + 2 * bleed
+                    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+                    layout(constraints.maxWidth, placeable.height) { placeable.place(-bleed, 0) }
+                },
         ) {
-            val pad = 14.dp.toPx()
-            val usable = size.width - 2 * pad
-            fun x(index: Float) = pad + usable * index / (hours.size - 1)
+            val bleed = 16.dp.toPx()
+            val inset = 8.dp.toPx()
+            val riseX = bleed + inset
+            val setX = size.width - bleed - inset
+            fun x(t: Double) = (riseX + (t - sunrise) / (sunset - sunrise) * (setX - riseX)).toFloat()
+            fun t(x: Float) = sunrise + (x - riseX) / (setX - riseX) * (sunset - sunrise).toDouble()
+            // Sun height: a cosine over 24 h peaking at solar noon; 0 at sunrise/sunset.
+            val noon = (sunrise + sunset) / 2.0
+            fun elevation(t: Double) = cos(2 * PI * (t - noon) / 86_400.0)
+            val e0 = elevation(sunrise.toDouble())
+            val horizon = size.height - 14.dp.toPx()
+            val amplitude = horizon - 6.dp.toPx()
+            fun y(t: Double) = (horizon - (elevation(t) - e0) / (1 - e0) * amplitude).toFloat()
 
-            val iconPx = 18.dp.toPx()
-            val tempRow = 22.dp.toPx()
-            val curveTop = 44.dp.toPx()
-            val curveBottom = 64.dp.toPx()
-            val baseline = 82.dp.toPx()
-            val rainMax = 16.dp.toPx()
-            val timeRow = 90.dp.toPx()
-            val hair = 1.dp.toPx()
+            drawLine(ink.copy(alpha = 0.35f), Offset(0f, horizon), Offset(size.width, horizon), 1.dp.toPx())
 
-            val temps = hours.map { it.temperature ?: 0.0 }
-            val minT = temps.min()
-            val maxT = temps.max().coerceAtLeast(minT + 1)
-            fun y(t: Double) = (curveBottom - (t - minT) / (maxT - minT) * (curveBottom - curveTop)).toFloat()
-
-            // Dotted baseline with an hour tick for every hour.
-            drawLine(ink.copy(alpha = 0.3f), Offset(pad, baseline), Offset(size.width - pad, baseline), hair, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 5f)))
-            hours.indices.forEach { i ->
-                val tx = x(i.toFloat())
-                val tick = if (i % 3 == 0) 6.dp.toPx() else 3.dp.toPx()
-                drawLine(ink.copy(alpha = 0.35f), Offset(tx, baseline), Offset(tx, baseline + tick), hair)
-            }
-
-            // Rain: fine vertical ticks rising from the baseline, height = chance.
-            hours.forEachIndexed { i, hour ->
-                val chance = (hour.precipitationProbability ?: 0) / 100f
-                if (chance >= 0.1f) { // below 10% reads as noise
-                    val tx = x(i.toFloat())
-                    drawLine(accent, Offset(tx, baseline), Offset(tx, baseline - rainMax * chance), 3.dp.toPx(), cap = StrokeCap.Round)
-                }
-            }
-
-            // Sunrise / sunset: dashed marker with a small arrow label.
-            sunEvents.forEach { (event, isSunrise) ->
-                val ex = x(((event - hours.first().time) / 3600f))
-                drawLine(ink.copy(alpha = 0.35f), Offset(ex, curveTop - 4.dp.toPx()), Offset(ex, baseline), hair, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f)))
-                val label = measurer.measure((if (isSunrise) "↑ " else "↓ ") + text.clock(event), labelStyle)
-                drawText(label, topLeft = Offset((ex + 4.dp.toPx()).coerceAtMost(size.width - label.size.width.toFloat()), baseline - label.size.height - 2.dp.toPx()))
-            }
-
-            // Temperature: one thin line.
+            val steps = 120
             val path = Path()
-            hours.forEachIndexed { i, hour ->
-                val px = x(i.toFloat())
-                val py = y(hour.temperature ?: minT)
-                if (i == 0) {
-                    path.moveTo(px, py)
+            for (i in 0..steps) {
+                val px = size.width * i / steps
+                if (i == 0) path.moveTo(px, y(t(px))) else path.lineTo(px, y(t(px)))
+            }
+            drawPath(path, ink.copy(alpha = 0.85f), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+
+            // The day so far, in sun orange, fading in from the left.
+            val nowX = x(now.toDouble()).coerceIn(0f, size.width)
+            if (nowX > 0f) {
+                val past = Path()
+                val pastSteps = (steps * nowX / size.width).toInt().coerceAtLeast(1)
+                for (i in 0..pastSteps) {
+                    val px = nowX * i / pastSteps
+                    if (i == 0) past.moveTo(px, y(t(px))) else past.lineTo(px, y(t(px)))
+                }
+                drawPath(
+                    past,
+                    Brush.horizontalGradient(listOf(orange.copy(alpha = 0f), orange), startX = riseX - 24.dp.toPx(), endX = nowX),
+                    style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round),
+                )
+            }
+            drawCircle(ink, 3.dp.toPx(), Offset(riseX, horizon))
+            drawCircle(ink, 3.dp.toPx(), Offset(setX, horizon))
+            if (now.toDouble() in t(0f)..t(size.width)) {
+                val marker = Offset(nowX, y(now.toDouble()))
+                if (isDay) {
+                    drawCircle(orange.copy(alpha = 0.35f), 11.dp.toPx(), marker)
+                    drawCircle(orange, 7.dp.toPx(), marker)
                 } else {
-                    val prevX = x((i - 1).toFloat())
-                    val prevY = y(hours[i - 1].temperature ?: minT)
-                    val midX = (prevX + px) / 2
-                    path.cubicTo(midX, prevY, midX, py, px, py)
+                    drawCircle(ink, 5.dp.toPx(), marker)
                 }
             }
-            drawPath(path, accent, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
-
-            // Every 3 hours: icon, temperature, point, time.
-            labeled.forEachIndexed { n, i ->
-                val px = x(i.toFloat())
-                val hour = hours[i]
-                with(icons[n]) {
-                    translate(px - iconPx / 2, 0f) {
-                        draw(Size(iconPx, iconPx), colorFilter = ColorFilter.tint(iconTints[n]))
-                    }
-                }
-                val temp = measurer.measure(text.temperature(hour.temperature), dataStyle)
-                drawText(temp, topLeft = Offset(px - temp.size.width / 2f, tempRow))
-                val py = y(hour.temperature ?: minT)
-                drawCircle(accent, if (i == 0) 4.dp.toPx() else 2.5.dp.toPx(), Offset(px, py))
-                val time = measurer.measure(if (i == 0) nowLabel else text.hourLabel(hour.time).uppercase(), labelStyle)
-                drawText(time, topLeft = Offset(px - time.size.width / 2f, timeRow))
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(text.clockShort(sunrise), style = MaterialTheme.typography.titleLarge.merge(onSky))
+                Text(stringResource(R.string.sunrise), style = MaterialTheme.typography.bodyMedium.merge(onSky), color = muted)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(if (isDay) R.drawable.ic_w_sunny else R.drawable.ic_w_clear_night),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(center, style = MaterialTheme.typography.bodyLarge.merge(onSky).copy(fontWeight = FontWeight.Medium))
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Text(text.clockShort(sunset), style = MaterialTheme.typography.titleLarge.merge(onSky))
+                Text(stringResource(R.string.sunset), style = MaterialTheme.typography.bodyMedium.merge(onSky), color = muted)
             }
         }
     }
@@ -310,37 +324,57 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
 
 // endregion
 
-// region 02 Precipitation, 03 UV, 04 Sun
+// region Cards
 
+/** The next 12 hours as simple columns: temperature, icon, time (every 2 hours). */
 @Composable
-private fun RainCard(insights: Insights, text: WeatherText) {
-    val rain = insights.rain
-    WeatherCard(stringResource(R.string.card_precipitation), index = "02") {
-        Text(text.rainHeadline(rain), style = MaterialTheme.typography.titleLarge)
-        Text(text.rainDetail(rain), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun UvCard(uv: UvOutlook, weather: Weather, text: WeatherText, modifier: Modifier) {
-    val isDay = weather.current?.isDay ?: true
-    val index = weather.current?.uvIndex ?: 0.0
-    WeatherCard(stringResource(R.string.card_uv), modifier, index = "03") {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text.uv(uvLevel(index)),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text("${index.roundToInt()}/11", style = AppType.voices.monoData, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun NextHoursCard(weather: Weather, insights: Insights, text: WeatherText, now: Long) {
+    val hours = remember(weather, now) { weather.hourly.filter { it.time + 3600 > now }.take(11).filterIndexed { i, _ -> i % 2 == 0 } }
+    if (hours.isEmpty()) return
+    val summary = text.hourlyHeadline(insights.hourly).replaceFirstChar { it.lowercase() }
+    WeatherCard(stringResource(R.string.card_next_hours), summary = summary) {
+        Row(Modifier.fillMaxWidth()) {
+            hours.forEachIndexed { i, hour ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(text.temperature(hour.temperature), style = MaterialTheme.typography.bodyLarge, color = if (i == 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        painterResource(weatherIconRes(hour.weatherCode, hour.isDay)),
+                        contentDescription = null,
+                        tint = weatherIconTint(hour.weatherCode, hour.isDay),
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        if (i == 0) stringResource(R.string.time_now) else text.hourShort(hour.time),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (i == 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
-        Text(text.uvAdvice(uv, isDay), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-/** Air quality on a five-step color scale with a marker, plus a plain sentence. */
+/** UV now, as a word and a number, on a five-step color scale. */
+@Composable
+private fun UvCard(weather: Weather, text: WeatherText, modifier: Modifier) {
+    val index = weather.current?.uvIndex ?: 0.0
+    val level = uvLevel(index)
+    val bands = listOf(0.0, 3.0, 6.0, 8.0, 11.0, 14.0)
+    WeatherCard(stringResource(R.string.card_uv), modifier) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(text.uv(level), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${index.roundToInt()}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        ScaleBar(
+            colors = UvLevel.entries.map { DataColors.uv(it) },
+            position = bandPosition(index, bands),
+            marker = DataColors.uv(level),
+            description = "${text.uv(level)}, UV ${index.roundToInt()}",
+        )
+    }
+}
+
+/** Air quality on a five-step color scale with a marker, plus one short phrase. */
 @Composable
 private fun AirCard(air: AirOutlook, modifier: Modifier) {
     val phrase = stringResource(
@@ -353,145 +387,203 @@ private fun AirCard(air: AirOutlook, modifier: Modifier) {
             AirLevel.HAZARDOUS -> R.string.air_phrase_hazardous
         },
     )
-    val segments = listOf(AirLevel.GOOD, AirLevel.MODERATE, AirLevel.SENSITIVE, AirLevel.UNHEALTHY, AirLevel.VERY_UNHEALTHY)
-        .map { DataColors.air(it) }
-    val marker = DataColors.air(air.level)
-    WeatherCard(stringResource(R.string.card_air), modifier, index = "04") {
-        val ring = MaterialTheme.colorScheme.surface
-        Spacer(Modifier.height(10.dp))
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(16.dp)
-                .semantics { contentDescription = phrase },
-        ) {
-            val h = 6.dp.toPx()
-            val y = size.height / 2
-            val segment = size.width / segments.size
-            segments.forEachIndexed { i, color ->
-                drawLine(color, Offset(segment * i + h / 2, y), Offset(segment * (i + 1) - h / 2, y), h, cap = StrokeCap.Round)
-            }
-            // Each segment is one US AQI band (0–50, 51–100, …, 201–300); 300+ sits at the end.
-            val bands = listOf(0, 50, 100, 150, 200, 300)
-            val aqi = air.usAqi.coerceIn(0, 300)
-            val band = (bands.indexOfLast { aqi >= it }).coerceAtMost(4)
-            val within = (aqi - bands[band]).toFloat() / (bands[band + 1] - bands[band])
-            val mx = (segment * (band + within)).coerceIn(h, size.width - h)
-            drawCircle(ring, 8.dp.toPx(), Offset(mx, y))
-            drawCircle(marker, 6.dp.toPx(), Offset(mx, y))
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(phrase, style = AppType.voices.narrativeSmall)
+    // Each segment is one US AQI band (0–50, 51–100, …, 201–300); 300+ sits at the end.
+    val bands = listOf(0.0, 50.0, 100.0, 150.0, 200.0, 300.0)
+    WeatherCard(stringResource(R.string.card_air), modifier) {
+        Text(phrase, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
+        ScaleBar(
+            colors = listOf(AirLevel.GOOD, AirLevel.MODERATE, AirLevel.SENSITIVE, AirLevel.UNHEALTHY, AirLevel.VERY_UNHEALTHY).map { DataColors.air(it) },
+            position = bandPosition(air.usAqi.toDouble(), bands),
+            marker = DataColors.air(air.level),
+            description = phrase,
+        )
     }
 }
 
+/** 0..1 along a scale of equal-width segments, one per band. */
+private fun bandPosition(value: Double, bands: List<Double>): Float {
+    val v = value.coerceIn(bands.first(), bands.last())
+    val band = bands.indexOfLast { v >= it }.coerceAtMost(bands.size - 2)
+    val within = (v - bands[band]) / (bands[band + 1] - bands[band])
+    return ((band + within) / (bands.size - 1)).toFloat()
+}
+
+@Composable
+private fun ScaleBar(colors: List<Color>, position: Float, marker: Color, description: String) {
+    val ring = MaterialTheme.colorScheme.surface
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(16.dp)
+            .semantics { contentDescription = description },
+    ) {
+        val h = 6.dp.toPx()
+        val y = size.height / 2
+        val segment = size.width / colors.size
+        colors.forEachIndexed { i, color ->
+            drawLine(color, Offset(segment * i + h / 2, y), Offset(segment * (i + 1) - h / 2, y), h, cap = StrokeCap.Round)
+        }
+        val mx = (size.width * position).coerceIn(h, size.width - h)
+        drawCircle(ring, 8.dp.toPx(), Offset(mx, y))
+        drawCircle(marker, 6.dp.toPx(), Offset(mx, y))
+    }
+}
+
+// endregion
+
+// region Precipitation timeline
+
+/** Debug preview: rain from ~50 min from now, building to heavy, easing off after ~2.5 h. */
+private fun previewRainOutlook(now: Long): RainOutlook {
+    val start = now - now % 900 + 900 * 4
+    val episode = PrecipEpisode(PrecipKind.RAIN, start = start, end = start + 900 * 10, peakAt = start + 900 * 4, peakIntensity = Intensity.HEAVY, maxProbability = 90)
+    return RainOutlook.Later(episode, emptyList())
+}
+
+private fun previewRainMinutely(now: Long): List<Minutely> {
+    val first = now - now % 900
+    val shape = listOf(0, 0, 0, 0, 0.2, 0.5, 0.9, 1.6, 2.4, 2.0, 1.2, 0.7, 0.4, 0.3, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0)
+    return shape.mapIndexed { i, mm -> Minutely(first + i * 900L, mm.toDouble()) }
+}
+
 /**
- * The whole day as one curve: the sun's path is orange above the horizon (sunrise to sunset),
- * blue below it at night, with a sun or moon marker for "now" and the daylight length.
+ * Rain and snow as a timeline: fine bars over Light / Moderate / Heavy guides, with a callout
+ * where it starts. Uses the 15-minute forecast when the rain falls within it, hourly otherwise.
+ * With nothing coming it shrinks to a one-line banner.
  */
 @Composable
-private fun SunCurveCard(sun: SunInfo, weather: Weather, text: WeatherText, now: Long) {
-    val today = weather.daily.lastOrNull { it.date <= now } ?: return
-    val dayStart = today.date
-    val sunrise = sun.sunrise
-    val sunset = sun.sunset
-    val night = Color(0xFF5B73D6)
-    val day = DataColors.sun
-    val measurer = rememberTextMeasurer(cacheSize = 32) // all labels stay cached between frames
-    val sunIcon = painterResource(R.drawable.ic_w_sunny)
-    val moonIcon = painterResource(R.drawable.ic_w_clear_night)
-    val daylight = stringResource(R.string.daylight, text.duration(sunset - sunrise))
-    val description = "${text.sunTitle(sun)}. $daylight"
+private fun Precipitation(weather: Weather, liveRain: RainOutlook, text: WeatherText, now: Long) {
+    val preview = SkyPreview.rain.value
+    val previewMinutely = remember(preview, now) { if (preview) previewRainMinutely(now) else null }
+    val rain = if (preview) previewRainOutlook(now) else liveRain
+    val episode = when (rain) {
+        is RainOutlook.Dry -> null
+        is RainOutlook.Now -> rain.episode
+        is RainOutlook.Later -> rain.episode
+    }
+    if (episode == null) {
+        GlassTheme {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .glass(CardShape)
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(painterResource(R.drawable.ic_b_umbrella), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(text.rainHeadline(rain), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text.rainDetail(rain),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp),
+                )
+            }
+        }
+        return
+    }
 
-    WeatherCard(stringResource(R.string.card_sunrise_sunset), index = "05") {
+    // (start time, mm per hour) every 15 minutes.
+    val series = remember(weather, rain, now) {
+        val minutely = (previewMinutely ?: weather.minutely).filter { it.time >= now - 900 }
+        if (minutely.size >= 8 && episode.start < minutely.last().time) {
+            minutely.map { it.time to (it.precipitation ?: 0.0) * 4 }
+        } else {
+            rain.bars.filter { it.time + 3600 > now }.take(12).flatMap { bar ->
+                (0 until 4).map { q -> bar.time + q * 900L to bar.amount }
+            }
+        }
+    }
+    if (series.isEmpty()) return
+    val color = DataColors.precip(episode.kind)
+    val levels = listOf(R.string.rain_level_light, R.string.rain_level_moderate, R.string.rain_level_heavy).map { stringResource(it) }
+    val startIcon = painterResource(weatherIconRes(if (episode.kind == PrecipKind.SNOW) WeatherCode.SNOW else WeatherCode.RAIN, true))
+    val headline = text.rainHeadline(rain)
+
+    WeatherCard(stringResource(R.string.card_precipitation), summary = headline) {
         val ink = MaterialTheme.colorScheme.onSurface
-        val labelStyle = AppType.voices.monoLabel.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        val measurer = rememberTextMeasurer(cacheSize = 32)
+        val labelStyle = MaterialTheme.typography.labelMedium.copy(color = muted)
+        val calloutStyle = MaterialTheme.typography.labelLarge.copy(color = ink)
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(84.dp)
-                .semantics { contentDescription = description },
+                .height(100.dp)
+                .semantics { contentDescription = headline },
         ) {
-            val top = 8.dp.toPx()
-            val bottom = size.height - 6.dp.toPx()
-            val dayLength = 86_400f
-            // Sun height over the day: a cosine peaking at solar noon; the horizon sits where it
-            // crosses sunrise and sunset.
-            val noon = (sunrise + sunset) / 2f
-            fun f(t: Float) = cos(2 * PI * (t - noon) / dayLength).toFloat()
-            val horizonValue = f(sunrise.toFloat())
-            fun x(t: Float) = (t - dayStart) / dayLength * size.width
-            fun y(v: Float) = bottom - (v + 1f) / 2f * (bottom - top)
-            val horizon = y(horizonValue)
+            val labels = levels.map { measurer.measure(it, labelStyle) }
+            val left = labels.maxOf { it.size.width } + 10.dp.toPx()
+            val right = size.width - 4.dp.toPx()
+            val top = 32.dp.toPx() // room for the callout
+            val axis = size.height - 22.dp.toPx()
+            val plot = axis - top
+            val first = series.first().first
+            val last = series.last().first + 900
+            fun x(t: Long) = left + (t - first).toFloat() / (last - first) * (right - left)
+            // mm/h to height: three equal bands for light (< 2.5), moderate (< 7.6), heavy.
+            fun level(v: Double): Float = when {
+                v <= 0.0 -> 0f
+                v < 2.5 -> (v / 2.5 / 3).toFloat()
+                v < 7.6 -> (1.0 / 3 + (v - 2.5) / 5.1 / 3).toFloat()
+                else -> (2.0 / 3 + ((v - 7.6) / 7.6).coerceAtMost(1.0) / 3).toFloat()
+            }
 
-            // Night band below the horizon.
-            drawRect(night.copy(alpha = 0.12f), Offset(0f, horizon), Size(size.width, size.height - horizon))
-            drawLine(ink.copy(alpha = 0.25f), Offset(0f, horizon), Offset(size.width, horizon), 1.dp.toPx())
+            // Guides with their names on the left.
+            labels.forEachIndexed { i, label ->
+                val gy = axis - plot * (i + 1) / 3f
+                drawLine(ink.copy(alpha = 0.12f), Offset(left, gy), Offset(right, gy), 1.dp.toPx())
+                drawText(label, topLeft = Offset(0f, gy - label.size.height / 2f))
+            }
+            drawLine(ink.copy(alpha = 0.4f), Offset(left, axis), Offset(right, axis), 1.dp.toPx())
 
-            // Curve, split into day (above horizon) and night parts, plus a soft fill under the day arc.
-            val steps = 96
-            val dayPath = Path()
-            val dayFill = Path()
-            val nightBefore = Path()
-            val nightAfter = Path()
-            var dayStarted = false
-            for (i in 0..steps) {
-                val t = dayStart + dayLength * i / steps
-                val px = x(t)
-                val py = y(f(t))
-                when {
-                    t < sunrise -> if (i == 0) nightBefore.moveTo(px, py) else nightBefore.lineTo(px, py)
-                    t <= sunset -> {
-                        if (!dayStarted) {
-                            nightBefore.lineTo(x(sunrise.toFloat()), horizon)
-                            dayPath.moveTo(x(sunrise.toFloat()), horizon)
-                            dayFill.moveTo(x(sunrise.toFloat()), horizon)
-                            dayStarted = true
-                        }
-                        dayPath.lineTo(px, py)
-                        dayFill.lineTo(px, py)
-                    }
-                    else -> {
-                        if (nightAfter.isEmpty) {
-                            dayPath.lineTo(x(sunset.toFloat()), horizon)
-                            dayFill.lineTo(x(sunset.toFloat()), horizon)
-                            nightAfter.moveTo(x(sunset.toFloat()), horizon)
-                        }
-                        nightAfter.lineTo(px, py)
-                    }
+            // Bars.
+            val step = (right - left) / series.size
+            val barWidth = (step * 0.38f).coerceIn(2.dp.toPx(), 5.dp.toPx())
+            series.forEach { (t, v) ->
+                val h = level(v) * plot
+                if (h > 0f) {
+                    val bx = x(t) + step / 2
+                    drawLine(color, Offset(bx, axis - 1.dp.toPx()), Offset(bx, axis - h.coerceAtLeast(3.dp.toPx())), barWidth, cap = StrokeCap.Round)
                 }
             }
-            dayFill.close()
-            drawPath(dayFill, Brush.verticalGradient(listOf(day.copy(alpha = 0.35f), day.copy(alpha = 0f)), startY = y(1f), endY = horizon))
-            val stroke = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round)
-            drawPath(nightBefore, night, style = stroke)
-            drawPath(nightAfter, night, style = stroke)
-            drawPath(dayPath, day, style = stroke)
-            drawCircle(day, 4.dp.toPx(), Offset(x(sunrise.toFloat()), horizon))
-            drawCircle(day, 4.dp.toPx(), Offset(x(sunset.toFloat()), horizon))
 
-            // Labels under the horizon: sunrise, daylight length, sunset.
-            val riseLabel = measurer.measure(text.clock(sunrise), labelStyle)
-            val setLabel = measurer.measure(text.clock(sunset), labelStyle)
-            val mid = measurer.measure(daylight.uppercase(), labelStyle)
-            // Times sit just above the horizon, outside the arc (where the curve is below the line).
-            val gap = 6.dp.toPx()
-            val aboveY = horizon - riseLabel.size.height - 3.dp.toPx()
-            drawText(riseLabel, topLeft = Offset((x(sunrise.toFloat()) - gap - riseLabel.size.width).coerceAtLeast(0f), aboveY))
-            drawText(setLabel, topLeft = Offset((x(sunset.toFloat()) + gap).coerceAtMost(size.width - setLabel.size.width), aboveY))
-            drawText(mid, topLeft = Offset(size.width / 2 - mid.size.width / 2f, horizon + 8.dp.toPx()))
-
-            // "Now": a sun on the day arc or a moon on the night curve.
-            val nowT = now.toFloat().coerceIn(dayStart.toFloat(), dayStart + dayLength)
-            val isDay = now in sunrise..sunset
-            val marker = Offset(x(nowT), y(f(nowT)))
-            val r = 11.dp.toPx()
-            drawCircle(if (isDay) day else night, r, marker)
-            val iconPx = 14.dp.toPx()
-            with(if (isDay) sunIcon else moonIcon) {
-                translate(marker.x - iconPx / 2, marker.y - iconPx / 2) {
-                    draw(Size(iconPx, iconPx), colorFilter = ColorFilter.tint(Color.White))
+            // Hour ticks and labels.
+            val spanHours = (last - first) / 3600
+            val every = if (spanHours > 6) 3 else 1
+            var tick = ((first + 3599) / 3600) * 3600
+            var n = 0
+            while (tick < last) {
+                val tx = x(tick)
+                drawLine(ink.copy(alpha = 0.4f), Offset(tx, axis), Offset(tx, axis + 4.dp.toPx()), 1.dp.toPx())
+                if (n % every == 0) {
+                    val label = measurer.measure(text.clockShort(tick), labelStyle)
+                    val lx = (tx - label.size.width / 2f).coerceIn(left, right - label.size.width)
+                    drawText(label, topLeft = Offset(lx, axis + 6.dp.toPx()))
                 }
+                tick += 3600; n++
+            }
+
+            // Callout where it starts (or "now" if it's already falling).
+            val startT = episode.start.coerceAtLeast(first)
+            if (startT < last) {
+                val cx = x(startT)
+                drawLine(ink.copy(alpha = 0.5f), Offset(cx, top - 6.dp.toPx()), Offset(cx, axis), 1.dp.toPx())
+                val label = measurer.measure(text.clockShort(episode.start.coerceAtLeast(now)), calloutStyle)
+                val iconPx = 16.dp.toPx()
+                val padH = 8.dp.toPx()
+                val w = padH + iconPx + 4.dp.toPx() + label.size.width + padH
+                val h = 26.dp.toPx()
+                val bx = (cx - w / 2).coerceIn(0f, size.width - w)
+                drawRoundRect(ink.copy(alpha = 0.1f), Offset(bx, 0f), Size(w, h), CornerRadius(h / 2))
+                with(startIcon) {
+                    translate(bx + padH, (h - iconPx) / 2) { draw(Size(iconPx, iconPx), colorFilter = ColorFilter.tint(color)) }
+                }
+                drawText(label, topLeft = Offset(bx + padH + iconPx + 4.dp.toPx(), (h - label.size.height) / 2))
             }
         }
     }

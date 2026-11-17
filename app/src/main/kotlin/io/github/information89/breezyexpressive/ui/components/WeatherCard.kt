@@ -29,18 +29,21 @@ import io.github.information89.breezyexpressive.insight.UvLevel
 import io.github.information89.breezyexpressive.ui.material.glass
 import io.github.information89.breezyexpressive.ui.theme.AppType
 import io.github.information89.breezyexpressive.ui.material.GlassTheme
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 
-/** Editorial corner radius: soft, but tighter than default Material cards. */
-val CardShape = RoundedCornerShape(16.dp)
+/** Soft, generous corners (like the Seoul reference). */
+val CardShape = RoundedCornerShape(24.dp)
 
 /**
- * A glass panel with an editorial header: a section index and a monospace label ("01  NEXT HOURS").
+ * A glass panel with a plain header: a bold title and, optionally, a short muted summary on the
+ * right ("Today ... clear all day").
  */
 @Composable
 fun WeatherCard(
     title: String,
     modifier: Modifier = Modifier,
-    index: String? = null,
+    summary: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     GlassTheme {
@@ -48,11 +51,28 @@ fun WeatherCard(
             modifier
                 .fillMaxWidth()
                 .glass(CardShape)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SectionLabel(title, index)
-            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() },
+                    maxLines = 1,
+                )
+                if (summary != null) {
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(start = 12.dp),
+                    )
+                }
+            }
             content()
         }
     }

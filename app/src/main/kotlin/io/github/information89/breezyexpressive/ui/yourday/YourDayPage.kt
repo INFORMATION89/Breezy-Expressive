@@ -100,7 +100,7 @@ fun YourDayPage(state: ForecastUiState, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BringCard(items: List<BringItem>, text: WeatherText) {
-    WeatherCard(stringResource(R.string.card_bring), index = "01") {
+    WeatherCard(stringResource(R.string.card_bring)) {
         if (items.isEmpty()) {
             Text(stringResource(R.string.bring_nothing), style = AppType.voices.narrativeSmall)
             return@WeatherCard
@@ -152,7 +152,7 @@ private fun WeekCard(weather: Weather, text: WeatherText, now: Long) {
     if (days.isEmpty()) return
     val weekMin = days.mapNotNull { it.temperatureMin }.minOrNull() ?: return
     val weekMax = days.mapNotNull { it.temperatureMax }.maxOrNull() ?: return
-    WeatherCard(stringResource(R.string.your_day_week), index = "02") {
+    WeatherCard(stringResource(R.string.your_day_week)) {
         days.forEach { day -> DayRow(day, text, weekMin, weekMax) }
     }
 }

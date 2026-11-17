@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -213,8 +214,12 @@ private fun SkyPreviewControls() {
                 FilterChip(selected = isDay == value, onClick = { SkyPreview.isDay.value = value }, label = { Text(label) })
             }
         }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Preview rain", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Switch(checked = SkyPreview.rain.value, onCheckedChange = { SkyPreview.rain.value = it })
+        }
         Text(
-            "Changes the sky, glass and colors only; the forecast text stays live.",
+            "Sky and time change the sky, glass and colors only; the forecast text stays live. Preview rain fills the precipitation timeline with made-up rain.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

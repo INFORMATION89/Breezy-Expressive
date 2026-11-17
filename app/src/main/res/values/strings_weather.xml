@@ -125,6 +125,15 @@
     <string name="sun_sunset_at">Sunset %1$s</string>
     <string name="sun_sunrise_at">Sunrise %1$s</string>
     <string name="sun_in">In %1$s</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
+    <string name="daylight_left">%1$s of daylight left</string>
+    <!-- Precipitation timeline levels -->
+    <string name="rain_level_light">Light</string>
+    <string name="rain_level_moderate">Moderate</string>
+    <string name="rain_level_heavy">Heavy</string>
+    <!-- Center of the sun path, e.g. "Low sun, UV 1" -->
+    <string name="sun_uv">%1$s sun, UV %2$d</string>
 
     <!-- 7 days card -->
     <string name="card_days">7 days</string>
