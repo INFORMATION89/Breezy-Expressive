@@ -1,0 +1,5 @@
+# Upstream base for this snapshot (no shared git history with upstream)
+repository: https://github.com/breezy-weather/breezy-weather
+commit: 5ec3b9bcb
+date: 2026-11-17
+excluded: .github/ (upstream workflows and templates), README.md (ours replaces it)
