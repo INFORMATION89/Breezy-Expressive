@@ -1,12 +1,21 @@
 package io.github.information89.breezyexpressive.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
@@ -18,32 +27,59 @@ import io.github.information89.breezyexpressive.insight.PrecipKind
 import io.github.information89.breezyexpressive.insight.TempFeel
 import io.github.information89.breezyexpressive.insight.UvLevel
 import io.github.information89.breezyexpressive.ui.material.glass
+import io.github.information89.breezyexpressive.ui.theme.AppType
 
-/** A clear glass card with a small, quiet title. */
+/** Editorial corner radius: soft, but tighter than default Material cards. */
+val CardShape = RoundedCornerShape(16.dp)
+
+/**
+ * A glass panel with an editorial header: a section index and a monospace label ("01  NEXT HOURS").
+ */
 @Composable
 fun WeatherCard(
     title: String,
     modifier: Modifier = Modifier,
+    index: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier
             .fillMaxWidth()
-            .glass(MaterialTheme.shapes.extraLarge)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .glass(CardShape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        androidx.compose.material3.Text(
-            title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.semantics { heading() },
-        )
+        SectionLabel(title, index)
+        Spacer(Modifier.height(2.dp))
         content()
     }
 }
 
-/** Colors that carry meaning: the data tints its card (PLAN.md 5.2). */
+/** "01  NEXT HOURS" in monospace, quiet. */
+@Composable
+fun SectionLabel(title: String, index: String? = null, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(modifier.semantics { heading() }, verticalAlignment = Alignment.CenterVertically) {
+        if (index != null) {
+            Text(index, style = AppType.voices.monoLabel, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(10.dp))
+        }
+        Text(title.uppercase(), style = AppType.voices.monoLabel, color = color)
+    }
+}
+
+/** A thin horizontal rule, like a printed layout line. */
+@Composable
+fun Hairline(modifier: Modifier = Modifier, alpha: Float = 0.25f) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)),
+    )
+}
+
+/** Colors that carry meaning (kept for later use: alerts, air quality). */
 object DataColors {
     val rain = Color(0xFF4A9FE0)
     val storm = Color(0xFF9A7BE0)
@@ -73,16 +109,6 @@ object DataColors {
         TempFeel.MILD -> Color(0xFFF2C94C)
         TempFeel.WARM -> Color(0xFFFFA24C)
         TempFeel.HOT, TempFeel.VERY_HOT -> Color(0xFFFF6A4C)
-    }
-
-    /** Cold blue → mild gold → hot orange, for temperature curves and ranges. */
-    fun temperature(celsius: Double): Color {
-        val stops = listOf(0.0 to Color(0xFF8CC8F0), 12.0 to Color(0xFF6FA8DC), 20.0 to Color(0xFFF2C94C), 28.0 to Color(0xFFFFA24C), 36.0 to Color(0xFFFF5A4C))
-        if (celsius <= stops.first().first) return stops.first().second
-        if (celsius >= stops.last().first) return stops.last().second
-        val (a, b) = stops.zipWithNext().first { celsius <= it.second.first }
-        val t = ((celsius - a.first) / (b.first - a.first)).toFloat()
-        return androidx.compose.ui.graphics.lerp(a.second, b.second, t)
     }
 
     fun air(level: AirLevel): Color = when (level) {

@@ -65,6 +65,19 @@ class WeatherText(private val context: Context, private val zone: ZoneId, privat
     /** Hour label for the hourly strip, without "tomorrow". */
     fun hourLabel(epoch: Long): String = hourFormat.format(local(epoch))
 
+    /** Short local date for editorial headers, e.g. "Tue 17 Nov". */
+    fun dateLine(epoch: Long): String = formatter("EEEdMMM").format(local(epoch))
+
+    /** Local clock time, e.g. "3:05 AM" or "03:05". */
+    fun clock(epoch: Long): String = hourMinuteFormat.format(local(epoch))
+
+    /** Coordinates as a technical detail, e.g. "19.43°N 99.13°W". */
+    fun coordinates(latitude: Double, longitude: Double): String {
+        val lat = String.format(locale, "%.2f°%s", kotlin.math.abs(latitude), if (latitude >= 0) "N" else "S")
+        val lon = String.format(locale, "%.2f°%s", kotlin.math.abs(longitude), if (longitude >= 0) "E" else "W")
+        return "$lat $lon"
+    }
+
     fun dayName(dateEpoch: Long): String {
         val days = local(dateEpoch).toLocalDate().toEpochDay() - local(now).toLocalDate().toEpochDay()
         return when (days) {

@@ -127,7 +127,7 @@ fun WeatherBackground(
         Box(
             modifier.drawWithCache {
                 val gradient = Brush.verticalGradient(listOf(top, bottom))
-                val bloomBrush = Brush.radialGradient(listOf(bloom, Color.Transparent), center = Offset(size.width / 2, size.height * 1.05f), radius = size.width)
+                val bloomBrush = Brush.radialGradient(listOf(light, bloom, Color.Transparent), center = Offset(size.width / 2, size.height * 0.36f), radius = size.width * 0.8f)
                 val vignetteBrush = Brush.radialGradient(listOf(Color.Transparent, Color.Black), center = Offset(size.width / 2, size.height / 2), radius = size.maxDimension * 0.75f)
                 val grainBrush = ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated))
                 onDrawBehind {
@@ -174,23 +174,24 @@ half4 main(float2 coord) {
     float2 uv = coord / resolution;
     float aspect = resolution.x / resolution.y;
 
-    // Sky: top color into bottom color.
+    // Deep base.
     half3 color = mix(top.rgb, bottom.rgb, smoothstep(0.0, 1.0, uv.y));
 
-    // Soft sun / moon light at the top, drifting a little.
-    float2 g = float2((uv.x - 0.5 - 0.05 * sin(time * 0.15)) * aspect, uv.y + 0.04);
-    color = mix(color, light.rgb, 0.5 * exp(-dot(g, g) / 0.07));
+    // One luminous orb, breathing and drifting very slowly.
+    float2 center = float2(0.5 + 0.03 * sin(time * 0.17), 0.36 + 0.02 * cos(time * 0.13));
+    float2 p = float2((uv.x - center.x) * aspect, uv.y - center.y);
+    float d = length(p);
+    float r = 0.21 + 0.012 * sin(time * 0.5);
+    color = mix(color, bloom.rgb, 0.85 * exp(-(d * d) / (r * r * 4.0)));   // wide halo
+    color = mix(color, light.rgb, 0.72 * exp(-(d * d) / (r * r * 0.55)));  // bright core
 
-    // Color bloom rising from the bottom, breathing and swaying slowly.
-    float2 b = float2((uv.x - 0.5 - 0.18 * sin(time * 0.23)) * aspect * 0.8, uv.y - 1.08 - 0.03 * sin(time * 0.4));
-    color = mix(color, bloom.rgb, 0.8 * exp(-dot(b, b) / (0.20 + 0.03 * sin(time * 0.5))));
+    // Darker edges (strongest at night).
+    float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.42);
+    color *= 1.0 - vignette * smoothstep(0.22, 0.85, length(v) * 1.1);
 
-    // Night only: edges fade to black.
-    float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.45);
-    color *= 1.0 - vignette * smoothstep(0.18, 0.62, length(v) * 1.1);
-
-    // Static film grain.
-    color += (hash(floor(coord)) - 0.5) * grain;
+    // Film grain, a little stronger on the light (printed, analog feel).
+    float n = hash(floor(coord)) - 0.5;
+    color += n * grain * (1.0 + 0.8 * exp(-(d * d) / (r * r)));
     return half4(color, 1.0);
 }
 """

@@ -45,7 +45,7 @@ fun Modifier.glass(
 
     // Same hue as the sky behind: a slightly deeper (dark) or lighter (light) translucent panel.
     val baseAlpha = when (strength) {
-        GlassStrength.Clear -> if (dark) 0.12f else 0.28f
+        GlassStrength.Clear -> if (dark) 0.22f else 0.30f
         GlassStrength.Regular -> if (dark) 0.22f else 0.45f
     } + (1f - blur) * 0.15f
     val tint = (if (dark) Color.Black else Color.White).copy(alpha = baseAlpha)
@@ -59,7 +59,7 @@ fun Modifier.glass(
             fallbackColorEffect(HazeColorEffect.tint(tint.copy(alpha = 0.7f)))
         }
     }
-    val edge = Color.White.copy(alpha = if (dark) 0.12f else 0.5f)
+    val edge = Color.White.copy(alpha = if (dark) 0.14f else 0.5f)
     val glowColor = scheme.primary.copy(alpha = if (dark) 0.16f else 0.12f)
 
     return this

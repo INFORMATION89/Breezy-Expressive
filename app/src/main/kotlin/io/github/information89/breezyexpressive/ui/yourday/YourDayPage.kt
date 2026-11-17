@@ -39,6 +39,9 @@ import io.github.information89.breezyexpressive.insight.BringItem
 import io.github.information89.breezyexpressive.insight.BringKind
 import io.github.information89.breezyexpressive.ui.components.DataColors
 import io.github.information89.breezyexpressive.ui.components.WeatherCard
+import io.github.information89.breezyexpressive.ui.components.Hairline
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.unit.sp
 import io.github.information89.breezyexpressive.ui.components.WeatherIcon
 import io.github.information89.breezyexpressive.ui.forecast.ForecastUiState
 import io.github.information89.breezyexpressive.ui.material.glass
@@ -65,18 +68,27 @@ fun YourDayPage(state: ForecastUiState, modifier: Modifier = Modifier) {
             .padding(top = 12.dp, bottom = 104.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            stringResource(R.string.page_your_day),
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-        )
         if (weather == null || insights == null) return@Column
         val text = rememberWeatherText(ZoneId.of(weather.timeZone), state.now)
+        Column(Modifier.padding(horizontal = 2.dp)) {
+            Text(
+                "${stringResource(R.string.page_your_day).uppercase()} — ${text.dateLine(state.now).uppercase()}",
+                style = AppType.voices.monoLabel,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(6.dp))
+            Hairline()
+        }
+        Text(
+            stringResource(R.string.page_your_day),
+            style = AppType.voices.statement.copy(fontSize = 40.sp, lineHeight = 42.sp),
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 6.dp),
+        )
 
         Text(
             text.summary(insights.summary),
             style = AppType.voices.narrativeMedium,
-            modifier = Modifier.padding(horizontal = 6.dp),
+            modifier = Modifier.padding(horizontal = 2.dp),
         )
         BringCard(insights.bring, text)
         WeekCard(weather, text, state.now)
@@ -87,7 +99,7 @@ fun YourDayPage(state: ForecastUiState, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BringCard(items: List<BringItem>, text: WeatherText) {
-    WeatherCard(stringResource(R.string.card_bring)) {
+    WeatherCard(stringResource(R.string.card_bring), index = "01") {
         if (items.isEmpty()) {
             Text(stringResource(R.string.bring_nothing), style = AppType.voices.narrativeSmall)
             return@WeatherCard
@@ -125,7 +137,7 @@ private fun BringChip(item: BringItem, text: WeatherText) {
         Column(Modifier.padding(start = 8.dp)) {
             Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
             if (whenText != null) {
-                Text(whenText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(whenText.uppercase(), style = AppType.voices.monoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -137,7 +149,7 @@ private fun WeekCard(weather: Weather, text: WeatherText, now: Long) {
     if (days.isEmpty()) return
     val weekMin = days.mapNotNull { it.temperatureMin }.minOrNull() ?: return
     val weekMax = days.mapNotNull { it.temperatureMax }.maxOrNull() ?: return
-    WeatherCard(stringResource(R.string.your_day_week)) {
+    WeatherCard(stringResource(R.string.your_day_week), index = "02") {
         days.forEach { day -> DayRow(day, text, weekMin, weekMax) }
     }
 }
@@ -146,12 +158,12 @@ private fun WeekCard(weather: Weather, text: WeatherText, now: Long) {
 private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Double) {
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
-        Text(text.dayName(day.date), style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(56.dp))
+        Text(text.dayName(day.date).uppercase(), style = AppType.voices.monoData, modifier = Modifier.width(56.dp))
         WeatherIcon(day.weatherCode, isDay = true, size = 22.dp)
         val chance = day.precipitationProbabilityMax ?: 0
         Text(
             if (chance >= 30) "$chance%" else "",
-            style = MaterialTheme.typography.labelSmall,
+            style = AppType.voices.monoLabel,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .width(40.dp)
@@ -159,7 +171,7 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
         )
         Text(
             text.temperature(day.temperatureMin),
-            style = MaterialTheme.typography.bodyMedium,
+            style = AppType.voices.monoData,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.End,
             modifier = Modifier.width(36.dp),
@@ -184,7 +196,7 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
                 cornerRadius = CornerRadius(size.height / 2),
             )
         }
-        Text(text.temperature(day.temperatureMax), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(32.dp))
+        Text(text.temperature(day.temperatureMax), style = AppType.voices.monoData, modifier = Modifier.width(32.dp))
     }
 }
 
@@ -192,13 +204,13 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
 private fun Footer(weather: Weather, text: WeatherText) {
     Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
         Text(
-            stringResource(R.string.data_source, "Open-Meteo"),
-            style = MaterialTheme.typography.labelSmall,
+            stringResource(R.string.data_source, "Open-Meteo").uppercase(),
+            style = AppType.voices.monoLabel,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text.coverage(weather),
-            style = MaterialTheme.typography.labelSmall,
+            style = AppType.voices.monoLabel,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

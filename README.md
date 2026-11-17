@@ -27,7 +27,7 @@ Requirements: Android Studio (or JDK 17+) and the Android SDK with API 37.
 - This app is built on data code from **[Breezy Weather](https://github.com/breezy-weather/breezy-weather)**
   (LGPL-3.0). It is an independent project and is not affiliated with or endorsed by Breezy Weather.
 - Weather data: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) and, optionally, AccuWeather.
-- Fonts: [Roboto Flex](https://github.com/googlefonts/roboto-flex) and
+- Fonts: [Roboto Flex](https://github.com/googlefonts/roboto-flex), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) and
   [Roboto Serif](https://github.com/googlefonts/roboto-serif), SIL Open Font License 1.1
   (see [third_party/fonts](third_party/fonts)).
 - Weather icons: [Material Symbols](https://github.com/google/material-design-icons), Apache License 2.0.

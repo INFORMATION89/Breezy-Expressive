@@ -45,6 +45,14 @@ private val ExpandedFamily = FontFamily(
 )
 private val NarrativeFamily = FontFamily(serif(400), serif(500), serif(600))
 
+private fun mono(weight: Int) = Font(
+    resId = R.font.jetbrains_mono,
+    weight = FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+)
+
+private val MonoFamily = FontFamily(mono(400), mono(500), mono(600))
+
 private val Base = Typography()
 
 val DataTypography = Typography(
@@ -72,19 +80,28 @@ data class TypeVoices(
     val narrativeLarge: TextStyle,
     val narrativeMedium: TextStyle,
     val narrativeSmall: TextStyle,
+    /** Heavy grotesk for big statements (condition, page titles). */
+    val statement: TextStyle,
+    /** Monospace: small uppercase labels and section indexes. */
+    val monoLabel: TextStyle,
+    /** Monospace: data (times, percentages, coordinates). */
+    val monoData: TextStyle,
 )
 
 val DefaultTypeVoices = TypeVoices(
     heroTemperature = TextStyle(
-        fontFamily = ExpandedFamily,
-        fontWeight = FontWeight(400),
-        fontSize = 88.sp,
-        lineHeight = 88.sp,
-        letterSpacing = (-0.02).em,
+        fontFamily = DataFamily,
+        fontWeight = FontWeight(600),
+        fontSize = 96.sp,
+        lineHeight = 96.sp,
+        letterSpacing = (-0.05).em,
     ),
     narrativeLarge = TextStyle(fontFamily = NarrativeFamily, fontWeight = FontWeight(400), fontSize = 24.sp, lineHeight = 30.sp),
     narrativeMedium = TextStyle(fontFamily = NarrativeFamily, fontWeight = FontWeight(400), fontSize = 18.sp, lineHeight = 24.sp),
     narrativeSmall = TextStyle(fontFamily = NarrativeFamily, fontWeight = FontWeight(400), fontSize = 15.sp, lineHeight = 20.sp),
+    statement = TextStyle(fontFamily = DataFamily, fontWeight = FontWeight(700), fontSize = 30.sp, lineHeight = 32.sp, letterSpacing = (-0.03).em),
+    monoLabel = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight(500), fontSize = 10.sp, lineHeight = 14.sp, letterSpacing = 0.08.em),
+    monoData = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight(400), fontSize = 12.sp, lineHeight = 16.sp),
 )
 
 val LocalTypeVoices = staticCompositionLocalOf { DefaultTypeVoices }
