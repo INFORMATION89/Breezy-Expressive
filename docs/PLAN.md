@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **draft, not started**. Upstream base: `5ec3b9b` (2026-11-17).
+Status: **planned, F0 next**. Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -20,10 +20,20 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
 | Location list | `ui/main/fragments/ManagementFragment.kt`: Compose shell + RecyclerView (`LocationAdapter`, `item_location_card.xml`, drag/swipe via `ItemTouchHelper`) | ~1k lines |
 | Location search | `ui/search/SearchActivity.kt`: Compose | 391 lines |
 
+## Decisions
+
+| Topic | Decision (2026-11-17) |
+|---|---|
+| Name | Breezy Expressive (unofficial fork; rename if upstream asks) |
+| `applicationId` | `io.github.information89.breezyexpressive` (debug: `.debug` suffix, as upstream) |
+| Flavor shipped | `basic` (all sources) |
+| Code in this repo | Yes, as a snapshot of upstream **without its history** (29 MB; the full history is ~1 GB) |
+| Weather-App-Experiment design (sky, glass, sun path) | Dropped: pure Material You Expressive |
+
 ## Design direction
 
 - **Color:** dynamic (wallpaper) color by default, everywhere; a tuned seed palette when it's off or
-  on Android < 12. No custom sky/glass look in this fork.
+  on Android < 12. No custom sky/glass look in this fork (the Weather-App-Experiment design is dropped).
 - **Theme:** `MaterialExpressiveTheme` with `MotionScheme.expressive()` (spring motion), Expressive
   shapes and a type scale with emphasized styles for headlines.
 - **Components:** `LargeFlexibleTopAppBar`, segmented list groups (rounded group, small inner
@@ -37,12 +47,22 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
 Out of scope for release 1: main weather screen, widgets, notifications, live wallpaper.
 
 ### F0: Fork setup
-- Fork on GitHub under INFORMATION89; `upstream` remote = breezy-weather/breezy-weather.
-- Follow upstream's fork rules: new app name and icons in `res_fork`, new `applicationId`, never
-  build releases with the `breezy` flag.
-- Keep upstream syncable: Expressive code in its own package (`ui/expressive/`) where possible,
-  small edits in upstream files, merge upstream regularly (weekly or per upstream release).
-- CI: build `basic` and `freenet` debug + lint on every push.
+1. **Snapshot:** one commit with upstream's files at the base commit (now `5ec3b9b`), no history.
+   Record the base in `UPSTREAM_BASE` (commit hash + date).
+2. **Identity** (upstream's fork rules):
+   - `res_fork/values/strings.xml`: `brand_name` = "Breezy Expressive".
+   - New launcher icon in the `res_fork` mipmaps, with a monochrome layer for themed icons.
+   - `applicationId` → `io.github.information89.breezyexpressive`; `namespace` stays
+     `org.breezyweather` (keeps upstream code and diffs untouched).
+   - Never build with the `breezy` flag; README says unofficial, not affiliated.
+3. **Build here:** JDK 17 + Android SDK (already on this Mac), `./gradlew :app:assembleBasicDebug`,
+   run on the Pixel 7.
+4. **Upstream updates without shared history:** keep a local full clone of upstream; to update,
+   apply `git diff <old base>..<new base>` from upstream onto this repo (`git apply -3`), fix
+   conflicts, bump `UPSTREAM_BASE`. Do it per upstream release.
+5. **Keep diffs small:** new code in `org.breezyweather.ui.expressive`; edits in upstream files
+   only to switch screens over. A list of touched upstream files lives in this doc (below).
+6. **CI:** GitHub Actions builds `basicDebug` and runs lint on each push.
 
 ### F1: Expressive theme
 - `Theme.kt` → `MaterialExpressiveTheme`, expressive motion, shapes, emphasized typography.
@@ -80,13 +100,14 @@ Out of scope for release 1: main weather screen, widgets, notifications, live wa
 - **Expressive APIs are experimental:** pin `material3`, expect API changes on updates.
 
 ## Open questions
-1. Icon and `applicationId` for the fork. Name decided: **Breezy Expressive** (2026-11-17).
-   Upstream grants no trademark rights and asks forks to avoid confusion with Breezy Weather;
-   the README must say it is an unofficial fork, and we rename if upstream asks.
-2. Which flavor do we ship: `basic`, `freenet`, or both?
-3. Is Weather-App-Experiment's design (sky, sun path, glass) kept for a later main-screen phase,
-   or dropped in favor of pure Material You?
-4. Contribute generic fixes back upstream (e.g. the location list rewrite)?
+1. The launcher icon design.
+2. Contribute generic fixes back upstream (e.g. the location list rewrite)?
+3. Distribution: GitHub releases only, or also an F-Droid-style repo (e.g. Obtainium/IzzyOnDroid)?
+
+## Upstream files touched
+_(none yet)_
 
 ## Log
 - **2026-11-17:** Studied upstream (`5ec3b9b`); wrote this draft. Name: Breezy Expressive.
+- **2026-11-17:** Decided: code as a no-history snapshot in this repo, `basic` flavor,
+  `applicationId` `io.github.information89.breezyexpressive`, old custom design dropped. F0 detailed.
