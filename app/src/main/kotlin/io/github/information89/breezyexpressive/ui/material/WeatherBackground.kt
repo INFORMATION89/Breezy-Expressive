@@ -170,6 +170,16 @@ float hash(float2 p) {
     return fract(p.x * p.y);
 }
 
+// 4x4 ordered (Bayer) threshold, 0..1, built from the 2x2 pattern [[0,2],[3,1]].
+float bayer4(float2 coord) {
+    float2 q = mod(floor(coord), 4.0);
+    float2 lo = mod(q, 2.0);
+    float2 hi = floor(q / 2.0);
+    float b2lo = mod(2.0 * lo.x + 3.0 * lo.y, 4.0);
+    float b2hi = mod(2.0 * hi.x + 3.0 * hi.y, 4.0);
+    return (4.0 * b2lo + b2hi + 0.5) / 16.0;
+}
+
 half4 main(float2 coord) {
     float2 uv = coord / resolution;
     float aspect = resolution.x / resolution.y;
@@ -189,6 +199,11 @@ half4 main(float2 coord) {
     // Darker edges (strongest at night).
     float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.6);
     color *= 1.0 - vignette * smoothstep(0.22, 0.85, length(v) * 1.1);
+
+    // Very fine ordered dithering: quantize to a few dozen levels with a 4x4 Bayer threshold,
+    // so gradients get a subtle printed screen pattern without looking posterized.
+    float levels = 40.0;
+    color = floor(color * levels + bayer4(coord)) / levels;
 
     // Film grain, a little stronger on the light (printed, analog feel).
     float n = hash(floor(coord)) - 0.5;

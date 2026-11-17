@@ -72,7 +72,7 @@ fun YourDayPage(state: ForecastUiState, modifier: Modifier = Modifier) {
         val text = rememberWeatherText(ZoneId.of(weather.timeZone), state.now)
         Column(Modifier.padding(horizontal = 2.dp)) {
             Text(
-                "${stringResource(R.string.page_your_day).uppercase()} — ${text.dateLine(state.now).uppercase()}",
+                stringResource(R.string.page_your_day).uppercase(),
                 style = AppType.voices.monoLabel,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -112,14 +112,14 @@ private fun BringCard(items: List<BringItem>, text: WeatherText) {
 
 @Composable
 private fun BringChip(item: BringItem, text: WeatherText) {
-    val (label, icon) = when (item.kind) {
-        BringKind.UMBRELLA -> R.string.bring_umbrella to R.drawable.ic_b_umbrella
-        BringKind.RAIN_JACKET -> R.string.bring_rain_jacket to R.drawable.ic_w_rainy
-        BringKind.JACKET -> R.string.bring_jacket to R.drawable.ic_b_checkroom
-        BringKind.WARM_LAYERS -> R.string.bring_warm_layers to R.drawable.ic_b_ac_unit
-        BringKind.SUNSCREEN -> R.string.bring_sunscreen to R.drawable.ic_w_sunny
-        BringKind.WATER -> R.string.bring_water to R.drawable.ic_b_water_drop
-        BringKind.MASK -> R.string.bring_mask to R.drawable.ic_b_masks
+    val (label, icon, color) = when (item.kind) {
+        BringKind.UMBRELLA -> Triple(R.string.bring_umbrella, R.drawable.ic_b_umbrella, DataColors.rain)
+        BringKind.RAIN_JACKET -> Triple(R.string.bring_rain_jacket, R.drawable.ic_w_rainy, DataColors.rain)
+        BringKind.JACKET -> Triple(R.string.bring_jacket, R.drawable.ic_b_checkroom, DataColors.feel(io.github.information89.breezyexpressive.insight.TempFeel.CHILLY))
+        BringKind.WARM_LAYERS -> Triple(R.string.bring_warm_layers, R.drawable.ic_b_ac_unit, DataColors.snow)
+        BringKind.SUNSCREEN -> Triple(R.string.bring_sunscreen, R.drawable.ic_w_sunny, DataColors.sun)
+        BringKind.WATER -> Triple(R.string.bring_water, R.drawable.ic_b_water_drop, DataColors.rain)
+        BringKind.MASK -> Triple(R.string.bring_mask, R.drawable.ic_b_masks, DataColors.air(io.github.information89.breezyexpressive.insight.AirLevel.UNHEALTHY))
     }
     val whenText = when {
         item.from != null && item.until != null -> stringResource(R.string.bring_from_until, text.time(item.from), text.time(item.until))
@@ -133,7 +133,7 @@ private fun BringChip(item: BringItem, text: WeatherText) {
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         Column(Modifier.padding(start = 8.dp)) {
             Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
             if (whenText != null) {

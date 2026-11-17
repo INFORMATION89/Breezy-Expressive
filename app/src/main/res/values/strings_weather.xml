@@ -165,4 +165,17 @@
     <string name="bring_until">until %1$s</string>
     <string name="bring_from_until">%1$s–%2$s</string>
     <string name="your_day_week">The week ahead</string>
+
+    <!-- Air quality card -->
+    <string name="card_air">Air quality</string>
+    <string name="air_phrase_good">Good air quality</string>
+    <string name="air_phrase_moderate">Acceptable air quality</string>
+    <string name="air_phrase_sensitive">Not great for sensitive people</string>
+    <string name="air_phrase_unhealthy">Unhealthy air</string>
+    <string name="air_phrase_very_unhealthy">Very unhealthy air</string>
+    <string name="air_phrase_hazardous">Hazardous air</string>
+
+    <!-- Sunrise & sunset card -->
+    <string name="card_sunrise_sunset">Sunrise &amp; sunset</string>
+    <string name="daylight">%1$s of daylight</string>
 </resources>

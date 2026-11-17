@@ -85,7 +85,7 @@ object DataColors {
     val storm = Color(0xFF9A7BE0)
     val snow = Color(0xFF8CC8F0)
     val sun = Color(0xFFFFB02E)
-    val moon = Color(0xFF9AA8E0)
+    val moon = Color(0xFFB8C4F2)
     val dry = Color(0xFF7FC4B8)
 
     fun uv(level: UvLevel): Color = when (level) {

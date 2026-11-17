@@ -27,10 +27,10 @@ fun weatherIconRes(code: WeatherCode?, isDay: Boolean): Int = when (code) {
 }
 
 @Composable
-@Suppress("UNUSED_PARAMETER")
-fun weatherIconTint(code: WeatherCode?, isDay: Boolean): Color = MaterialTheme.colorScheme.onSurface
+fun weatherIconTint(code: WeatherCode?, isDay: Boolean): Color =
+    DataColors.icon(code, isDay, neutral = MaterialTheme.colorScheme.onSurface, night = DataColors.moon)
 
-/** Monochrome weather icon. */
+/** Weather icon colored by condition: sun gold, moon silver-blue, rain blue, storms violet, snow ice. */
 @Composable
 fun WeatherIcon(code: WeatherCode?, isDay: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp, contentDescription: String? = null) {
     Icon(
