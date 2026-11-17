@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Window-level theme only; all real styling lives in Compose (ui/theme). -->
-    <style name="Theme.BreezyExpressive" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/system_neutral1_50</item>
-    </style>
-</resources>
