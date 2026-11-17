@@ -1,0 +1,15 @@
+# Gradle / build
+.gradle/
+build/
+.kotlin/
+captures/
+*.apk
+*.aab
+
+# Local config (SDK path, API keys)
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
