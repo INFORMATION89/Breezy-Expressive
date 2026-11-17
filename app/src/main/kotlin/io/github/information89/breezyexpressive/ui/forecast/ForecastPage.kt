@@ -253,7 +253,7 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
             // Rain: fine vertical ticks rising from the baseline, height = chance.
             hours.forEachIndexed { i, hour ->
                 val chance = (hour.precipitationProbability ?: 0) / 100f
-                if (chance > 0.05f) {
+                if (chance >= 0.1f) { // below 10% reads as noise
                     val tx = x(i.toFloat())
                     drawLine(accent, Offset(tx, baseline), Offset(tx, baseline - rainMax * chance), 3.dp.toPx(), cap = StrokeCap.Round)
                 }
@@ -331,7 +331,7 @@ private fun RainCard(insights: Insights, text: WeatherText) {
                     val cx = step * (i + 0.5f)
                     drawLine(ink.copy(alpha = 0.25f), Offset(cx, size.height), Offset(cx, size.height - 4.dp.toPx()), hair)
                     val chance = bar.probability / 100f
-                    if (chance > 0.02f) {
+                    if (chance >= 0.1f) {
                         val h = (size.height - 2.dp.toPx()) * chance
                         drawLine(accent, Offset(cx, size.height), Offset(cx, size.height - h.coerceAtLeast(2.dp.toPx())), 4.dp.toPx(), cap = StrokeCap.Butt)
                     }

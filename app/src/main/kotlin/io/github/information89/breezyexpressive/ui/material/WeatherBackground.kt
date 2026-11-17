@@ -127,7 +127,7 @@ fun WeatherBackground(
         Box(
             modifier.drawWithCache {
                 val gradient = Brush.verticalGradient(listOf(top, bottom))
-                val bloomBrush = Brush.radialGradient(listOf(light, bloom, Color.Transparent), center = Offset(size.width / 2, size.height * 0.36f), radius = size.width * 0.8f)
+                val bloomBrush = Brush.radialGradient(listOf(light, bloom, Color.Transparent), center = Offset(size.width / 2, size.height * 0.97f), radius = size.width * 0.9f)
                 val vignetteBrush = Brush.radialGradient(listOf(Color.Transparent, Color.Black), center = Offset(size.width / 2, size.height / 2), radius = size.maxDimension * 0.75f)
                 val grainBrush = ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated))
                 onDrawBehind {
@@ -178,15 +178,16 @@ half4 main(float2 coord) {
     half3 color = mix(top.rgb, bottom.rgb, smoothstep(0.0, 1.0, uv.y));
 
     // One luminous orb, breathing and drifting very slowly.
-    float2 center = float2(0.5 + 0.03 * sin(time * 0.17), 0.36 + 0.02 * cos(time * 0.13));
+    // Low on the screen, rising from the horizon behind the toolbar, so it shows in open space.
+    float2 center = float2(0.5 + 0.03 * sin(time * 0.17), 0.97 + 0.015 * cos(time * 0.13));
     float2 p = float2((uv.x - center.x) * aspect, uv.y - center.y);
     float d = length(p);
-    float r = 0.21 + 0.012 * sin(time * 0.5);
+    float r = 0.26 + 0.015 * sin(time * 0.5);
     color = mix(color, bloom.rgb, 0.85 * exp(-(d * d) / (r * r * 4.0)));   // wide halo
     color = mix(color, light.rgb, 0.72 * exp(-(d * d) / (r * r * 0.55)));  // bright core
 
     // Darker edges (strongest at night).
-    float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.42);
+    float2 v = float2((uv.x - 0.5) * aspect, uv.y - 0.6);
     color *= 1.0 - vignette * smoothstep(0.22, 0.85, length(v) * 1.1);
 
     // Film grain, a little stronger on the light (printed, analog feel).
