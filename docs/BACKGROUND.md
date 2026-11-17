@@ -123,3 +123,12 @@ Auto-static in battery saver, with system animations off, and on slow phones.
   Page swipe clearly better (median CPU 8.0 -> 6.2 ms, missed frames ~10 % -> ~5 %). Scrolling
   only slightly better: its slow frames come mostly from elsewhere (card content/charts), worth
   a trace before step 3. Open: the Blur setting now only changes tint opacity.
+- **2026-11-17:** Design changes from review, ahead of step 3:
+  - Toolbar pills follow the pager's live position; Settings is a 4th swipeable page.
+  - Day: white glass (60–68 % white) with a scoped light theme (`GlassTheme`): dark text,
+    accents and pale icons deepened to read on white. Night glass unchanged. Text on the sky
+    stays white until pastel day skies (step 3).
+  - Orb back in the upper middle (y 0.36, r ≈ 0.27), larger and brighter, on the new renderer.
+  - Forecast fits on one screen above the toolbar; no overscroll when nothing scrolls.
+  - Settings › Debug (debug builds): preview any sky and Day/Night independently.
+  - Still open: the Blur slider only changes tint opacity now.
