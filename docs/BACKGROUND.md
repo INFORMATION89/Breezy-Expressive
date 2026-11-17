@@ -1,0 +1,88 @@
+# Background redesign: notes and plan
+
+Working notes for the sky background rework. Status: **planned, not started** (no code yet).
+Update the log at the bottom whenever something is decided or done.
+
+## Problems with the current background
+
+Current code: `ui/material/WeatherBackground.kt` (AGSL shader on Android 13+, gradient + noise tile
+on 12), `ui/material/Glass.kt` (Haze blur), `ui/material/WeatherMood.kt` (palettes),
+wired up in `ui/navigation/MainPager.kt`.
+
+- **Performance:** every animation frame forces every glass panel (cards + toolbar) to re-blur
+  through Haze. Workarounds in place: ~12 fps drift, pause while scrolling, stop 20 s after the
+  last interaction.
+- The orb ends up hidden behind cards.
+- Harsh black vignette edges at night.
+- The background is decoration, not information.
+
+## What the references have in common
+
+Four reference images (a "Seoul" weather screen, a "New York" weather screen, a "Sunset" screen and a
+grainy purple blob texture):
+
+- Soft color fields with **heavy film grain**, not a sharp orb.
+- Seoul / Sunset: vertical sky gradient, warm glow band at the horizon.
+- New York: one large soft saturated glow (dot-matrix numbers and dotted arc are UI, not sky).
+- Purple: a few blurry blobs fading into a deep base, coarse grain.
+- **Day colors are pastel and light** (lavender, peach, cream), unlike today's deep blues.
+
+So: the halftone sun idea (old option 3) is **dropped**. Grain, not halftone.
+
+## Rendering approach (performance)
+
+1. **Sky drawn once, tiny:** render the color field into a small bitmap (~1/8 of the screen, about
+   135×300 px). Redraw only when something changes (weather, sun position, an animation frame if
+   drift is on). Cheap enough to do on the CPU off the main thread.
+2. **Grain = pre-made tile:** noise texture generated once, drawn as a repeated `ImageShader`.
+   Full-resolution work is just one filtered upscale + one tile. Grain also hides gradient banding.
+3. **"Shader glass" instead of blur:** each card / the toolbar draws the same small sky bitmap at
+   its own window position, slightly lighter or darker, + tint + grain + hairline. Looks like frosted
+   glass over a smooth sky. **Remove Haze entirely** (the toolbar already only blurs the background).
+4. **One code path for Android 12+:** no AGSL needed for the small bitmap.
+
+Tricky part: cards move during scroll; their window position must update their *drawing* only
+(no recomposition/relayout), e.g. a `Modifier.Node` that reads coordinates in `onPlaced` and
+calls `invalidateDraw()`. Main thing to get right and measure.
+
+## Sky driven by weather data
+
+- **Sun elevation → glow position:** low and orange at sunrise/sunset, high and pale at noon,
+  updated every minute (from `sunrise`/`sunset` + time).
+- **Cloud cover → saturation/diffusion:** clear = saturated, overcast = muted, fog = almost washed out.
+- **Feels-like temperature → warmer/cooler hue.**
+- **Wind → blob drift speed** (still in calm air).
+- **Rain → slight vertical streaking in the grain.**
+- **Night → deep blue-violet base** (like the purple reference), soft falloff instead of black corners.
+
+## Motion
+
+Since drawing becomes cheap, the 20 s stop and the scroll pause can go. Default: still, moving at
+meaningful moments:
+- Open the app: the glow rises into place.
+- Pull to refresh: a pulse.
+- Conditions change: slow color shift.
+- Swipe between pages: slight parallax shift.
+
+Optional slow wind drift. Auto-static in battery saver, with system animations off, and on slow phones.
+
+## Order of work
+
+1. **Measure first:** add a scroll + page-swipe macrobenchmark (FrameTimingMetric) to the existing
+   `baselineprofile` module to get baseline numbers.
+2. **New renderer, same look:** small sky bitmap + grain tile + shader glass, remove Haze. Measure.
+3. **New look:** pastel palettes from the references, horizon glow + blobs, sky driven by data.
+   Check every condition with the debug sky preview (`SkyPreview.kt`).
+4. **Motion moments**, then automatic static mode.
+
+## Open questions (waiting for answers)
+
+1. Pastel day skies need dark text (like the Seoul reference); today text is always white.
+   Dark text by day, white at night?
+2. Slow drift all the time, or movement only at the meaningful moments?
+3. OK that cards no longer blur what passes behind them? (Visually the same over a smooth sky.)
+
+## Log
+
+- **2026-11-17:** Reviewed current code and the four references; wrote this plan. No code yet.
+  Waiting for answers to the open questions.
