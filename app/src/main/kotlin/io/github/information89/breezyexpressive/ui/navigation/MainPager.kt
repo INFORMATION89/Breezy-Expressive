@@ -23,6 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import io.github.information89.breezyexpressive.ui.theme.conditionColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
@@ -101,7 +106,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
     val mood = if (appearance.weatherTint) {
         WeatherMood.colors(forecast.insights?.now?.sky, forecast.weather?.current?.isDay ?: true, dark)
     } else {
-        MoodColors(core = scheme.primaryContainer, mid = scheme.surfaceContainerHigh, edge = scheme.surface)
+        MoodColors(core = scheme.primaryContainer, mid = scheme.surfaceContainerHigh, edge = scheme.surface, accent = scheme.primary)
     }
 
     val hazeState = rememberHazeState()
@@ -117,10 +122,14 @@ fun MainPager(onOpenSettings: () -> Unit) {
         scope.launch { pagerState.animateScrollToPage(Page.FORECAST.ordinal) }
     }
 
+    // For now the whole main screen takes its colors from the conditions, not the wallpaper.
+    val accent by animateColorAsState(mood.accent, tween(1200), label = "accent")
+    val conditionScheme = if (appearance.weatherTint) conditionColorScheme(accent, dark) else scheme
+    MaterialExpressiveTheme(colorScheme = conditionScheme, motionScheme = MotionScheme.expressive(), typography = MaterialTheme.typography) {
     CompositionLocalProvider(
         LocalGlassSource provides hazeState,
         LocalScrollActivity provides scrollActivity,
-        LocalContentColor provides scheme.onSurface,
+        LocalContentColor provides conditionScheme.onSurface,
     ) {
         Box(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize().hazeSource(toolbarHaze)) {
@@ -179,6 +188,7 @@ fun MainPager(onOpenSettings: () -> Unit) {
                 }
             }
         }
+    }
     }
 }
 

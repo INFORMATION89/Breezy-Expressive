@@ -1,6 +1,7 @@
 package io.github.information89.breezyexpressive.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
@@ -70,4 +71,56 @@ fun BreezyTheme(appearance: Appearance, content: @Composable () -> Unit) {
             content = content,
         )
     }
+}
+
+/**
+ * Colors taken from the current conditions instead of the wallpaper: neutral surfaces and text,
+ * and a single accent (gold sun, moon silver, rain blue…) for highlights.
+ */
+fun conditionColorScheme(accent: Color, dark: Boolean): ColorScheme {
+    val onAccent = if (dark) Color(0xFF111318) else Color.White
+    val base = if (dark) {
+        darkColorScheme(
+            background = Color(0xFF0E0F12),
+            surface = Color(0xFF0E0F12),
+            onSurface = Color(0xFFECEEF2),
+            onSurfaceVariant = Color(0xFFB2B7C0),
+            surfaceContainerLowest = Color(0xFF0A0B0D),
+            surfaceContainerLow = Color(0xFF15171B),
+            surfaceContainer = Color(0xFF1A1C21),
+            surfaceContainerHigh = Color(0xFF22252B),
+            surfaceContainerHighest = Color(0xFF2B2E35),
+            outline = Color(0xFF6B717C),
+            outlineVariant = Color(0xFF3A3E46),
+        )
+    } else {
+        lightColorScheme(
+            background = Color(0xFFF6F7F9),
+            surface = Color(0xFFF6F7F9),
+            onSurface = Color(0xFF15171B),
+            onSurfaceVariant = Color(0xFF545A65),
+            surfaceContainerLowest = Color(0xFFFFFFFF),
+            surfaceContainerLow = Color(0xFFF0F2F5),
+            surfaceContainer = Color(0xFFEAEDF1),
+            surfaceContainerHigh = Color(0xFFE3E6EB),
+            surfaceContainerHighest = Color(0xFFDCE0E6),
+            outline = Color(0xFF8A909B),
+            outlineVariant = Color(0xFFC8CDD5),
+        )
+    }
+    return base.copy(
+        primary = accent,
+        onPrimary = onAccent,
+        primaryContainer = accent,
+        onPrimaryContainer = onAccent,
+        secondary = accent,
+        onSecondary = onAccent,
+        secondaryContainer = accent,
+        onSecondaryContainer = onAccent,
+        tertiary = accent,
+        onTertiary = onAccent,
+        tertiaryContainer = accent,
+        onTertiaryContainer = onAccent,
+        surfaceTint = accent,
+    )
 }

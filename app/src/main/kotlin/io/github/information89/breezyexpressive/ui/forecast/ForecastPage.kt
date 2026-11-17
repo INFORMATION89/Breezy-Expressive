@@ -204,10 +204,8 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
     }
     val description = text.hourlyHeadline(insights.hourly)
 
-    WeatherCard(
-        stringResource(R.string.card_next_hours),
-        dataTint = DataColors.feel(insights.now.feel),
-    ) {
+    val line = MaterialTheme.colorScheme.primary
+    WeatherCard(stringResource(R.string.card_next_hours)) {
         Text(description, style = AppType.voices.narrativeSmall)
         Spacer(Modifier.height(2.dp))
         Canvas(
@@ -241,7 +239,7 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
                 drawRoundRect(track, Offset(cx - barWidth / 2, rainTop), Size(barWidth, rainBottom - rainTop), CornerRadius(barWidth / 2))
                 if (chance > 0.05f) {
                     val h = (rainBottom - rainTop) * chance
-                    drawRoundRect(DataColors.rain, Offset(cx - barWidth / 2, rainBottom - h), Size(barWidth, h), CornerRadius(minOf(barWidth, h) / 2))
+                    drawRoundRect(line.copy(alpha = 0.8f), Offset(cx - barWidth / 2, rainBottom - h), Size(barWidth, h), CornerRadius(minOf(barWidth, h) / 2))
                 }
             }
 
@@ -265,8 +263,7 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
                     path.cubicTo(midX, prevY, midX, py, px, py)
                 }
             }
-            val stops = hours.mapIndexed { i, h -> (x(i.toFloat()) / size.width) to DataColors.temperature(h.temperature ?: minT) }
-            drawPath(path, Brush.horizontalGradient(colorStops = stops.toTypedArray()), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(path, line, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
 
             // Labeled points: icon, temperature, dot, time.
             labeled.forEachIndexed { n, i ->
@@ -279,8 +276,7 @@ private fun TimelineCard(weather: Weather, insights: Insights, text: WeatherText
                 }
                 val temp = measurer.measure(text.temperature(hour.temperature), tempStyle)
                 drawText(temp, topLeft = Offset(px - temp.size.width / 2f, tempRow))
-                val dotColor = DataColors.temperature(hour.temperature ?: minT)
-                drawCircle(dotColor, if (i == 0) 5.dp.toPx() else 3.5.dp.toPx(), Offset(px, y(hour.temperature ?: minT)))
+                drawCircle(line, if (i == 0) 4.5.dp.toPx() else 3.dp.toPx(), Offset(px, y(hour.temperature ?: minT)))
                 val time = measurer.measure(if (i == 0) nowLabel else text.hourLabel(hour.time), timeStyle)
                 drawText(time, topLeft = Offset(px - time.size.width / 2f, timeRow))
             }
@@ -300,9 +296,9 @@ private fun RainCard(insights: Insights, text: WeatherText) {
         is RainOutlook.Now -> rain.episode.kind
         is RainOutlook.Later -> rain.episode.kind
     }
-    val barColor = DataColors.precip(kind ?: io.github.information89.breezyexpressive.insight.PrecipKind.RAIN)
+    val barColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
     val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    WeatherCard(stringResource(R.string.card_precipitation), dataTint = DataColors.precip(kind)) {
+    WeatherCard(stringResource(R.string.card_precipitation)) {
         Text(text.rainHeadline(rain), style = MaterialTheme.typography.titleLarge)
         Text(text.rainDetail(rain), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (rain.bars.isNotEmpty()) {
@@ -351,9 +347,8 @@ private fun UvCard(uv: UvOutlook, weather: Weather, text: WeatherText, modifier:
     val isDay = weather.current?.isDay ?: true
     val index = weather.current?.uvIndex ?: 0.0
     val level = uvLevel(index)
-    val color = DataColors.uv(level)
-    WeatherCard(stringResource(R.string.card_uv), modifier, dataTint = if (isDay) color else Color.Unspecified) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    WeatherCard(stringResource(R.string.card_uv), modifier) {
+        Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text.uv(level),
                 style = MaterialTheme.typography.titleLarge,
@@ -361,11 +356,8 @@ private fun UvCard(uv: UvOutlook, weather: Weather, text: WeatherText, modifier:
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Expressive shape badge in the UV color carries the number, secondary to the word.
-            Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
-                Surface(shape = MaterialShapes.Cookie9Sided.toShape(), color = color, modifier = Modifier.size(34.dp)) {}
-                Text("${index.roundToInt()}", style = MaterialTheme.typography.titleSmall, color = Color(0xFF1B1B1B))
-            }
+            // The number stays secondary to the word.
+            Text("${index.roundToInt()}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(text.uvAdvice(uv, isDay), style = AppType.voices.narrativeSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -373,10 +365,9 @@ private fun UvCard(uv: UvOutlook, weather: Weather, text: WeatherText, modifier:
 
 @Composable
 private fun SunCard(sun: SunInfo, text: WeatherText, modifier: Modifier) {
-    val isDay = sun.dayProgress != null
-    val glow = if (isDay) DataColors.sun else DataColors.moon
+    val glow = MaterialTheme.colorScheme.primary
     val arcColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-    WeatherCard(stringResource(R.string.card_sun), modifier, dataTint = glow) {
+    WeatherCard(stringResource(R.string.card_sun), modifier) {
         Text(text.sunTitle(sun), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Canvas(
             Modifier

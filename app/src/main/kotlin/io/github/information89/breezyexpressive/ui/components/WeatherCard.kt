@@ -19,24 +19,23 @@ import io.github.information89.breezyexpressive.insight.TempFeel
 import io.github.information89.breezyexpressive.insight.UvLevel
 import io.github.information89.breezyexpressive.ui.material.glass
 
-/** A glass card with a small uppercase title; [dataTint] lets the card glow in its data's color. */
+/** A clear glass card with a small, quiet title. */
 @Composable
 fun WeatherCard(
     title: String,
     modifier: Modifier = Modifier,
-    dataTint: Color = Color.Unspecified,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier
             .fillMaxWidth()
-            .glass(MaterialTheme.shapes.extraLarge, dataTint = dataTint)
+            .glass(MaterialTheme.shapes.extraLarge)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         androidx.compose.material3.Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
+            title,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.semantics { heading() },
         )

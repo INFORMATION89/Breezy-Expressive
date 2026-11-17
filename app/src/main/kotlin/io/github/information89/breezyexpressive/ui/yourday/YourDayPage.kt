@@ -100,14 +100,14 @@ private fun BringCard(items: List<BringItem>, text: WeatherText) {
 
 @Composable
 private fun BringChip(item: BringItem, text: WeatherText) {
-    val (label, icon, color) = when (item.kind) {
-        BringKind.UMBRELLA -> Triple(R.string.bring_umbrella, R.drawable.ic_b_umbrella, DataColors.rain)
-        BringKind.RAIN_JACKET -> Triple(R.string.bring_rain_jacket, R.drawable.ic_w_rainy, DataColors.rain)
-        BringKind.JACKET -> Triple(R.string.bring_jacket, R.drawable.ic_b_checkroom, DataColors.feel(io.github.information89.breezyexpressive.insight.TempFeel.CHILLY))
-        BringKind.WARM_LAYERS -> Triple(R.string.bring_warm_layers, R.drawable.ic_b_ac_unit, DataColors.snow)
-        BringKind.SUNSCREEN -> Triple(R.string.bring_sunscreen, R.drawable.ic_w_sunny, DataColors.sun)
-        BringKind.WATER -> Triple(R.string.bring_water, R.drawable.ic_b_water_drop, DataColors.rain)
-        BringKind.MASK -> Triple(R.string.bring_mask, R.drawable.ic_b_masks, DataColors.air(io.github.information89.breezyexpressive.insight.AirLevel.UNHEALTHY))
+    val (label, icon) = when (item.kind) {
+        BringKind.UMBRELLA -> R.string.bring_umbrella to R.drawable.ic_b_umbrella
+        BringKind.RAIN_JACKET -> R.string.bring_rain_jacket to R.drawable.ic_w_rainy
+        BringKind.JACKET -> R.string.bring_jacket to R.drawable.ic_b_checkroom
+        BringKind.WARM_LAYERS -> R.string.bring_warm_layers to R.drawable.ic_b_ac_unit
+        BringKind.SUNSCREEN -> R.string.bring_sunscreen to R.drawable.ic_w_sunny
+        BringKind.WATER -> R.string.bring_water to R.drawable.ic_b_water_drop
+        BringKind.MASK -> R.string.bring_mask to R.drawable.ic_b_masks
     }
     val whenText = when {
         item.from != null && item.until != null -> stringResource(R.string.bring_from_until, text.time(item.from), text.time(item.until))
@@ -117,11 +117,11 @@ private fun BringChip(item: BringItem, text: WeatherText) {
     }
     Row(
         Modifier
-            .glass(CircleShape, dataTint = color)
+            .glass(CircleShape, glow = false)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+        Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         Column(Modifier.padding(start = 8.dp)) {
             Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
             if (whenText != null) {
@@ -152,7 +152,7 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
         Text(
             if (chance >= 30) "$chance%" else "",
             style = MaterialTheme.typography.labelSmall,
-            color = DataColors.rain,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .width(40.dp)
                 .padding(start = 4.dp),
@@ -164,6 +164,7 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
             textAlign = TextAlign.End,
             modifier = Modifier.width(36.dp),
         )
+        val bar = MaterialTheme.colorScheme.primary
         val low = day.temperatureMin ?: weekMin
         val high = day.temperatureMax ?: weekMax
         Canvas(
@@ -177,7 +178,7 @@ private fun DayRow(day: Daily, text: WeatherText, weekMin: Double, weekMax: Doub
             val end = ((high - weekMin) / span).toFloat() * size.width
             drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
             drawRoundRect(
-                Brush.horizontalGradient(listOf(DataColors.temperature(low), DataColors.temperature(high)), startX = start, endX = end),
+                bar,
                 topLeft = Offset(start, 0f),
                 size = Size((end - start).coerceAtLeast(size.height), size.height),
                 cornerRadius = CornerRadius(size.height / 2),

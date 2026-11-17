@@ -179,10 +179,6 @@ half4 main(float2 coord) {
     float glow = exp(-(d * d) / (radius * radius * 0.45));
     color = mix(color, core.rgb, glow * 0.85);
 
-    // Soft concentric halos moving outward, like light through haze.
-    float rings = 0.5 + 0.5 * sin(d * 16.0 - time * 0.7);
-    color += core.rgb * rings * 0.07 * exp(-d * 2.2);
-
     // Darker edges.
     color = mix(color, edge.rgb, 0.55 * smoothstep(0.55, 1.25, d));
 
