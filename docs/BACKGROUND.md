@@ -92,3 +92,16 @@ Auto-static in battery saver, with system animations off, and on slow phones.
   Waiting for answers to the open questions.
 - **2026-11-17:** Open questions answered (see Decisions): dark day / white night text, slow drift
   always, white tinted glass like Seoul with Haze removed. Ready to start step 1.
+- **2026-11-17:** Step 1 done. Added `ScrollBenchmark` (FrameTimingMetric, 10 iterations,
+  `CompilationMode.Partial`) to `baselineprofile`; run with
+  `./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest`. Needed androidx.benchmark
+  `1.6.0-alpha01`: 1.5.0 fails on Android 17 (`no such table: expected_frame_timeline_slice`).
+  Baseline on Pixel 7 (Android 17), current Haze background:
+
+  | Test           | CPU P50 | P90     | P95     | P99     | Overrun P50 | P90    | P95    | P99    |
+  |----------------|---------|---------|---------|---------|-------------|--------|--------|--------|
+  | forecastScroll | 5.7 ms  | 11.8 ms | 13.0 ms | 16.1 ms | -4.1 ms     | 0.8 ms | 2.2 ms | 8.4 ms |
+  | pageSwipe      | 8.0 ms  | 12.0 ms | 13.1 ms | 16.3 ms | -2.9 ms     | 1.1 ms | 2.6 ms | 8.0 ms |
+
+  Positive overrun = a missed frame: roughly the slowest 10 % of frames miss on both tests.
+  Also: toolbar's selected pill now uses `CircleShape` to match the toolbar.

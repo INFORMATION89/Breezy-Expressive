@@ -31,6 +31,7 @@ import io.github.information89.breezyexpressive.ui.theme.conditionColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -226,6 +227,12 @@ private fun PageToolbar(
                     checked = isSelected,
                     onCheckedChange = { onSelect(page) },
                     colors = ToggleButtonDefaults.colors(containerColor = Color.Transparent),
+                    // Selected pill matches the toolbar's full rounding (default checked shape is squarer).
+                    shapes = ToggleButtonShapes(
+                        shape = ToggleButtonDefaults.shape,
+                        pressedShape = ToggleButtonDefaults.pressedShape,
+                        checkedShape = CircleShape,
+                    ),
                 ) {
                     // The label is only shown (and announced) on the selected page.
                     Icon(page.icon, contentDescription = if (isSelected) null else label)
