@@ -37,8 +37,8 @@ So: the halftone sun idea (old option 3) is **dropped**. Grain, not halftone.
 2. **Grain = pre-made tile:** noise texture generated once, drawn as a repeated `ImageShader`.
    Full-resolution work is just one filtered upscale + one tile. Grain also hides gradient banding.
 3. **"Shader glass" instead of blur:** each card / the toolbar draws the same small sky bitmap at
-   its own window position, slightly lighter or darker, + tint + grain + hairline. Looks like frosted
-   glass over a smooth sky. **Remove Haze entirely** (the toolbar already only blurs the background).
+   its own window position, lifted toward white, + white tint + grain + hairline (see Decisions).
+   Looks like frosted glass over a smooth sky. **Remove Haze entirely.**
 4. **One code path for Android 12+:** no AGSL needed for the small bitmap.
 
 Tricky part: cards move during scroll; their window position must update their *drawing* only
@@ -57,32 +57,38 @@ calls `invalidateDraw()`. Main thing to get right and measure.
 
 ## Motion
 
-Since drawing becomes cheap, the 20 s stop and the scroll pause can go. Default: still, moving at
-meaningful moments:
+Since drawing becomes cheap, the 20 s stop and the scroll pause can go. **Slow drift runs all the
+time** (speed from wind, near-still in calm air), with the meaningful moments on top:
 - Open the app: the glow rises into place.
 - Pull to refresh: a pulse.
 - Conditions change: slow color shift.
 - Swipe between pages: slight parallax shift.
 
-Optional slow wind drift. Auto-static in battery saver, with system animations off, and on slow phones.
+Auto-static in battery saver, with system animations off, and on slow phones.
+
+## Decisions
+
+1. **Text color:** dark text by day (pastel skies), white at night. Text color follows sky
+   brightness.
+2. **Motion:** slow wind-driven drift always on, plus the meaningful moments above. Still
+   auto-static in battery saver / animations off / slow phones.
+3. **Glass:** no real blur, Haze removed. For now cards and toolbar are **white tinted glass like
+   the Seoul reference**: sky bitmap at the card's position lifted toward white, white tint, grain
+   and a hairline edge.
 
 ## Order of work
 
 1. **Measure first:** add a scroll + page-swipe macrobenchmark (FrameTimingMetric) to the existing
    `baselineprofile` module to get baseline numbers.
 2. **New renderer, same look:** small sky bitmap + grain tile + shader glass, remove Haze. Measure.
-3. **New look:** pastel palettes from the references, horizon glow + blobs, sky driven by data.
-   Check every condition with the debug sky preview (`SkyPreview.kt`).
-4. **Motion moments**, then automatic static mode.
-
-## Open questions (waiting for answers)
-
-1. Pastel day skies need dark text (like the Seoul reference); today text is always white.
-   Dark text by day, white at night?
-2. Slow drift all the time, or movement only at the meaningful moments?
-3. OK that cards no longer blur what passes behind them? (Visually the same over a smooth sky.)
+3. **New look:** pastel palettes from the references, horizon glow + blobs, sky driven by data,
+   white tinted glass, dark day / white night text. Check every condition with the debug sky
+   preview (`SkyPreview.kt`).
+4. **Motion:** always-on drift + meaningful moments, then automatic static mode.
 
 ## Log
 
 - **2026-11-17:** Reviewed current code and the four references; wrote this plan. No code yet.
   Waiting for answers to the open questions.
+- **2026-11-17:** Open questions answered (see Decisions): dark day / white night text, slow drift
+  always, white tinted glass like Seoul with Haze removed. Ready to start step 1.
