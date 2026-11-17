@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -25,6 +26,13 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // Release code, debug-signed and profileable: for measuring performance on a real phone.
+        create("profile") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".profile"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
 
@@ -50,7 +58,16 @@ kotlin {
     }
 }
 
+baselineProfile {
+    // Regenerate on a connected phone with ./gradlew :app:generateBaselineProfile, then copy the
+    // result into src/main/baselineProfiles/ (used by every build type, including "profile").
+    mergeIntoMain = true
+    automaticGenerationDuringBuild = false
+}
+
 dependencies {
+    implementation(libs.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
     implementation(libs.core.ktx)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.compose)

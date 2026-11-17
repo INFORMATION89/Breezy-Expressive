@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "BreezyExpressive"
 include(":app")
+include(":baselineprofile")

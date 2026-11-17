@@ -33,7 +33,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlin.random.Random
 
 /**
@@ -83,11 +85,20 @@ fun WeatherBackground(
 
     if (shouldAnimate) {
         LaunchedEffect(lifecycle) {
-            // ~15 fps is plenty for a slow drift; only while visible, paused during scrolling.
+            // Battery: drift at ~12 fps only while visible, pause during scrolling, and come to rest
+            // 20 s after the last interaction (every redraw also re-blurs the glass on top).
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                var awakeSince = System.nanoTime()
                 while (true) {
-                    delay(66)
-                    if (!scrollActivity.isScrollingRecently()) time.floatValue += 0.066f // seconds
+                    delay(FRAME_MS)
+                    val lastScroll = scrollActivity.lastScrollNanos.longValue
+                    if (lastScroll > awakeSince) awakeSince = lastScroll
+                    if (System.nanoTime() - awakeSince > ACTIVE_NANOS) {
+                        // Resting: wait for the next interaction, then wake up again.
+                        snapshotFlow { scrollActivity.lastScrollNanos.longValue }.first { it > awakeSince }
+                        awakeSince = System.nanoTime()
+                    }
+                    if (!scrollActivity.isScrollingRecently()) time.floatValue += FRAME_MS / 1000f
                 }
             }
         }
@@ -139,6 +150,9 @@ private fun noiseTile(size: Int = 128): ImageBitmap {
     return android.graphics.Bitmap.createBitmap(pixels, size, size, android.graphics.Bitmap.Config.ARGB_8888)
         .asImageBitmap()
 }
+
+private const val FRAME_MS = 83L
+private const val ACTIVE_NANOS = 20_000_000_000L
 
 private const val BACKGROUND_SHADER = """
 uniform float2 resolution;

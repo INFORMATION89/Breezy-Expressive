@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazePerformanceMode
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
@@ -63,7 +64,8 @@ fun Modifier.glass(
 
     return this
         .clip(shape)
-        .let { if (source != null) it.hazeBlur(HazeInput.Sources(source), style) else it }
+        // Performance mode samples a smaller copy of the background: much cheaper, and invisible under a soft blur.
+        .let { if (source != null) it.hazeBlur(HazeInput.Sources(source), style, performanceMode = HazePerformanceMode.Performance) else it }
         .let {
             if (!glow) {
                 it
