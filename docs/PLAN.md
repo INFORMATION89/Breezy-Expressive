@@ -44,6 +44,11 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
   corners, like Android 16 Settings), connected `ButtonGroup`s for small choices, `Switch` with
   icons, `LoadingIndicator`, Expressive `SearchBar`, `FloatingToolbar`/FAB menu for actions,
   shape morphing on press and selection.
+- **Days page (added 2026-11-18):** the multi-day forecast moves to **its own page to the left of
+  Forecast**: swipe with the finger moving right from Forecast to reach it. Pages, left to right:
+  **Days ← Forecast → Locations**; Forecast stays the screen the app opens on. Open question: does
+  the pill toolbar get a third tab (Days / Forecast / Locations), and does Forecast keep a small
+  "next days" teaser that opens the Days page?
 - **Navigation (updated 2026-11-18):** two pages side by side. **Forecast is the first screen**;
   **Locations is to its right**: swipe with the finger moving left to reach it, right to come back.
   The page follows the finger and can reverse mid-swipe. A floating pill toolbar (M3 Expressive
@@ -178,6 +183,29 @@ widgets, notifications, live wallpaper.
 - Performance first: blur is costly on the GPU, so measure frame times on the Pixel 7 (release
   build) and keep the blurred band small; same technique as the translucent overlays above.
 
+### Forecast layout reference (added 2026-11-18)
+The user likes how this reference lays out the information and wants it considered for the
+Forecast screen (top to bottom):
+1. **Location title**, centred (our rule: nothing else at the top; the reference's menu and bell
+   buttons are dropped: Locations is a swipe/tab away, alerts appear as a card).
+2. **Big temperature**, very large display numerals.
+3. **Condition headline** in plain words ("Clear and calm"), then **one plain-language line**
+   ("Feels like 17°, wind 9 km/h from the sea").
+4. **Sun path** (liked most): a curve across the full width from sunrise to sunset with a dot at
+   the sun's current position, the part already travelled highlighted; **sunrise time left,
+   sunset time right**, and a short sun/UV note in the middle ("Mild sun, UV 3"). At night the
+   same element can show the moon or night length.
+5. **Today** card: next hours (temperature, icon, time; "Now" first) with a one-line summary in the
+   header ("clear all day, cooler after 21").
+6. **This week** card (moves to the Days page, see Navigation; Forecast may keep a short teaser): days as small bars at their temperature height, the day that needs
+   attention highlighted, and a one-line summary ("only Thursday needs you").
+7. **Alert card** when something severe is coming: when, what, and a short practical line.
+- Cards are translucent over the gradient background (see translucent overlays), large corners.
+- Builds on upstream's data (sun/moon times, UV, hourly, daily, alerts); the plain-language lines
+  need a small summary generator (the old Weather-App-Experiment had a rules engine for this).
+- Depends on a Compose Forecast screen (with in-place block editing); these elements would become
+  blocks the user can reorder/hide.
+
 ### Forecast background: soft gradient (added 2026-11-18, style still open)
 - The Forecast screen gets a soft, grainy gradient background reflecting the weather and time of
   day, like the references the user shared: blurry colour fields with film grain (lavender/blue/
@@ -221,8 +249,18 @@ widgets, notifications, live wallpaper.
 - **Keep:** data sharing with other apps (Gadgetbridge, watches, launchers: content provider and
   broadcasts).
 - **Widgets: later.** Maybe keep one or two, decided much later; no widget work until then.
-- **Weather sources (to decide):** upstream ships ~60 source modules (national weather services of
-  many countries). Pick the few to keep (Open-Meteo stays default) and cut the rest.
+- **Weather sources (decided 2026-11-18): worldwide + North America.**
+  - Keep: Open-Meteo (default), MET Norway, WMO Severe Weather, FOSS Public Alert Server,
+    AccuWeather / OpenWeather / Pirate Weather (work only with the user's own key: the fork has
+    none of upstream's keys), NWS and NCEI (US), ECCC (Canada).
+  - Keep (infrastructure): Android geocoder, Nominatim, Natural Earth (offline fallback), GeoNames
+    (with own key), Breezy Time Zone, IP.SB, Gadgetbridge, update notifier, debug, common.
+  - Cut: all European (~25), Asian/Pacific (~17, incl. Baidu IP) and African (ClimWeb) national
+    services. Mexico has no national source upstream; WMO alerts cover it.
+  - Expectation: ~5 MB of source code goes, but the APK is mostly libraries, so the main win is
+    simpler source lists in settings; measure the release APK before/after.
+  - Upstream sync: deleted source packages stay deleted; `SourceManager` and the Hilt wiring are the
+    only shared edits.
 - **Use platform components** where they do the job: Android's own geocoder, system location,
   stock Material 3 components instead of upstream's custom ones as screens move to Compose.
 - **Measure:** debug APK today is 43 MB (31 MB code). Compare release APK size, startup and frame
@@ -280,6 +318,13 @@ widgets, notifications, live wallpaper.
   `ui/settings/compose/ModulesSettingsScreen.kt`; `sources/RefreshHelper.kt` keeps
   `updateNotificationIfNecessary` / `updateWallpaperIfNecessary` as no-op stubs so their callers stay
   unchanged. Their strings and settings keys are left in place (harmless).
+- **Cut (2026-11-18), weather sources:** deleted 40 source packages (European, Asian/Pacific and
+  African national services, incl. Infoplaza and Baidu IP) from `main`, `src_nonfreenet` and
+  `src_freenet`, plus `sources/FmiServiceStub.kt` and `sources/InfoplazaServiceStub.kt`. Only
+  `sources/SourceManager.kt` referenced them (imports, constructor, lists; national list now typed
+  `persistentListOf<Source>`). Their strings, API-key build fields and settings keys are left in
+  place (harmless). Also removed the live wallpaper's leftover unit test
+  (`test/.../wallpaper/FramePacingTest.kt`).
 - `sources/SourceManager.kt`: default address lookup is Android's geocoder when present (Nominatim
   otherwise).
 - `gradle.properties`: fork links filled in (`app.report_issue`, source, releases, install, privacy,
@@ -369,3 +414,13 @@ widgets, notifications, live wallpaper.
   lookup service (the current location still uses Nominatim; switch it in its location settings).
   To do: `PRIVACY.md` and `INSTALL.md` are still upstream's text; the fork links point at them, so
   rewrite them for Breezy Expressive before release.
+- **2026-11-18:** Weather sources decided: keep worldwide + North America, cut the European, Asian
+  and African national services (list in "Simplify and lighten").
+- **2026-11-18:** Added a Forecast layout reference (title, big temperature, plain-language
+  lines, sun path with sunrise/sunset, Today and This week cards with one-line summaries, alert card).
+- **2026-11-18:** Weather sources cut (40 packages, 628 files). Debug APK 42.81 → 41.45 MB. Unit
+  tests compile and pass again (the wallpaper cut had left a test behind). On the Pixel: forecast
+  refreshes, default source picker shows Open-Meteo, MET Norway, AccuWeather / OpenWeather /
+  Pirate Weather (need own keys) and Debug; NWS/ECCC apply to US/Canada locations automatically.
+- **2026-11-18:** Added: multi-day forecast gets its own page to the left of Forecast
+  (Days ← Forecast → Locations); toolbar third tab and Forecast teaser still open.
