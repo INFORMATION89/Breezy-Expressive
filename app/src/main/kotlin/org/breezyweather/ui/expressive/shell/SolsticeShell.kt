@@ -75,7 +75,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
@@ -86,9 +88,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -101,6 +107,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -227,6 +234,8 @@ fun SolsticeShell(
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
     val glass = rememberGlassSource()
+    val searchBlur = rememberGraphicsLayer()
+    val searchSharp = rememberGraphicsLayer()
     // Search grows out of the Places button (agreed motion); one spring drives open and close.
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var searchOrigin by remember { mutableStateOf<Rect?>(null) }
@@ -291,7 +300,9 @@ fun SolsticeShell(
             )
             HorizontalPager(
                 state = pager,
-                beyondViewportPageCount = 1,
+                // All three pages stay built: going Places -> Forecast would otherwise build Outlook (ten
+                // sky cards) in the middle of the swipe.
+                beyondViewportPageCount = 2,
                 flingBehavior = PagerDefaults.flingBehavior(
                     state = pager,
                     snapAnimationSpec = spring(
@@ -299,19 +310,15 @@ fun SolsticeShell(
                         stiffness = Spring.StiffnessLow
                     )
                 ),
-                modifier = Modifier.fillMaxSize().graphicsLayer {
-                    // The page recedes a little while search is open.
-                    val k = 1f - 0.04f * searchProgress.value
-                    scaleX = k
-                    scaleY = k
-                    // ...and blurs behind the search card.
-                    val blur = 24.dp.toPx() * searchProgress.value
-                    renderEffect = if (blur > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        BlurEffect(blur, blur, TileMode.Decal)
-                    } else {
-                        null
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        // The page recedes a little while search is open.
+                        val k = 1f - 0.04f * searchProgress.value
+                        scaleX = k
+                        scaleY = k
                     }
-                }
+                    .searchBlur(searchBlur, searchSharp) { searchProgress.value }
             ) { index ->
                 when (index) {
                     PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
@@ -422,7 +429,7 @@ fun SolsticeShell(
             )?.let { it.latitude to it.longitude }
         SearchOverlay(
             open = searchOpen,
-            progress = searchProgress.value,
+            progress = { searchProgress.value },
             origin = searchOrigin,
             searchViewModel = searchViewModel,
             near = nearPoint,
@@ -596,7 +603,9 @@ private fun ShellToolbar(
                 .size(height)
                 .onGloballyPositioned { onSearchBounds(it.boundsInRoot()) }
                 .clip(CircleShape)
-                .clickable(enabled = searchEnabled && bud > 0.9f, onClick = onSearch)
+                // Only touchable once it's out: tucked in, it sits over the Places tab, and even a
+                // disabled clickable would swallow that tab's taps.
+                .then(if (searchEnabled && bud > 0.9f) Modifier.clickable(onClick = onSearch) else Modifier)
         ) {
             Icon(
                 Icons.Filled.Search,
@@ -668,6 +677,34 @@ private fun ToolbarTabs(
 private operator fun Dp.times(f: Float): Dp = Dp(value * f)
 
 /**
+ * Blurs the page behind the search card. The blur runs on a quarter-size copy of the page (16x
+ * fewer pixels, and a strong blur hides the lower resolution), drawn scaled up over the sharp
+ * page and faded in with [progress]. The radius stays fixed, so the GPU's work doesn't grow as
+ * the card opens.
+ */
+private fun Modifier.searchBlur(layer: GraphicsLayer, sharp: GraphicsLayer, progress: () -> Float): Modifier =
+    drawWithContent {
+        val p = progress().coerceIn(0f, 1f)
+        if (p <= 0.01f || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            drawContent()
+            return@drawWithContent
+        }
+        // The page's background is behind the pager, so the sharp page has to fade out as the blurred
+        // copy fades in (otherwise the sharp text shows through the blur).
+        sharp.record { this@drawWithContent.drawContent() }
+        sharp.alpha = 1f - p
+        drawLayer(sharp)
+        val k = 4f
+        val radius = 28.dp.toPx() / k
+        if (layer.renderEffect == null) layer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+        layer.record(IntSize((size.width / k).toInt().coerceAtLeast(1), (size.height / k).toInt().coerceAtLeast(1))) {
+            scale(1f / k, 1f / k, pivot = Offset.Zero) { this@drawWithContent.drawContent() }
+        }
+        layer.alpha = p
+        scale(k, k, pivot = Offset.Zero) { drawLayer(layer) }
+    }
+
+/**
  * The toolbar pill plus the search bubble, as one outline. The bubble is a circle as tall as the
  * pill whose centre slides [budExtra] from the pill's right cap (hidden in it) to its
  * slot. Once they separate, a neck (two curves pinching towards the middle) joins them; it thins as
@@ -683,6 +720,10 @@ private class BudShape(
         // Measured from the size being drawn, so the outline always fits the box exactly.
         val pillWidth = size.width - budExtra
         val centre = pillWidth - r + budExtra
+        // Tucked in (every page but Places): just the pill, no path operations.
+        if (budExtra < 0.5f) {
+            return Outline.Rounded(RoundRect(0f, 0f, size.width, size.height, CornerRadius(r, r)))
+        }
         val pill = Path().apply { addRoundRect(RoundRect(0f, 0f, pillWidth, size.height, CornerRadius(r, r))) }
         val ball = Path().apply { addOval(Rect(centre - r, 0f, centre + r, size.height)) }
         var path = Path.combine(PathOperation.Union, pill, ball)

@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -104,6 +105,10 @@ fun Modifier.glass(
     }
     val blurLayer = rememberGraphicsLayer()
     val placed = remember { Placed() }
+    val radius = with(LocalDensity.current) { blur.toPx() }
+    // Set once per radius: a new RenderEffect every frame makes the GPU rebuild the blur each time.
+    remember(blurLayer, radius) { blurLayer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp) }
+    val outline = remember { Path() }
     return this
         .onGloballyPositioned {
             placed.coordinates = it
@@ -112,9 +117,8 @@ fun Modifier.glass(
         // Clip in the draw pass, with the outline built for this frame's size: a layer clip
         // (Modifier.clip) can lag a frame behind a resize and cut the toolbar off square.
         .drawBehind {
-            val outline = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawBehind)) }
-            val radius = blur.toPx()
-            blurLayer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+            outline.reset()
+            outline.addOutline(shape.createOutline(size, layoutDirection, this@drawBehind))
             blurLayer.record(size = IntSize(size.width.toInt(), size.height.toInt())) {
                 // Only this element's rectangle of the backdrop goes through the blur. Positions are
                 // read now, not from last frame's layout, so a resize never shows a shifted backdrop.

@@ -22,6 +22,7 @@ import android.os.Build
 import android.os.PowerManager
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +33,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -91,22 +94,30 @@ private fun ShaderSky(state: SkyState, modifier: Modifier, content: @Composable 
             }
         }
     }
-    Box(
-        modifier = modifier.drawBehind {
-            val p = state.palette
-            shader.setFloatUniform("uSize", size.width, size.height)
-            shader.setFloatUniform("uTime", seconds) // reading it here only redraws, no recomposition
-            shader.color("uBase", p.base)
-            shader.color("uC1", p.blobs[0])
-            shader.color("uC2", p.blobs[1])
-            shader.color("uC3", p.blobs[2])
-            shader.color("uSun", p.sun)
-            shader.setFloatUniform("uSunPos", state.sunX, state.sunY, SUN_RADIUS)
-            shader.setFloatUniform("uSunStrength", p.sunStrength)
-            shader.setFloatUniform("uGrain", p.grain)
-            drawRect(brush)
-        }
-    ) { content() }
+    Box(modifier) {
+        // The sky in its own offscreen layer: the GPU runs the shader only when the sky changes
+        // (30 fps clock, palette, size). Frames in between, e.g. a 90 fps page swipe, reuse it.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawBehind {
+                    val p = state.palette
+                    shader.setFloatUniform("uSize", size.width, size.height)
+                    shader.setFloatUniform("uTime", seconds) // reading it here only redraws, no recomposition
+                    shader.color("uBase", p.base)
+                    shader.color("uC1", p.blobs[0])
+                    shader.color("uC2", p.blobs[1])
+                    shader.color("uC3", p.blobs[2])
+                    shader.color("uSun", p.sun)
+                    shader.setFloatUniform("uSunPos", state.sunX, state.sunY, SUN_RADIUS)
+                    shader.setFloatUniform("uSunStrength", p.sunStrength)
+                    shader.setFloatUniform("uGrain", p.grain)
+                    drawRect(brush)
+                }
+        )
+        content()
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)

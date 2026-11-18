@@ -23,6 +23,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -30,7 +31,6 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -66,6 +66,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +85,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -92,6 +94,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
@@ -115,12 +118,13 @@ import kotlin.math.roundToInt
  * docked at the bottom, above the keyboard: a handle on top, results (segmented rows) in the
  * middle, the field at the bottom. The card has a fixed height; drag the handle up to show more,
  * or down to dismiss (it follows the finger; releasing early springs it back). Results settle in
- * place when they change. [progress] (0 = bubble, 1 = open) is one spring for opening and closing.
+ * place when they change. [progress] (0 = bubble, 1 = open) is one spring for opening and closing;
+ * it's read in layout and draw only, so opening never recomposes the screen.
  */
 @Composable
 fun SearchOverlay(
     open: Boolean,
-    progress: Float,
+    progress: () -> Float,
     origin: Rect?,
     searchViewModel: SearchViewModel,
     near: Pair<Double, Double>?,
@@ -129,7 +133,9 @@ fun SearchOverlay(
     onPickCity: (City) -> Unit,
     onClose: () -> Unit,
 ) {
-    if (progress <= 0f && !open) return
+    // Only this check reads the progress in composition, and it flips just twice per open/close.
+    val visible by remember { derivedStateOf { progress() > 0f } }
+    if (!visible && !open) return
     val context = LocalContext.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -167,43 +173,26 @@ fun SearchOverlay(
     }
     val recents = remember(open) { RecentSearches.all(context) }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val width = constraints.maxWidth.toFloat()
-        val height = constraints.maxHeight.toFloat()
-        val view = LocalView.current
-        // constraints (not view.height) so a resize recomposes this.
-        val shrunk = (view.rootView.height - constraints.maxHeight).coerceAtLeast(0)
-        val ime = WindowInsets.ime.getBottom(density)
-        val bottomInset = if (ime > 0) {
-            (ime - shrunk).coerceAtLeast(0)
-        } else {
-            WindowInsets.navigationBars.getBottom(density)
-        }
-        val top = WindowInsets.statusBars.getTop(density) + with(density) { 12.dp.toPx() }
-        val margin = with(density) { 12.dp.toPx() }
-        val chrome = with(density) { (24.dp + 64.dp).toPx() } // handle + field
-        val compact = with(density) { 280.dp.toPx() }
-        val tall = (height - bottomInset - margin - top - chrome).coerceAtLeast(compact)
-        val content = (compact + extra).coerceIn(compact, tall)
-        val bottom = height - bottomInset - margin + pulled
-        val target = Rect(margin, bottom - content - chrome, width - margin, bottom)
-        val start = origin ?: target
-        val p = progress.coerceIn(0f, 1f)
-        val rect = Rect(
-            left = start.left + (target.left - start.left) * p,
-            top = start.top + (target.top - start.top) * p,
-            right = start.right + (target.right - start.right) * p,
-            bottom = start.bottom + (target.bottom - start.bottom) * p
-        )
-        val inside = ((p - 0.45f) / 0.55f).coerceIn(0f, 1f)
-        // Pulling down also lightens the scrim, so dismissing feels continuous.
-        val pullFade = 1f - (pulled / with(density) { 220.dp.toPx() }).coerceIn(0f, 1f)
+    val view = LocalView.current
+    val ime = WindowInsets.ime
+    val navigation = WindowInsets.navigationBars
+    val status = WindowInsets.statusBars
+    // Written by the card's layout each frame; read by the handle's drag (how far it can grow).
+    val room = remember { FloatArray(1) }
 
-        // The page behind goes darker (the shell also blurs it).
+    // How far the inside is shown, from the open progress (read only in draw/layout lambdas).
+    fun inside() = ((progress().coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
+
+    Box(Modifier.fillMaxSize()) {
+        // The page behind goes darker (the shell also blurs it). Pulling down lightens it, so
+        // dismissing feels continuous.
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = p * pullFade }
+                .graphicsLayer {
+                    val pullFade = 1f - (pulled / 220.dp.toPx()).coerceIn(0f, 1f)
+                    alpha = progress().coerceIn(0f, 1f) * pullFade
+                }
                 .background(Color.Black.copy(alpha = 0.6f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -213,33 +202,73 @@ fun SearchOverlay(
                 )
         )
 
+        // The card's size and place follow the spring, keyboard and handle in the layout phase only:
+        // the open animation re-lays out the card each frame but recomposes nothing.
         Box(
             Modifier
-                .offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
-                .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() })
+                .layout { measurable, constraints ->
+                    val width = constraints.maxWidth.toFloat()
+                    val height = constraints.maxHeight.toFloat()
+                    val shrunk = (view.rootView.height - constraints.maxHeight).coerceAtLeast(0)
+                    val keyboard = ime.getBottom(this)
+                    val bottomInset = if (keyboard > 0) {
+                        (keyboard - shrunk).coerceAtLeast(0)
+                    } else {
+                        navigation.getBottom(this)
+                    }
+                    val top = status.getTop(this) + 12.dp.toPx()
+                    val margin = 12.dp.toPx()
+                    val chrome = (24.dp + 64.dp).toPx() // handle + field
+                    val compact = 280.dp.toPx()
+                    val tall = (height - bottomInset - margin - top - chrome).coerceAtLeast(compact)
+                    room[0] = tall - compact
+                    val content = (compact + extra).coerceIn(compact, tall)
+                    val bottom = height - bottomInset - margin + pulled
+                    val target = Rect(margin, bottom - content - chrome, width - margin, bottom)
+                    val start = origin ?: target
+                    val p = progress().coerceIn(0f, 1f)
+                    val left = start.left + (target.left - start.left) * p
+                    val topEdge = start.top + (target.top - start.top) * p
+                    val w = (start.width + (target.width - start.width) * p).roundToInt().coerceAtLeast(0)
+                    val h = (start.height + (target.height - start.height) * p).roundToInt().coerceAtLeast(0)
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(left.roundToInt(), topEdge.roundToInt())
+                    }
+                }
+                // Translucent material, like the toolbar: the blurred, darkened page shows through.
                 .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
+                .border(0.5.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(32.dp))
         ) {
             // While still small it's the bubble's search icon.
             Icon(
                 Icons.Filled.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside }
+                modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
             )
-            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside }) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }) {
                 Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    Results(
-                        context = context,
-                        query = query,
-                        results = results.first,
-                        loading = results.second == LoadableLocationStatus.LOADING || requested != query,
-                        suggestions = suggestions,
-                        recents = recents,
-                        onPickLocation = onPickLocation,
-                        onPickCity = onPickCity
-                    )
+                    // Built once the card is a third of the way open (it's invisible before that), so the
+                    // first frame of the animation only has the card and field to build.
+                    val ready by remember { derivedStateOf { progress() > 0.3f } }
+                    if (ready || !open) {
+                        Results(
+                            context = context,
+                            query = query,
+                            results = results.first,
+                            loading = results.second == LoadableLocationStatus.LOADING || requested != query,
+                            // A place already under Recent isn't repeated under Popular places.
+                            suggestions = suggestions.filterNot { c ->
+                                recents.any { it.name == c.name && it.countryCode == c.countryCode }
+                            },
+                            recents = recents,
+                            onPickLocation = onPickLocation,
+                            onPickCity = onPickCity
+                        )
+                    }
                 }
                 SearchField(
                     query = query,
@@ -250,7 +279,7 @@ fun SearchOverlay(
             }
             // The handle's touch area is taller than it looks (it overlaps the top of the results).
             Handle(
-                modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = inside },
+                modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = inside() },
                 onDelta = { delta ->
                     settle?.cancel()
                     if (delta > 0f) {
@@ -262,7 +291,7 @@ fun SearchOverlay(
                         // Up: undo any pull first, then grow.
                         val lift = minOf(-delta, pulled)
                         pulled -= lift
-                        extra = (extra + (-delta - lift)).coerceAtMost(tall - compact)
+                        extra = (extra + (-delta - lift)).coerceAtMost(room[0])
                     }
                 },
                 onRelease = { velocity ->
@@ -272,8 +301,8 @@ fun SearchOverlay(
                         onClose()
                     } else {
                         val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
-                        val goTall = (extra > (tall - compact) / 2 && velocity < 900f) || velocity < -900f
-                        val to = if (goTall) tall - compact else 0f
+                        val goTall = (extra > room[0] / 2 && velocity < 900f) || velocity < -900f
+                        val to = if (goTall) room[0] else 0f
                         settle = scope.launch {
                             launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
                             launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
@@ -319,7 +348,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
             .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             .height(56.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f))
             .padding(horizontal = 16.dp)
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -505,7 +534,9 @@ private fun ResultRow(
                     bottomEnd = if (last) big else small
                 )
             )
-            .background(if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest)
+            .background(
+                if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest.copy(alpha = 0.7f)
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {

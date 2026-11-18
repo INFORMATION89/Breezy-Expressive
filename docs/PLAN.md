@@ -904,3 +904,17 @@ Things to try on the phone before calling any motion done (debug and release bui
     **Fixed 2026-11-18:** the glass now clips while drawing, using an outline built from the size
     being drawn, and reads positions at draw time. The bud outline is measured from that size too.
     A screen recording shows the toolbar's ends stay round through the resize.
+- **2026-11-18 (performance, release build on the Pixel 7 at 90 Hz):** Fixed the frame drops the user
+  saw when swiping pages and opening search:
+  - Search's open spring no longer recomposes the whole shell every frame. The card's size and
+    place are worked out in layout only, and its results are built once the card is a third open.
+  - The blur behind search runs on a quarter-size copy of the page with a fixed radius, fading in
+    while the sharp page fades out. GPU peaks during the open went from 25 ms to about 14 ms, and
+    slow frames from about 12 to 3–4 per open.
+  - Glass caches its blur effect and outline. The bud uses a plain rounded outline when tucked in.
+    The animated sky renders in its own offscreen layer.
+  - All three pages stay built, so going Places to Forecast no longer builds Outlook mid-swipe
+    (that was a 28–54 ms spike).
+  - Fixed: the tucked-in search bubble swallowed taps on the Places tab.
+  - The search card is now translucent like the toolbar (user note), and Popular places no
+    longer repeats a city already under Recent.
