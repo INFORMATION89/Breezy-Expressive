@@ -243,13 +243,32 @@ Forecast screen (top to bottom):
   | Clear day | `#BFD3F2` | `#8FB0EE` | `#FFE1A8` | `#F3EBDD` | `#1E2340` |
   | Partly cloudy | `#F2D7C9` | `#9DAEE6` | `#F4A46B` | `#F7E3C8` | `#2A1A1A` |
   | Sunrise / sunset | `#F6B48A` | `#8C8FD6` | `#FF7B4A` | `#FFC870` | `#2B1408` |
-  | Clear night | `#1D1A3D` | `#C9B6F2` | `#5B5BD6` | `#0F0D22` | `#ECE9FF` |
+  | Clear night | `#1D1A3D` | `#8E7CD0` (was `#C9B6F2`, darkened 2026-11-18 for title contrast) | `#5B5BD6` | `#0F0D22` | `#ECE9FF` |
   | Overcast | `#C9CBD3` | `#A7ABB8` | `#E2DED8` | `#B9B4C4` | `#22252E` |
   | Rain | `#7E8FA8` | `#4D6185` | `#9FB7C9` | `#5B6E7E` | `#F2F5FA` |
   | Thunderstorm | `#3A3550` | `#1E1B33` | `#7A5FB0` | `#4A5570` | `#F1EEFA` |
   | Snow | `#E7ECF4` | `#C3D2EC` | `#FFFFFF` | `#D8D2EA` | `#1F2633` |
   | Fog / haze | `#D9D6D1` | `#EDEAE4` | `#C4C0BA` | `#E4E0DA` | `#26241F` |
   Dawn/dusk blend between the day and night palettes over time; grain stronger on dark palettes.
+- **Built 2026-11-18 (static version):** `ui/expressive/sky/` — `SkyCondition` (nine palettes above +
+  mapping from upstream's `WeatherCode`, golden hour within 40 min of sunrise/sunset) and
+  `SkyBackground` (base + three radial-gradient colour fields + tiled grain, baked once at half
+  resolution and cached for the last 6 palette/size pairs). Debug-only `SkyPreviewActivity` swipes
+  through all skies (`adb shell am start -n io.github.information89.solstice.debug/org.breezyweather.ui.expressive.sky.SkyPreviewActivity --ei page N`).
+  Swiping between full-screen skies on the Pixel 7 (debug build): median 12 → 5 ms, GPU 8 → 1 ms
+  after baking + cache.
+- **Night skies (decided 2026-11-18): hand-tuned + blending.** Every condition gets its own designed
+  night palette (rainy night, snowy night, foggy night…), and colours blend continuously with the
+  sun's elevation: day → golden hour → short blue-violet twilight → night, and back at dawn.
+- **Animation (decided 2026-11-18): calm drift + moving sun.** The colour fields drift very slowly
+  (barely noticeable); one warm light field is the **sun**, placed where the real sun is (rises left,
+  crosses the top, sets right, from the location's sunrise/sunset times) and moving with the time of
+  day; after dark it becomes a cool **moon** glow. It is a soft light, not a hard disc (mockup B's orb
+  was not chosen).
+- **Technique (decided 2026-11-18):** one small AGSL shader on Android 13+ (GPU), frame rate throttled
+  (e.g. 30 fps or less; the drift is slow), paused when off-screen, in battery saver and when the
+  system "Remove animations" setting is on. Android < 13 (and the paused cases) use the baked static
+  sky, with the sun field placed by time of day. Location cards stay static (baked) for scrolling.
 - Colours: derived from conditions and time of day, harmonised with the wallpaper (dynamic) palette
   so cards and text stay readable; text contrast checked in both themes.
 - Performance first: draw it cheaply, e.g. a few blurred shapes / a small pre-rendered bitmap scaled
@@ -517,3 +536,22 @@ Forecast screen (top to bottom):
 - **2026-11-18:** Added: replace the fade between settings screens with a spring push/parallax
   transition, predictive back, optional shared title.
 - **2026-11-18:** Gradient palette approved (nine conditions, table under "Forecast background").
+- **2026-11-18:** Sky background built (static, baked, cached; debug preview screen). Decided: hand-tuned
+  night palettes with continuous blending by sun elevation; calm drift + a sun/moon glow that follows
+  the real time of day; AGSL shader on Android 13+, static fallback. Repo renamed on GitHub to
+  `INFORMATION89/Solstice`; remote and links updated.
+- **2026-11-18:** Night skies built: `SkyWeather` (7 families, each with a day and a night palette,
+  approved night colours), `GoldenSky` and `TwilightSky`, `skyAt(weather, now, sunrise, sunset)`
+  blending by the sun's height (clear/partly cloudy: day → golden → twilight → night; others:
+  day ↔ night), and a sun/moon glow placed by time of day (rises left, peaks top, sets right). Debug
+  preview now has one page per weather and a 24 h slider (`--ei page N --ef hour H`). Moon glow
+  strengths lowered (clear 0.4, partly 0.3, snow 0.25) for readability. **Open:** on clear nights the
+  approved top-left lavender (`#C9B6F2`) still sits pale behind white title text; options: darken it
+  slightly, or add a soft legibility shade behind the title. Animated drift (AGSL) not built yet.
+- **2026-11-18:** Clear-night top-left field darkened `#C9B6F2` → `#8E7CD0` (user's choice) so the white
+  title reads at night (contrast with the title colour at the field's centre about 1.5:1 → 3:1; higher where it fades into the dark base).
+- **2026-11-18:** System bar icons (clock, notifications, battery, gesture bar) now follow the sky's
+  text colour (`ui/expressive/sky/SkySystemBars`): dark on light skies, light on dark skies, so icons
+  and text always match. Used in the sky preview; the Forecast/Days/Places screens will call it too.
+- **2026-11-18:** User: per-sky matching of icons and text is fine for now, but to **revisit later**
+  (open: how text, system icons and notification icons should look together on the skies).

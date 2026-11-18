@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solstice: debug-only screens (not in release builds). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Sky gradient preview: adb shell am start -n <debug app id>/org.breezyweather.ui.expressive.sky.SkyPreviewActivity -->
+        <activity
+            android:name="org.breezyweather.ui.expressive.sky.SkyPreviewActivity"
+            android:exported="true"
+            android:theme="@style/BreezyWeatherTheme" />
+    </application>
+</manifest>

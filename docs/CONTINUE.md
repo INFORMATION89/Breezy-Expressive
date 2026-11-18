@@ -5,7 +5,7 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 
 ## Where we are (2026-11-18)
 
-- **Repo:** this one (`INFORMATION89/Breezy-Expressive`): upstream Breezy Weather's files at `5ec3b9b`
+- **Repo:** this one (`INFORMATION89/Solstice`): upstream Breezy Weather's files at `5ec3b9b`
   **without upstream's git history** (see `UPSTREAM_BASE`). Never push upstream's history here.
 - **F0 done (2026-11-18):** snapshot, app name "Solstice", `applicationId`
   `io.github.information89.solstice` (renamed 2026-11-18; was `…breezyexpressive`), CI (`.github/workflows/build.yml`), first run on the
@@ -32,8 +32,8 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 2. In the SDK manager, install **Android SDK Platform 37** and **Build-Tools 37**.
 3. Clone and build:
    ```bash
-   git clone https://github.com/INFORMATION89/Breezy-Expressive.git
-   cd Breezy-Expressive
+   git clone https://github.com/INFORMATION89/Solstice.git
+   cd Solstice
    ./gradlew assembleBasicDebug
    ```
    If not using Android Studio, create `local.properties` with `sdk.dir=<path to your Android SDK>`
@@ -54,7 +54,7 @@ Keep a separate full clone of upstream, then apply the changes between our base 
 git clone https://github.com/breezy-weather/breezy-weather.git breezy-weather-upstream
 cd breezy-weather-upstream
 git diff 5ec3b9bcb <new-commit> -- . ':!.github' ':!README.md' > ../upstream.patch
-cd ../Breezy-Expressive
+cd ../Solstice   # your clone of this repo (folder name may differ)
 git apply -3 ../upstream.patch
 ```
 
