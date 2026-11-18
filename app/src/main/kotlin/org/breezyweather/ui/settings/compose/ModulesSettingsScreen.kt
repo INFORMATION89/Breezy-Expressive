@@ -65,7 +65,6 @@ import org.breezyweather.remoteviews.presenters.HourlyTrendWidgetIMP
 import org.breezyweather.remoteviews.presenters.MultiCityWidgetIMP
 import org.breezyweather.remoteviews.presenters.TextWidgetIMP
 import org.breezyweather.remoteviews.presenters.WeekWidgetIMP
-import org.breezyweather.remoteviews.presenters.notification.WidgetNotificationIMP
 import org.breezyweather.ui.common.composables.AnimatedVisibilitySlideVertically
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
@@ -83,7 +82,6 @@ import org.breezyweather.ui.settings.preference.sectionFooterItem
 import org.breezyweather.ui.settings.preference.sectionHeaderItem
 import org.breezyweather.ui.settings.preference.smallSeparatorItem
 import org.breezyweather.ui.settings.preference.switchPreferenceItem
-import org.breezyweather.wallpaper.MaterialLiveWallpaperService
 import java.text.Collator
 
 @Composable
@@ -117,43 +115,7 @@ fun ModulesSettingsScreen(
         ) {
             // widget.
             sectionHeaderItem(R.string.settings_modules_section_general)
-            clickablePreferenceItem(R.string.settings_modules_live_wallpaper_title) { id ->
-                PreferenceViewWithCard(
-                    titleId = id,
-                    summaryId = R.string.settings_modules_live_wallpaper_summary,
-                    isFirst = true
-                ) {
-                    try {
-                        context.startActivity(
-                            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                                .putExtra(
-                                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                                    ComponentName(context, MaterialLiveWallpaperService::class.java)
-                                )
-                                .addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK and Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                                )
-                        )
-                    } catch (e: ActivityNotFoundException) {
-                        try {
-                            context.startActivity(
-                                Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
-                                    .addFlags(
-                                        Intent.FLAG_ACTIVITY_NEW_TASK and Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                                    )
-                            )
-                        } catch (e2: ActivityNotFoundException) {
-                            SnackbarHelper.showSnackbar(
-                                context.getString(
-                                    R.string.settings_modules_live_wallpaper_error,
-                                    context.getString(R.string.brand_name)
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-            smallSeparatorItem()
+            // Breezy Expressive: live wallpaper removed.
             listPreferenceItem(R.string.settings_modules_week_icon_mode_title) { id ->
                 ListPreferenceView(
                     titleId = id,
@@ -244,134 +206,7 @@ fun ModulesSettingsScreen(
 
             largeSeparatorItem()
 
-            // notification.
-            sectionHeaderItem(R.string.settings_modules_section_notification_widget)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                listPreferenceItem(R.string.settings_notifications_permission) { title ->
-                    AnimatedVisibilitySlideVertically(
-                        visible = !hasNotificationPermission
-                    ) {
-                        PreferenceViewWithCard(
-                            iconId = R.drawable.ic_about,
-                            title = stringResource(title),
-                            summary = stringResource(
-                                R.string.settings_modules_notification_permission_summary,
-                                stringResource(R.string.action_grant_permission)
-                            ),
-                            surface = MaterialTheme.colorScheme.primaryContainer,
-                            onSurface = MaterialTheme.colorScheme.onPrimaryContainer,
-                            colors = ListItemDefaults.colors(
-                                containerColor = Color.Transparent
-                            ),
-                            isFirst = true,
-                            isLast = true,
-                            onClick = {
-                                postNotificationPermissionEnsurer {
-                                    updateNotificationIfNecessary(context)
-                                }
-                            }
-                        )
-                        largeSeparatorItem()
-                    }
-                }
-            }
-            switchPreferenceItem(R.string.settings_modules_notification_widget_title) { id ->
-                SwitchPreferenceView(
-                    titleId = id,
-                    summaryOnId = R.string.settings_enabled,
-                    summaryOffId = R.string.settings_disabled,
-                    checked = notificationEnabled,
-                    withState = false,
-                    enabled = hasNotificationPermission,
-                    isFirst = true,
-                    onValueChanged = {
-                        SettingsManager.getInstance(context).isWidgetNotificationEnabled = it
-                        if (it) { // open notification.
-                            postNotificationPermissionEnsurer {
-                                updateNotificationIfNecessary(context)
-                            }
-                        } else { // close notification.
-                            WidgetNotificationIMP.cancelNotification(context)
-                        }
-                    }
-                )
-            }
-            smallSeparatorItem()
-            switchPreferenceItem(R.string.settings_modules_notification_persistent_switch) { id ->
-                SwitchPreferenceView(
-                    titleId = id,
-                    summaryOnId = R.string.settings_enabled,
-                    summaryOffId = R.string.settings_disabled,
-                    checked = SettingsManager
-                        .getInstance(context)
-                        .isWidgetNotificationPersistent,
-                    enabled = notificationEnabled && hasNotificationPermission,
-                    onValueChanged = {
-                        SettingsManager
-                            .getInstance(context)
-                            .isWidgetNotificationPersistent = it
-                        updateNotificationIfNecessary(context)
-                    }
-                )
-            }
-            smallSeparatorItem()
-            listPreferenceItem(R.string.settings_modules_notification_style_title) { id ->
-                ListPreferenceView(
-                    titleId = id,
-                    selectedKey = SettingsManager.getInstance(context).widgetNotificationStyle.id,
-                    valueArrayId = R.array.notification_style_values,
-                    nameArrayId = R.array.notification_styles,
-                    enabled = notificationEnabled && hasNotificationPermission,
-                    card = true,
-                    onValueChanged = {
-                        SettingsManager
-                            .getInstance(context)
-                            .widgetNotificationStyle = NotificationStyle.getInstance(it)
-                        updateNotificationIfNecessary(context)
-                    }
-                )
-            }
-            smallSeparatorItem()
-            switchPreferenceItem(R.string.settings_modules_notification_temp_icon_switch) { id ->
-                SwitchPreferenceView(
-                    titleId = id,
-                    summaryOnId = R.string.settings_enabled,
-                    summaryOffId = R.string.settings_disabled,
-                    checked = SettingsManager
-                        .getInstance(context)
-                        .isWidgetNotificationTemperatureIconEnabled,
-                    enabled = notificationEnabled && hasNotificationPermission,
-                    onValueChanged = {
-                        SettingsManager
-                            .getInstance(context)
-                            .isWidgetNotificationTemperatureIconEnabled = it
-                        updateNotificationIfNecessary(context)
-                    }
-                )
-            }
-            smallSeparatorItem()
-            switchPreferenceItem(R.string.settings_modules_notification_feels_like_switch) { id ->
-                SwitchPreferenceView(
-                    titleId = id,
-                    summaryOnId = R.string.settings_enabled,
-                    summaryOffId = R.string.settings_disabled,
-                    checked = SettingsManager
-                        .getInstance(context)
-                        .isWidgetNotificationUsingFeelsLike,
-                    enabled = notificationEnabled &&
-                        hasNotificationPermission,
-                    isLast = true,
-                    onValueChanged = {
-                        SettingsManager
-                            .getInstance(context)
-                            .isWidgetNotificationUsingFeelsLike = it
-                        updateNotificationIfNecessary(context)
-                    }
-                )
-            }
-            sectionFooterItem(R.string.settings_modules_section_notification_widget)
-
-            largeSeparatorItem()
+            // Breezy Expressive: notification widget removed.
 
             sectionHeaderItem(R.string.settings_modules_broadcast_title)
             broadcastSources

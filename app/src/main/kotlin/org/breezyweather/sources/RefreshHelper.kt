@@ -94,10 +94,8 @@ import org.breezyweather.remoteviews.presenters.MaterialYouForecastWidgetIMP
 import org.breezyweather.remoteviews.presenters.MultiCityWidgetIMP
 import org.breezyweather.remoteviews.presenters.TextWidgetIMP
 import org.breezyweather.remoteviews.presenters.WeekWidgetIMP
-import org.breezyweather.remoteviews.presenters.notification.WidgetNotificationIMP
 import org.breezyweather.ui.main.utils.RefreshErrorType
 import org.breezyweather.ui.theme.resource.ResourcesProviderFactory
-import org.breezyweather.wallpaper.MaterialLiveWallpaperService
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
@@ -1135,34 +1133,16 @@ class RefreshHelper @Inject constructor(
         }
     }
 
-    fun updateNotificationIfNecessary(context: Context, locationList: List<Location>) {
-        if (WidgetNotificationIMP.isEnabled(context)) {
-            WidgetNotificationIMP.buildNotificationAndSendIt(context, locationList)
-        }
-    }
+    // Breezy Expressive: notification widget and live wallpaper were removed; these stay as no-ops
+    // so upstream's callers don't need changing.
+    @Suppress("UNUSED_PARAMETER")
+    fun updateNotificationIfNecessary(context: Context, locationList: List<Location>) = Unit
 
-    suspend fun updateNotificationIfNecessary(context: Context) {
-        if (WidgetNotificationIMP.isEnabled(context)) {
-            val locationList = locationRepository.getXLocations(4, withParameters = false).toMutableList()
-            for (i in locationList.indices) {
-                locationList[i] = locationList[i].copy(
-                    weather = weatherRepository.getWeatherByLocationId(
-                        locationList[i].formattedId,
-                        withDaily = true,
-                        withHourly = i == 0, // Not needed in multi city
-                        withMinutely = false,
-                        withAlerts = i == 0, // Not needed in multi city
-                        withNormals = false
-                    )
-                )
-            }
-            updateNotificationIfNecessary(context, locationList)
-        }
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun updateNotificationIfNecessary(context: Context) = Unit
 
-    fun updateWallpaperIfNecessary(locationList: List<Location>) {
-        MaterialLiveWallpaperService.updateFirstLocation(locationList.firstOrNull())
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun updateWallpaperIfNecessary(locationList: List<Location>) = Unit
 
     /**
      * @param context

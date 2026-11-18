@@ -178,6 +178,21 @@ widgets, notifications, live wallpaper.
 - Performance first: blur is costly on the GPU, so measure frame times on the Pixel 7 (release
   build) and keep the blurred band small; same technique as the translucent overlays above.
 
+### Forecast background: soft gradient (added 2026-11-18, style still open)
+- The Forecast screen gets a soft, grainy gradient background reflecting the weather and time of
+  day, like the references the user shared: blurry colour fields with film grain (lavender/blue/
+  near-black at night; peach/orange/yellow for sun; blue sky into warm sunset). This updates the
+  earlier "no custom sky look" decision for the Forecast background only; the rest of the app
+  stays Material You.
+- **Open question:** a free gradient field like the references, or a **circular shape that stands
+  for the sun or moon** (a soft glowing orb whose position/colour follows the time of day) on a
+  gradient. Decide with mockups before building.
+- Colours: derived from conditions and time of day, harmonised with the wallpaper (dynamic) palette
+  so cards and text stay readable; text contrast checked in both themes.
+- Performance first: draw it cheaply, e.g. a few blurred shapes / a small pre-rendered bitmap scaled
+  up, or an AGSL shader on Android 13+; grain as a tiled noise texture. No per-frame redraw unless
+  something moves; measure frame times on the Pixel 7 (release build).
+
 ### New Material You Expressive icons everywhere
 - Replace upstream's UI icons (settings, toolbar, actions, rows) with Material Symbols in the
   Expressive style: Rounded, filled when selected, consistent weight/grade, matching the type.
@@ -259,6 +274,16 @@ widgets, notifications, live wallpaper.
   row icons → `IconBadge` (also in `ListPreference.kt`, `SwitchPreference.kt`) (F2).
 - `common/utils/helpers/IntentHelper.kt`: the three reorder screens open `ReorderActivity` (F2).
 - `AndroidManifest.xml`: `ReorderActivity` entry (F2).
+- **Cut (2026-11-18):** deleted packages `wallpaper/` (live wallpaper) and
+  `remoteviews/presenters/notification/` (notification widget), `res/xml/live_wallpaper.xml`.
+  References removed in `AndroidManifest.xml`, `background/receiver/BootReceiver.kt`,
+  `ui/settings/compose/ModulesSettingsScreen.kt`; `sources/RefreshHelper.kt` keeps
+  `updateNotificationIfNecessary` / `updateWallpaperIfNecessary` as no-op stubs so their callers stay
+  unchanged. Their strings and settings keys are left in place (harmless).
+- `sources/SourceManager.kt`: default address lookup is Android's geocoder when present (Nominatim
+  otherwise).
+- `gradle.properties`: fork links filled in (`app.report_issue`, source, releases, install, privacy,
+  GitHub org/repo/prefix).
 - Added: `res/values/strings_expressive.xml` (new strings kept out of upstream's `strings.xml`;
   English only so far).
 - Added (no upstream equivalent): `.gitattributes` (LF, so Spotless passes on Windows),
@@ -334,3 +359,13 @@ widgets, notifications, live wallpaper.
   notification widget; keep data sharing; widgets much later; weather sources to pick). Current
   location name from Android's built-in geocoder, Nominatim as fallback once the fork's contact
   links are set.
+- **2026-11-18:** Added: soft grainy gradient background for Forecast (references shared); open
+  question: gradient field vs a circular sun/moon shape.
+- **2026-11-18:** Cuts done: live wallpaper and notification widget removed (settings now show only
+  General and Data sharing in External modules). Debug APK 42.86 → 42.81 MB: these features were
+  small; the real size win will come from weather sources and libraries. Lookup fix: fork links set,
+  so Nominatim works again (the Forecast title shows the real place name, no "API key missing"
+  error); new locations default to Android's built-in geocoder. Existing locations keep their stored
+  lookup service (the current location still uses Nominatim; switch it in its location settings).
+  To do: `PRIVACY.md` and `INSTALL.md` are still upstream's text; the fork links point at them, so
+  rewrite them for Breezy Expressive before release.

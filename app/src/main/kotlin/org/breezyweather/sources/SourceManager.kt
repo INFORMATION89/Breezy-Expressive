@@ -17,6 +17,7 @@
 package org.breezyweather.sources
 
 import android.content.Context
+import android.location.Geocoder
 import breezyweather.domain.location.model.Location
 import breezyweather.domain.source.SourceFeature
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -526,7 +527,12 @@ class SourceManager @Inject constructor(
                 null
             }
 
-            SourceFeature.REVERSE_GEOCODING -> getReverseGeocodingSource("nominatim")
+            // Breezy Expressive: the phone's own geocoder first (no key, local names), Nominatim otherwise.
+            SourceFeature.REVERSE_GEOCODING -> if (BuildConfig.FLAVOR != "freenet" && Geocoder.isPresent()) {
+                getReverseGeocodingSource("nativegeocoder") ?: getReverseGeocodingSource("nominatim")
+            } else {
+                getReverseGeocodingSource("nominatim")
+            }
             else -> getWeatherSource("openmeteo")
         }
     }

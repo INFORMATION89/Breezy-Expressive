@@ -27,7 +27,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.breezyweather.common.extensions.workManager
-import org.breezyweather.remoteviews.presenters.notification.WidgetNotificationIMP
 import org.breezyweather.sources.RefreshHelper
 import javax.inject.Inject
 
@@ -53,13 +52,6 @@ class BootReceiver : BroadcastReceiver() {
                  * scheduled workers after the app has been killed/shutdown on some devices
                  */
                 context.workManager.getWorkInfosFlow(WorkQuery.fromStates(WorkInfo.State.ENQUEUED))
-
-                // Bring back notification-widget if necessary
-                if (WidgetNotificationIMP.isEnabled(context)) {
-                    GlobalScope.launch(Dispatchers.IO) {
-                        refreshHelper.updateNotificationIfNecessary(context)
-                    }
-                }
             }
         }
     }
