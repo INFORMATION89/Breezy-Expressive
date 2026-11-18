@@ -20,6 +20,7 @@ import android.content.Context
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
 import org.breezyweather.R
+import java.text.Normalizer
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.asin
@@ -114,6 +115,42 @@ object Cities {
             all.firstOrNull { it.name == name && it.countryCode == cc }
         }
         return home + world
+    }
+
+    @Volatile
+    private var folded: Array<String>? = null
+
+    /** Lower case without accents, so "sao" finds São Paulo and "zurich" finds Zürich. */
+    private fun fold(text: String): String {
+        // Most names are plain ASCII: just lower-case them (fast path for the 34 000-name index).
+        if (text.all { it.code < 128 }) return text.lowercase(Locale.ROOT)
+        val decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
+        val out = StringBuilder(decomposed.length)
+        for (c in decomposed) {
+            if (Character.getType(c) != Character.NON_SPACING_MARK.toInt()) out.append(c)
+        }
+        return out.toString().lowercase(Locale.ROOT)
+    }
+
+    /**
+     * Instant matches while typing: cities whose name starts with [query] (accents and case
+     * ignored), biggest first (the list is sorted by population).
+     */
+    fun search(context: Context, query: String, count: Int = 8): List<City> {
+        val all = load(context)
+        val names = folded ?: synchronized(this) {
+            folded ?: Array(all.size) { fold(all[it].name) }.also { folded = it }
+        }
+        val q = fold(query.trim())
+        if (q.isEmpty()) return emptyList()
+        val out = ArrayList<City>(count)
+        for (i in names.indices) {
+            if (names[i].startsWith(q)) {
+                out += all[i]
+                if (out.size == count) break
+            }
+        }
+        return out
     }
 
     private fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

@@ -958,3 +958,20 @@ Things to try on the phone before calling any motion done (debug and release bui
   stays on Places. The screen layout and opening animation are still to be proposed.
 - **2026-11-18:** Started thinking about **skeuomorphism** (ideas proposed in the conversation; none
   chosen yet).
+- **2026-11-18 (built, checked in a release build on the Pixel):** **Never-loading search.** The
+  loading indicator is gone. As you type, matches come from the bundled city list (prefix match,
+  accents and case ignored, biggest first), and the index is built in the background when search
+  opens. When the online answer arrives, the same city keeps its row (key: name + country) and its
+  region fills in. While waiting with no local match, the last rows stay. "No places called …"
+  only shows once the online answer is empty too. Mode switches are a short crossfade. The
+  **keyboard key is a check mark** (Done) that picks the highlighted match, which reads
+  "City · Select".
+- **2026-11-18 (user picked): postcards.** Places become postcards: the sky as the picture, a stamp
+  with the local time, a postmark with the country. Opening one (the new-window visit) pulls the
+  postcard out and turns it over into that place's Forecast and This week. Card styles proposed:
+  A classic split (picture left, address side right), B framed photo (white border, script name),
+  C stamp on sky (today's card plus a stamp and postmark). Opening motion still to agree.
+- **2026-11-18 (user picked): postcard style B, framed photo.** The sky is a photo inside a white
+  border, with the place name in script, a stamp with the local time in the corner, and the
+  temperature on the picture. Opening motion (pull out and flip, or pull out with no flip) still
+  to agree.

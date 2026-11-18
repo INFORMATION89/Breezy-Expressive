@@ -67,11 +67,11 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -183,8 +183,31 @@ fun SearchOverlay(
     }
     val suggestions by produceState(emptyList<City>(), near, countryCode) {
         value = withContext(Dispatchers.IO) { Cities.topPlaces(context, countryCode, near) }
+        // Build the typing index now, so the first letters already find cities.
+        withContext(Dispatchers.Default) { Cities.search(context, "a") }
     }
     val recents = remember(open) { RecentSearches.all(context) }
+
+    // Never looks like it's loading (agreed 2026-11-18): matches from the bundled city list show
+    // instantly as you type; when the online answer for this query arrives, rows settle into it
+    // (same city keeps its row). While waiting with no local match, the last rows stay.
+    val local by produceState(emptyList<City>(), query) {
+        val q = query.trim()
+        value = if (q.length < 2) emptyList() else withContext(Dispatchers.Default) { Cities.search(context, q) }
+    }
+    val answered = requested == query && results.second != LoadableLocationStatus.LOADING
+    val online = if (answered) results.first else emptyList()
+    var lastHits by remember { mutableStateOf(emptyList<Hit>()) }
+    val hits = remember(online, local, answered) {
+        val fresh = when {
+            online.isNotEmpty() -> online.map { it.toHit(onPickLocation) }
+            local.isNotEmpty() -> local.map { it.toHit(onPickCity) }
+            else -> emptyList()
+        }
+        uniqueKeys(fresh)
+    }
+    val shownHits = if (hits.isNotEmpty() || answered) hits else lastHits
+    SideEffect { if (hits.isNotEmpty()) lastHits = hits }
 
     val view = LocalView.current
     val ime = WindowInsets.ime
@@ -271,14 +294,13 @@ fun SearchOverlay(
                         Results(
                             context = context,
                             query = query,
-                            results = results.first,
-                            loading = results.second == LoadableLocationStatus.LOADING || requested != query,
+                            hits = shownHits,
+                            answered = answered,
                             // A place already under Recent isn't repeated under Popular places.
                             suggestions = suggestions.filterNot { c ->
                                 recents.any { it.name == c.name && it.countryCode == c.countryCode }
                             },
                             recents = recents,
-                            onPickLocation = onPickLocation,
                             onPickCity = onPickCity
                         )
                     }
@@ -287,7 +309,7 @@ fun SearchOverlay(
                     query = query,
                     onQuery = { query = it },
                     focus = focus,
-                    onSearch = { results.first.firstOrNull()?.let(onPickLocation) }
+                    onSelect = { shownHits.firstOrNull()?.pick?.invoke() }
                 )
             }
             // The handle's touch area is taller than it looks (it overlaps the top of the results).
@@ -353,7 +375,7 @@ private fun Handle(modifier: Modifier, onDelta: (Float) -> Unit, onRelease: (Flo
 }
 
 @Composable
-private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRequester, onSearch: () -> Unit) {
+private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRequester, onSelect: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -381,15 +403,56 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                // Results already follow the typing, so the key picks the highlighted match.
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onSelect() }),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus)
             )
         }
     }
 }
 
-private enum class ResultsMode { LOADING, NONE, FOUND, SUGGEST }
+private enum class ResultsMode { NONE, FOUND, SUGGEST }
+
+/** One row of results, from the online lookup or the bundled list; the same city keeps its key. */
+private class Hit(
+    val key: String,
+    val title: String,
+    val subtitle: String,
+    val zone: TimeZone,
+    val pick: () -> Unit,
+)
+
+private fun cityKey(name: String, countryCode: String?) = (name + "|" + countryCode.orEmpty()).lowercase()
+
+private fun Location.toHit(onPick: (Location) -> Unit): Hit {
+    val name = city.ifEmpty { customName ?: country }
+    return Hit(
+        key = cityKey(name, countryCode),
+        title = name,
+        subtitle = listOfNotNull(admin1?.takeIf { it.isNotEmpty() }, country).distinct().joinToString(", "),
+        zone = timeZone,
+        pick = { onPick(this) }
+    )
+}
+
+private fun City.toHit(onPick: (City) -> Unit) = Hit(
+    key = cityKey(name, countryCode),
+    title = name,
+    subtitle = country,
+    zone = TimeZone.getTimeZone(timeZone),
+    pick = { onPick(this) }
+)
+
+/** Same name in the same country (several Springfields) gets "#2", "#3"… so list keys stay unique. */
+private fun uniqueKeys(hits: List<Hit>): List<Hit> {
+    val seen = HashMap<String, Int>()
+    return hits.map { h ->
+        val n = (seen[h.key] ?: 0) + 1
+        seen[h.key] = n
+        if (n == 1) h else Hit(h.key + "#" + n, h.title, h.subtitle, h.zone, h.pick)
+    }
+}
 
 /**
  * The list inside the card (agreed 2026-11-18). It fades softly into the field and under the
@@ -403,18 +466,16 @@ private enum class ResultsMode { LOADING, NONE, FOUND, SUGGEST }
 private fun Results(
     context: Context,
     query: String,
-    results: List<Location>,
-    loading: Boolean,
+    hits: List<Hit>,
+    answered: Boolean,
     suggestions: List<City>,
     recents: List<City>,
-    onPickLocation: (Location) -> Unit,
     onPickCity: (City) -> Unit,
 ) {
     val now = System.currentTimeMillis()
     val searching = query.trim().length >= 2
     val mode = when {
-        searching && loading && results.isEmpty() -> ResultsMode.LOADING
-        searching && results.isEmpty() -> ResultsMode.NONE
+        searching && hits.isEmpty() && answered -> ResultsMode.NONE
         searching -> ResultsMode.FOUND
         else -> ResultsMode.SUGGEST
     }
@@ -422,14 +483,11 @@ private fun Results(
         spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset(1, 1))
     AnimatedContent(
         targetState = mode,
-        transitionSpec = { fadeIn(tween(180, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+        transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(90)) },
         label = "results",
         modifier = Modifier.fillMaxSize().softEdges()
     ) { shown ->
         when (shown) {
-            ResultsMode.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LoadingIndicator()
-            }
             ResultsMode.NONE -> Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -456,30 +514,28 @@ private fun Results(
                 )
             }
             ResultsMode.FOUND -> {
-                // When this list appeared: rows composed soon after rise in; rows scrolled into view
-                // later just appear.
-                val shownAt = remember { SystemClock.uptimeMillis() }
+                // Rows composed within a moment of a new set of hits rise in (new cities); rows that
+                // stay keep their place and slide; rows scrolled into view later just appear.
+                val changedAt = remember(hits.map { it.key }) { SystemClock.uptimeMillis() }
                 LazyColumn(
-                    reverseLayout = true, // the best result sits right above the field
+                    reverseLayout = true, // the best match sits right above the field
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(results, key = { _, it -> it.formattedId }) { i, location ->
+                    itemsIndexed(hits, key = { _, it -> it.key }) { i, hit ->
                         ResultRow(
-                            title = location.city.ifEmpty { location.customName ?: location.country },
-                            subtitle = listOfNotNull(location.admin1?.takeIf { it.isNotEmpty() }, location.country)
-                                .distinct()
-                                .joinToString(", "),
-                            zone = location.timeZone,
+                            title = hit.title,
+                            subtitle = hit.subtitle,
+                            zone = hit.zone,
                             now = now,
                             context = context,
                             highlighted = i == 0,
-                            first = i == results.lastIndex,
+                            first = i == hits.lastIndex,
                             last = i == 0,
                             modifier = Modifier
                                 .animateItem(fadeInSpec = null, placementSpec = rowSpring, fadeOutSpec = tween(120))
-                                .riseIn(order = i, shownAt = shownAt),
-                            onClick = { onPickLocation(location) }
+                                .riseIn(order = i, shownAt = changedAt),
+                            onClick = hit.pick
                         )
                     }
                 }
@@ -673,13 +729,25 @@ private fun ResultRow(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                // The keyboard's key picks this one.
+                if (highlighted) {
+                    Text(
+                        " · " + stringResource(R.string.search_select),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.primary,
+                        maxLines = 1
+                    )
+                }
+            }
             if (subtitle.isNotEmpty()) {
                 Text(
                     subtitle,
