@@ -86,16 +86,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -107,7 +111,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -411,7 +417,7 @@ internal fun PlacesPage(
     visiting: Set<String>,
     now: Long,
     onPage: Color,
-    onSelect: (Location) -> Unit,
+    onSelect: (Location, Rect?) -> Unit,
     onStar: (Location) -> Unit,
     onDelete: (Location) -> Unit,
     onAddCurrent: () -> Unit,
@@ -432,6 +438,9 @@ internal fun PlacesPage(
         )
         .map { it.formattedId }
     fun isPinned(id: String) = id == currentId || byId[id]?.isCurrentPosition == true
+
+    // Where each postcard is on screen, so a tapped one can grow into its window from there.
+    val cardBounds = remember { HashMap<String, Rect>() }
 
     // Reorder state: while a card is carried we show our own copy of the order and save on drop.
     val order = remember { mutableStateListOf<String>() }
@@ -543,9 +552,11 @@ internal fun PlacesPage(
                         visiting = id in visiting,
                         now = now,
                         context = context,
-                        onClick = { onSelect(location) },
+                        onClick = { onSelect(location, cardBounds[id]) },
                         // Long-press lifts the card; drag to move it, or release without moving to edit.
-                        modifier = Modifier.pointerInput(id) {
+                        modifier = Modifier.onGloballyPositioned {
+                            cardBounds[id] = it.boundsInRoot()
+                        }.pointerInput(id) {
                             var moved = 0f
                             detectDragGesturesAfterLongPress(
                                 onDragStart = {
@@ -724,7 +735,12 @@ private fun SwipeablePlace(
     }
 }
 
-/** A location wearing its own sky (baked, static: cheap while scrolling). Sinks a little while pressed. */
+/**
+ * A place as a postcard (agreed 2026-11-18, style B "framed photo"): its sky is the photo inside a
+ * cream paper frame, the name is written in script, a perforated stamp shows the local time, and
+ * the temperature sits on the picture. The main place wears a star; a visit has a dashed frame.
+ * The sky is baked and static, so scrolling stays cheap. Sinks a little while pressed.
+ */
 @Composable
 private fun PlaceCard(
     location: Location,
@@ -745,88 +761,136 @@ private fun PlaceCard(
     LaunchedEffect(pressed) {
         sink.animateTo(if (pressed) 0.98f else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
     }
-    SkyBackground(
-        state = sky,
-        modifier = modifier
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
+    val ink = Color(0xFF3A3731)
+    val frame = RoundedCornerShape(6.dp)
+    Box(
+        modifier
             .fillMaxWidth()
-            .height(112.dp)
+            .height(132.dp)
             .graphicsLayer {
                 scaleX = sink.value
                 scaleY = sink.value
                 // A visit is lighter until you keep it.
-                alpha = if (visiting) 0.86f else 1f
+                alpha = if (visiting) 0.9f else 1f
             }
-            .clip(RoundedCornerShape(if (selected) 32.dp else 24.dp))
-            .then(if (visiting) Modifier.dashedEdge(text, if (selected) 32.dp else 24.dp) else Modifier)
+            .shadow(if (selected) 6.dp else 2.dp, frame)
+            .clip(frame)
+            .background(paper)
+            .then(if (visiting) Modifier.dashedEdge(ink, 6.dp) else Modifier)
             .clickable(interactionSource = press, indication = ripple(), onClick = onClick)
+            .padding(7.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)
-        ) {
-            Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                val (title, city) = placeName(context, location)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Long names shrink to fit, then ellipsize.
-                    Text(
-                        title,
-                        color = text,
-                        style = MaterialTheme.typography.titleLargeEmphasized,
-                        autoSize = TextAutoSize.StepBased(
-                            16.sp,
-                            MaterialTheme.typography.titleLargeEmphasized.fontSize
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (starred) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(
-                            Icons.Filled.Star,
-                            contentDescription = stringResource(R.string.shell_starred),
-                            tint = text,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                city?.let {
-                    Text(
-                        it,
-                        color = text.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                // The current-position icon sits with the weather, on the line below the name.
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        SkyBackground(state = sky, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp))) {
+            Box(Modifier.fillMaxSize().padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 8.dp)) {
+                // Top left: the weather (and local time when it differs), with the current-position icon.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.align(Alignment.TopStart).padding(end = 56.dp)
+                ) {
                     if (location.isCurrentPosition) {
                         Icon(
                             Icons.Filled.NearMe,
                             contentDescription = stringResource(R.string.location_current),
-                            tint = text.copy(alpha = 0.72f),
-                            modifier = Modifier.size(14.dp)
+                            tint = text.copy(alpha = 0.8f),
+                            modifier = Modifier.size(13.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(
-                        // "Visiting" only shows on the selected place.
-                        placeSubtitle(context, location, visiting && selected, now),
-                        color = text.copy(alpha = 0.72f),
-                        style = MaterialTheme.typography.bodyMedium,
+                        // "Visiting" only shows on the selected place. The stamp has the local time.
+                        placeSubtitle(context, location, visiting && selected, now, withTime = false),
+                        color = text.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                // Bottom left: the name, handwritten; the city under a neighbourhood.
+                val (title, city) = placeName(context, location)
+                Column(Modifier.align(Alignment.BottomStart).padding(end = 84.dp)) {
+                    city?.let {
+                        Text(
+                            it,
+                            color = text.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            title,
+                            color = text,
+                            fontFamily = FontFamily.Cursive,
+                            fontSize = 30.sp,
+                            autoSize = TextAutoSize.StepBased(18.sp, 30.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (starred) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = stringResource(R.string.shell_starred),
+                                tint = text,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+                // Bottom right: the temperature, on the picture.
+                Text(
+                    current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                    color = text,
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.Light,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
             }
-            Text(
-                current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
-                color = text,
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Light
-            )
         }
+        // The stamp: the local time, perforated edge, overlapping the picture's corner.
+        Stamp(
+            time = time(context, Date(now), location.timeZone),
+            paper = paper,
+            ink = ink,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp)
+        )
+    }
+}
+
+/** A small postage stamp: paper with a dotted (perforated) edge and the local time. */
+@Composable
+private fun Stamp(time: String, paper: Color, ink: Color, modifier: Modifier = Modifier) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(width = 46.dp, height = 52.dp)
+            .drawBehind {
+                drawRect(paper)
+                val dot = 2.dp.toPx()
+                drawRect(
+                    color = ink.copy(alpha = 0.35f),
+                    topLeft = Offset(dot, dot),
+                    size = Size(size.width - 2 * dot, size.height - 2 * dot),
+                    style = Stroke(
+                        width = 1.2.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, 3.dp.toPx())),
+                        cap = StrokeCap.Round
+                    )
+                )
+            }
+            .padding(4.dp)
+    ) {
+        Text(
+            time,
+            color = ink,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
     }
 }
 
@@ -847,10 +911,18 @@ internal fun placeName(context: Context, location: Location): Pair<String, Strin
  * Under the place name: its weather, plus its local time and time difference when it's in another
  * time zone (always for a visit), e.g. "Visiting · Overcast · 14:32, +1 h".
  */
-private fun placeSubtitle(context: Context, location: Location, visiting: Boolean, now: Long): String {
+private fun placeSubtitle(
+    context: Context,
+    location: Location,
+    visiting: Boolean,
+    now: Long,
+    withTime: Boolean = true,
+): String {
     val diff = timeDifference(location.timeZone, now)
     val local = if (diff != null || visiting) {
-        listOfNotNull(time(context, Date(now), location.timeZone), diff).joinToString(", ")
+        listOfNotNull(if (withTime) time(context, Date(now), location.timeZone) else null, diff)
+            .joinToString(", ")
+            .ifEmpty { null }
     } else {
         null
     }

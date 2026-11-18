@@ -46,6 +46,7 @@ import org.breezyweather.domain.settings.SettingsChangedMessage
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.sources.RefreshHelper
 import org.breezyweather.sources.SourceManager
+import org.breezyweather.ui.expressive.components.ScreenPush
 import org.breezyweather.ui.settings.compose.AppearanceSettingsScreen
 import org.breezyweather.ui.settings.compose.BackgroundSettingsScreen
 import org.breezyweather.ui.settings.compose.DebugSettingsScreen
@@ -207,7 +208,12 @@ class SettingsActivity : BreezyActivity() {
 
         NavHost(
             navController = navController,
-            startDestination = startDestination
+            startDestination = startDestination,
+            // Solstice: iOS-style push instead of the default cross-fade.
+            enterTransition = ScreenPush.enter,
+            exitTransition = ScreenPush.exit,
+            popEnterTransition = ScreenPush.popEnter,
+            popExitTransition = ScreenPush.popExit
         ) {
             composable(SettingsScreenRouter.Root.route) {
                 RootSettingsView(

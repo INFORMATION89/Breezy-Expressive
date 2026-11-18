@@ -31,7 +31,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -41,9 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.CollapsingTopBar
 import kotlin.math.ln
 
 private val topAppBarElevation = 6.dp
@@ -61,6 +62,7 @@ internal fun ColorScheme.surfaceColorAtElevation(elevation: Dp): Color {
     return surfaceTint.copy(alpha = alpha).compositeOver(surface)
 }
 
+// Solstice: one title that moves and shrinks with the scroll (no cross-fade), see CollapsingTopBar.
 @Composable
 fun FitStatusBarTopAppBar(
     title: @Composable () -> Unit,
@@ -68,23 +70,19 @@ fun FitStatusBarTopAppBar(
     navigationIcon: @Composable (() -> Unit) = {},
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
-) = LargeFlexibleTopAppBar(
+) = CollapsingTopBar(
     title = title,
-    modifier = modifier,
     navigationIcon = navigationIcon,
     actions = actions,
-    colors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surface,
-        scrolledContainerColor = MaterialTheme.colorScheme.applyTonalElevation(
-            backgroundColor = MaterialTheme.colorScheme.surface,
-            elevation = topAppBarElevation
-        ),
-        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-        titleContentColor = MaterialTheme.colorScheme.onSurface,
-        actionIconContentColor = MaterialTheme.colorScheme.onSurface
-    ),
     scrollBehavior = scrollBehavior,
-    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+    containerColor = MaterialTheme.colorScheme.surface,
+    scrolledContainerColor = MaterialTheme.colorScheme.applyTonalElevation(
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        elevation = topAppBarElevation
+    ),
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+    modifier = modifier
 )
 
 @Composable
@@ -95,7 +93,7 @@ fun FitStatusBarTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) = FitStatusBarTopAppBar(
-    title = { Text(text = title) },
+    title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
     modifier = modifier,
     navigationIcon = {
         IconButton(onClick = onBackPressed) {

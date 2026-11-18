@@ -19,10 +19,9 @@ package org.breezyweather.ui.expressive.shell
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,12 +57,15 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
@@ -94,7 +97,8 @@ class ShellMessages {
 /**
  * The message, agreed 2026-11-18 ("rise and swipe"): it rises from behind the toolbar on a soft
  * spring and, after a few seconds, sinks back by itself. Swipe it sideways to dismiss: it follows
- * the finger with a slight tilt and flies off past a point, or springs back. No close button; Undo
+ * the finger with a slight tilt and flies off past a point, or springs back. It also follows the
+ * finger a little up and down; pulled down, it tucks behind the toolbar. No close button; Undo
  * is a compact action where it applies. Every motion can be caught mid-way.
  */
 @Composable
@@ -102,7 +106,12 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
     val message = messages.current ?: return
     val scope = rememberCoroutineScope()
     val rise = remember(message) { Animatable(0f) } // 0 = tucked behind the toolbar, 1 = shown
-    val slide = remember(message) { Animatable(0f) } // sideways, in px
+    // Where the finger has moved it (px). Plain state, written straight from the gesture; one
+    // cancellable settle animates it on release (no queued jumps that could cancel the settle).
+    var dx by remember(message) { mutableFloatStateOf(0f) }
+    var dy by remember(message) { mutableFloatStateOf(0f) }
+    var settle by remember(message) { mutableStateOf<Job?>(null) }
+    val tracker = remember(message) { VelocityTracker() }
     var width by remember { mutableStateOf(1) }
     var holding by remember(message) { mutableStateOf(false) }
     val soft = spring<Float>(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
@@ -112,9 +121,37 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
         if (messages.current === message) messages.current = null
     }
 
+    // Let go: past about a third sideways (or a fling) it flies off; pulled down past a little (or
+    // flung down) it tucks behind the toolbar; otherwise it springs back. Velocity carries over.
+    fun release(vx: Float, vy: Float, density: Float) {
+        val sideways = abs(dx) > width * 0.35f || abs(vx) > 1200f
+        val down = dy > 24f * density || vy > 900f
+        settle = scope.launch {
+            when {
+                sideways -> {
+                    val dir = if (dx + vx * 0.1f >= 0f) 1f else -1f
+                    launch { animate(dy, 0f, vy, soft) { v, _ -> dy = v } }
+                    animate(dx, dir * width * 1.3f, vx, spring(stiffness = Spring.StiffnessMediumLow)) { v, _ ->
+                        dx = v
+                    }
+                    if (messages.current === message) messages.current = null
+                }
+                down -> {
+                    launch { animate(dx, 0f, vx, soft) { v, _ -> dx = v } }
+                    launch { animate(dy, 0f, vy, soft) { v, _ -> dy = v } }
+                    sinkAndClear()
+                }
+                else -> {
+                    launch { animate(dx, 0f, vx, soft) { v, _ -> dx = v } }
+                    animate(dy, 0f, vy, soft) { v, _ -> dy = v }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(message) { rise.animateTo(1f, soft) }
     // Holding it (mid-swipe) pauses the timer; letting go restarts it.
     LaunchedEffect(message, holding) {
-        rise.animateTo(1f, soft)
         if (holding) return@LaunchedEffect
         delay(message.millis)
         sinkAndClear()
@@ -139,33 +176,46 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
                 .widthIn(max = 420.dp)
                 .heightIn(min = 48.dp)
                 .onSizeChanged { width = it.width.coerceAtLeast(1) }
+                // Before the layer, so the finger is tracked in screen space while the pill moves.
+                .pointerInput(message) {
+                    var rawY = 0f
+                    detectDragGestures(
+                        onDragStart = {
+                            settle?.cancel()
+                            holding = true
+                            rawY = dy
+                            tracker.resetTracking()
+                        },
+                        onDragEnd = {
+                            holding = false
+                            val v = tracker.calculateVelocity()
+                            release(v.x, v.y, density)
+                        },
+                        onDragCancel = {
+                            holding = false
+                            release(0f, 0f, density)
+                        },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            dx += amount.x
+                            rawY += amount.y
+                            // Follows the finger down; resists going up (a rubber band).
+                            dy = if (rawY > 0f) rawY * 0.7f else rawY * 0.25f
+                        }
+                    )
+                }
                 .graphicsLayer {
                     val r = rise.value
                     // Rises out from behind the toolbar (it sits below; the toolbar draws on top).
-                    translationY = (1f - r) * 56.dp.toPx()
-                    val x = slide.value
+                    translationY = (1f - r) * 56.dp.toPx() + dy
+                    val x = dx
                     translationX = x
                     rotationZ = x / width * 8f
                     alpha = (r * (1f - abs(x) / width)).coerceIn(0f, 1f)
                     scaleX = 0.92f + 0.08f * r
                     scaleY = 0.92f + 0.08f * r
                 }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta -> scope.launch { slide.snapTo(slide.value + delta) } },
-                    onDragStarted = { holding = true },
-                    onDragStopped = { velocity ->
-                        holding = false
-                        val far = abs(slide.value) > width * 0.35f || abs(velocity) > 1200f
-                        if (far) {
-                            val dir = if (slide.value + velocity * 0.1f >= 0f) 1f else -1f
-                            slide.animateTo(dir * width * 1.3f, spring(stiffness = Spring.StiffnessMediumLow), velocity)
-                            if (messages.current === message) messages.current = null
-                        } else {
-                            slide.animateTo(0f, soft, velocity)
-                        }
-                    }
-                )
                 .glass(glass, CircleShape, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .padding(start = 16.dp, end = if (message.action != null) 6.dp else 20.dp)

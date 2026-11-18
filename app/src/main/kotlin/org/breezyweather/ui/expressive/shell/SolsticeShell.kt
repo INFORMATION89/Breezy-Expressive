@@ -274,6 +274,21 @@ fun SolsticeShell(
         }
     }
 
+    // A postcard opened as a window (agreed 2026-11-18): one spring grows it from its card and back.
+    var windowId by rememberSaveable { mutableStateOf<String?>(null) }
+    var windowOrigin by remember { mutableStateOf<Rect?>(null) }
+    val windowProgress = remember { Animatable(0f) }
+    val windowSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
+    LaunchedEffect(windowId) {
+        if (windowId != null) windowProgress.animateTo(1f, windowSpring)
+    }
+    fun closeWindow() {
+        scope.launch {
+            windowProgress.animateTo(0f, windowSpring)
+            windowId = null
+        }
+    }
+
     val glass = rememberGlassSource()
     val searchBlur = rememberGraphicsLayer()
     val searchSharp = rememberGraphicsLayer()
@@ -385,8 +400,11 @@ fun SolsticeShell(
                         visiting = visiting,
                         now = now,
                         onPage = onPage,
-                        // Tapping a place selects it and stays on Places (no jump to Forecast).
-                        onSelect = { viewModel.setLocation(it.formattedId) },
+                        // Tapping a postcard opens it as a window (no jump, no change of place).
+                        onSelect = { place, bounds ->
+                            windowOrigin = bounds
+                            windowId = place.formattedId
+                        },
                         onStar = {
                             val id = it.formattedId
                             // One star: starring moves it here; starring the main place again clears it.
@@ -440,8 +458,8 @@ fun SolsticeShell(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(bottom = 12.dp)
-                    // The toolbar steps aside while search is open.
-                    .graphicsLayer { alpha = 1f - searchProgress.value }
+                    // The toolbar steps aside while search or a place window is open.
+                    .graphicsLayer { alpha = 1f - maxOf(searchProgress.value, windowProgress.value) }
             ) {
                 ShellMessageHost(messages, glass)
                 ShellToolbar(
@@ -463,6 +481,22 @@ fun SolsticeShell(
                 it.isCurrentPosition
             } ?: location
             )?.let { it.latitude to it.longitude }
+        val windowPlace = locations.firstOrNull { it.formattedId == windowId }
+        if (windowPlace != null) {
+            PlaceWindow(
+                location = windowPlace,
+                origin = windowOrigin,
+                progress = { windowProgress.value },
+                now = now,
+                onBackProgress = { e -> scope.launch { windowProgress.snapTo(1f - 0.5f * e) } },
+                onBackCancelled = { scope.launch { windowProgress.animateTo(1f, windowSpring) } },
+                onClose = { closeWindow() },
+                onDetails = {
+                    viewModel.setLocation(windowPlace.formattedId)
+                    actions.openDetails()
+                }
+            )
+        }
         SearchOverlay(
             open = searchOpen,
             progress = { searchProgress.value },

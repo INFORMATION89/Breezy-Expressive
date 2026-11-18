@@ -1004,3 +1004,32 @@ Things to try on the phone before calling any motion done (debug and release bui
   shell while it's on screen (location added, updated or already there, refresh errors with their
   action, "please wait"…), with an icon picked from the text. With "More details" open, or on
   other screens, the old snackbar is still used.
+- **2026-11-18 (fixed, checked in the debug app on the Pixel):** A half-flicked message stayed where it
+  was let go. Queued per-move jumps cancelled the spring-back, the same bug the Places swipe once
+  had. The gesture now writes plain state and one cancellable settle runs on release, carrying the
+  finger's velocity. **Added (user's request): vertical follow.** The message follows the finger
+  down (0.7×) and resists going up (0.25×). Pulled down past a little, or flung down, it tucks
+  behind the toolbar.
+- **2026-11-18 (built, checked in a release build on the Pixel):** **Postcards (style B)** in Places:
+  a cream paper frame (with a light shadow, stronger on the selected place), the place's sky as the
+  photo, the name in script (`FontFamily.Cursive`, shrinks to fit), the city small above it for the
+  current position, a perforated stamp with the local time (the top line keeps only the weather
+  and the time difference), the temperature on the picture, and a star on the main place. Visits
+  keep a dashed frame. **Postcard window** (`shell/PlaceWindow.kt`): tapping a postcard grows it
+  (one spring) from its bounds into a full-screen window. It shows that place's Forecast, with
+  This week a swipe to the left on the plain page. A slight tilt (up to 1.6°) peaks mid-way, the
+  frame thins away, the stamp fades, and the forecast fades in from about a quarter of the way.
+  Back (predictive, follows the finger, can be cancelled) shrinks it into its slot. The window
+  doesn't change the selected or main place; "More details" selects the place first. The toolbar
+  steps aside while it's open.
+- **2026-11-18 (built, checked in a release build on the Pixel):** **Screen push** in settings
+  (`components/ScreenPush.kt`, wired into `SettingsActivity`'s NavHost). The new screen slides in
+  from the right while the one below shifts a quarter left and dims to 55 %; back does the reverse,
+  with predictive back driven by Navigation. Springs have no bounce.
+- **2026-11-18 (built, checked in a release build on the Pixel):** **Collapsing title, follow and
+  settle** (`components/CollapsingTopBar.kt`, swapped in at `FitStatusBarTopAppBar`, so every
+  settings screen gets it). One title is laid out once at the large size and scaled down
+  (headlineMedium to titleLarge) as the bar collapses. It slides from its large place into the bar
+  row, with the sideways move leading so it clears the back arrow. It follows the scroll exactly,
+  never shows twice, and the existing scroll behaviour settles it open or closed. The bar takes on
+  the scrolled colour as it collapses. State is read in layout and draw only.
