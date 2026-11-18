@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import org.breezyweather.R
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
+import org.breezyweather.ui.expressive.components.SwitchThumbIcon
 import org.breezyweather.ui.theme.compose.themeRipple
 
 @Composable
@@ -144,6 +145,7 @@ fun SwitchPreferenceView(
                 Switch(
                     enabled = enabled,
                     checked = if (withState) state.value else checked,
+                    thumbContent = { SwitchThumbIcon(if (withState) state.value else checked) },
                     onCheckedChange = {
                         state.value = it
                         onValueChanged(it)
@@ -213,6 +215,7 @@ fun SwitchPreferenceView(
                 Switch(
                     enabled = enabled,
                     checked = if (withState) state.value else checked,
+                    thumbContent = { SwitchThumbIcon(if (withState) state.value else checked) },
                     onCheckedChange = {
                         state.value = it
                         onValueChanged(it)

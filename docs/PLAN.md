@@ -58,6 +58,20 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
     reorder) and settle from the release velocity.
   - Shared elements between screens instead of cross-fades where the same thing appears in both.
   - 60/120 Hz smooth: no layout work during animations, measure with frame timing on the Pixel 7.
+- **Translucent overlays (added 2026-11-18):** surfaces that sit on top of other surfaces (bottom
+  sheets, the floating toolbar, dialogs, menus, top bar when content scrolls under it) are
+  translucent, letting what's behind show through, instead of opaque.
+  - **Reference:** the settings page of the **Transit Go for Smartspacer** app, which is
+    translucent. The user wants that implementation copied. To do before building: find its
+    source and **check its license** (Smartspacer plugins are typically GPL-3.0; this repo is
+    LGPL-3.0, so code may not be copyable as is; if not, re-implement the same look ourselves).
+  - Likely technique: blur of the content behind (`RenderEffect`/`Modifier.blur`, Android 12+)
+    plus a tinted, partly transparent surface color; plain translucent tint as fallback on
+    Android < 12 and when the phone is in battery saver.
+  - Must stay cheap: blur costs GPU time, so measure frame times on the Pixel 7 when adding it
+    (see Performance).
+- **Performance first (added 2026-11-18):** the app must feel fast before new features land. Test on
+  a release (R8-minified, non-debuggable) build, not debug, when judging smoothness.
 - **Accessibility first:** font scale up to 200 %, TalkBack order and labels, 48 dp targets, RTL.
 
 ## Release 1 scope: Settings, Locations and the tab toolbar
@@ -94,11 +108,20 @@ widgets, notifications, live wallpaper.
 ### F2: Settings
 - Restyle the shared building blocks first (`preference/composables/`): every settings screen
   changes at once with few edits upstream.
-  - Sections → segmented list groups with a quiet section title.
-  - Switch rows with icons; list/multi-list choices as Expressive dialogs or bottom sheets;
-    small fixed choices (theme mode, units) as connected button groups.
-- `AppBar.kt` → `LargeFlexibleTopAppBar` that collapses on scroll.
-- Root settings: icon per category in a tonal shape, short summary line.
+  - Sections → segmented list groups with a quiet section title (upstream already groups rows with
+    `Material3ExpressiveCardListItem` first/last corners; adopt the theme's larger corners).
+  - Switch rows with a check/close icon in the thumb.
+  - List and multi-list choices open a **bottom sheet** (decided 2026-11-18): drag to dismiss,
+    interruptible, options as a segmented list with a check on the selected one.
+  - Small fixed choices (2–4 options: dark mode, units) shown **inline as connected button
+    groups** (decided): one tap, the selected button morphs to a pill.
+- `AppBar.kt` → `LargeFlexibleTopAppBar`: **large title that shrinks** into the bar as you scroll,
+  tracking the finger (decided).
+- Root settings: each category icon in its **own colored Expressive shape** (circle, rounded
+  square, petal…), colors derived from the wallpaper palette, like Android 16 Settings (decided).
+  Short summary line under each title.
+- Mockup reviewed 2026-11-18: home with colored shapes, Appearance with button groups and an icon
+  switch, Language as a bottom sheet.
 - Reorder screens (cards, daily/hourly trends): rewrite the 3 View activities in Compose with
   drag handles and haptics (LazyColumn + a small reorder helper), same stored data.
 
@@ -139,6 +162,12 @@ widgets, notifications, live wallpaper.
 - `app/src/main/kotlin/org/breezyweather/ui/theme/compose/Theme.kt`: `BreezyWeatherTheme` delegates
   to `ExpressiveTheme`; upstream's placeholder purple schemes removed (F1).
 - `app/src/res_fork/**`: launcher icon (F0; fork-only resources).
+- `ui/settings/preference/composables/SwitchPreference.kt`: check/close icon in the switch thumb (F2).
+- `ui/settings/preference/composables/ListPreference.kt`: inline button group for small choices;
+  bottom sheet replaces the list dialog (old dialog code removed) (F2).
+- `ui/settings/preference/composables/Preference.kt`: leading icon → `IconBadge` (F2).
+- `ui/common/widgets/insets/FitSystemBarComposeWrappers.kt`: `LargeTopAppBar` →
+  `LargeFlexibleTopAppBar` (F2).
 - Added (no upstream equivalent): `.gitattributes` (LF, so Spotless passes on Windows),
   `app/src/main/res/font/google_sans_flex.ttf`, `third_party/fonts/GoogleSansFlex-OFL.txt`,
   `tools/make_icon.py`, `app/src/main/kotlin/org/breezyweather/ui/expressive/**`.
@@ -175,3 +204,18 @@ widgets, notifications, live wallpaper.
 - Noticed: with a current location, the main screen shows "Nominatim (Address lookup): Required
   API key missing". Forks must configure their own keys/contact for some sources; look at it
   before release (F4).
+- **2026-11-18:** F2 design agreed from a mockup: colored Expressive icon shapes on the settings
+  home, bottom sheets for lists, inline connected button groups for small choices, large title
+  that shrinks on scroll, icon switches.
+- **2026-11-18:** F2 part 1 built and checked on the Pixel 7 (debug build): `ui/expressive/components/`
+  `IconBadge` (category icon in its own colored `MaterialShapes` shape, hue fixed per category, tone
+  from the wallpaper scheme), `InlineChoiceButtons` (2–3 short options as a connected
+  `ToggleButton` group; labels drop a trailing "(details)", which stays in the summary; long
+  translations fall back to the sheet), `ChoiceSheet` (bottom sheet, segmented options,
+  slightly translucent), `SwitchThumbIcon`. Settings title is now `LargeFlexibleTopAppBar`.
+  **F2 left:** multi-select lists still use upstream's dialog; list/switch rows with icons still
+  show plain icons; press/selection shape morph on rows; reorder screens in Compose; real blur
+  for translucent overlays (needs the Transit Go license check first).
+- Performance, quick look: the release build was too slow to wait for, so work continues on debug.
+  Debug frame stats on the Pixel: median 7 ms, ~4–5 % janky frames, worst 1 % at 125–250 ms.
+  Judge smoothness on a release build before the next milestone.

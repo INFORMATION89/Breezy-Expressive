@@ -69,6 +69,10 @@ import org.breezyweather.domain.source.SelectableSource
 import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
+import org.breezyweather.ui.expressive.components.ChoiceSheet
+import org.breezyweather.ui.expressive.components.InlineChoiceButtons
+import org.breezyweather.ui.expressive.components.choiceLabel
+import org.breezyweather.ui.expressive.components.isInlineChoice
 import org.breezyweather.ui.theme.compose.themeRipple
 import java.util.Date
 
@@ -183,6 +187,8 @@ fun ListPreferenceView(
     val listSelectedState = remember { mutableStateOf(selectedKey) }
     val dialogOpenState = remember { mutableStateOf(false) }
     val currentSummary = summary(LocalContext.current, if (withState) listSelectedState.value else selectedKey)
+    // Breezy Expressive: 2–3 short options are shown inline as a connected button group.
+    val inline = isInlineChoice(valueArray, nameArray, enableArray, dismissButton != null || trailingContent != null)
 
     ListItem(
         colors = colors,
@@ -194,7 +200,7 @@ fun ListPreferenceView(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = themeRipple(),
                 onClick = { dialogOpenState.value = true },
-                enabled = enabled
+                enabled = enabled && !inline
             )
             .padding(PaddingValues(vertical = 8.dp)),
         leadingContent = if (iconId != null) {
@@ -225,7 +231,35 @@ fun ListPreferenceView(
                 }
             }
         },
-        supportingContent = if (currentSummary?.isNotEmpty() == true) {
+        supportingContent = if (inline) {
+            {
+                Column {
+                    val selectedName = nameArray.getOrNull(
+                        valueArray.indexOf(if (withState) listSelectedState.value else selectedKey)
+                    )
+                    // Keep the summary only when it says more than the selected button does.
+                    if (currentSummary?.isNotEmpty() == true && currentSummary != selectedName?.let(::choiceLabel)) {
+                        Text(
+                            text = currentSummary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = dimensionResource(R.dimen.small_margin))
+                        )
+                    }
+                    InlineChoiceButtons(
+                        valueArray = valueArray,
+                        nameArray = nameArray,
+                        selected = if (withState) listSelectedState.value else selectedKey,
+                        enabled = enabled,
+                        onSelect = {
+                            if (withState) listSelectedState.value = it
+                            onValueChanged(it)
+                        },
+                        modifier = Modifier.padding(top = dimensionResource(R.dimen.small_margin))
+                    )
+                }
+            }
+        } else if (currentSummary?.isNotEmpty() == true) {
             {
                 Column {
                     Spacer(modifier = Modifier.height(dimensionResource(R.dimen.small_margin)))
@@ -249,77 +283,19 @@ fun ListPreferenceView(
     )
 
     if (dialogOpenState.value) {
-        AlertDialogNoPadding(
-            onDismissRequest = { dialogOpenState.value = false },
-            title = {
-                Text(
-                    text = title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.headlineSmall
-                )
+        // Breezy Expressive: bottom sheet instead of upstream's dialog.
+        ChoiceSheet(
+            title = title,
+            valueArray = valueArray,
+            nameArray = nameArray,
+            enableArray = enableArray,
+            selected = if (withState) listSelectedState.value else selectedKey,
+            onSelect = {
+                if (withState) listSelectedState.value = it
+                onValueChanged(it)
             },
-            text = {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    itemsIndexed(valueArray.zip(nameArray)) { i, it ->
-                        // Special case with groups
-                        if (it.second.isEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = dimensionResource(R.dimen.small_margin)
-                                    )
-                            ) {
-                                if (i != 0) {
-                                    Spacer(modifier = Modifier.height(dimensionResource(R.dimen.large_margin)))
-                                } else {
-                                    Spacer(modifier = Modifier.height(dimensionResource(R.dimen.small_margin)))
-                                }
-                                Text(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    text = it.first,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        } else {
-                            RadioButton(
-                                enabled = enableArray?.getOrNull(i) ?: true,
-                                selected = if (withState) {
-                                    listSelectedState.value == it.first
-                                } else {
-                                    selectedKey == it.first
-                                },
-                                onClick = {
-                                    if (enableArray?.getOrNull(i) != false) {
-                                        if (withState) {
-                                            listSelectedState.value = it.first
-                                        }
-                                        dialogOpenState.value = false
-                                        onValueChanged(it.first)
-                                    }
-                                },
-                                text = it.second
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { dialogOpenState.value = false }
-                ) {
-                    Text(
-                        text = stringResource(android.R.string.cancel),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            },
-            dismissButton = dismissButton
+            onDismiss = { dialogOpenState.value = false },
+            extraButton = dismissButton
         )
     }
 }
