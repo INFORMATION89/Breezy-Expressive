@@ -11,10 +11,19 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   `io.github.information89.breezyexpressive`, CI (`.github/workflows/build.yml`), first run on the
   Pixel 7, own launcher icon with themed-icon layer (regenerate with `tools/make_icon.py`).
   `./gradlew assembleBasicDebug` builds (first build 6–20 min).
-- **Design decided** (see PLAN.md): sky-blue fallback, Google Sans Flex, full Expressive shapes,
-  floating Forecast/Locations toolbar, interruptible spring motion.
-- **Next:** F1 (Expressive theme in `app/src/main/kotlin/org/breezyweather/ui/theme/compose/Theme.kt`),
-  then F2 Settings, F3 Locations. Details in PLAN.md.
+- **F1 done:** Expressive theme in `ui/expressive/theme/` (Google Sans Flex, expressive motion,
+  larger corners, sky-blue/amber fallback). `Theme.kt` delegates to it.
+- **F2 done** (except real blur): settings rows with colored icon shapes and press morph, inline
+  button groups, bottom sheets, icon switches, collapsing large title, Compose reorder screens
+  (`ui/expressive/reorder/`). New UI code lives in `ui/expressive/`; upstream files touched are
+  listed in PLAN.md.
+- **Next:** F3 (Locations + floating Forecast/Locations toolbar). Also on the list (PLAN.md,
+  "Planned next"): in-place block editing like Pixel Weather, Expressive icons, simpler settings,
+  no block fade-ins, edge blur; translucent overlays need the Transit Go license check first.
+- **Performance:** judge smoothness on a release build; debug is much slower. Release builds take
+  a long time the first time (R8).
+- **Windows:** `.gitattributes` keeps LF so Spotless passes. In Git Bash, set
+  `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr"` (Android Studio's JDK 25 works).
 
 ## Set up a new computer
 
