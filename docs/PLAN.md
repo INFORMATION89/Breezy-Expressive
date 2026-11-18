@@ -975,3 +975,14 @@ Things to try on the phone before calling any motion done (debug and release bui
   border, with the place name in script, a stamp with the local time in the corner, and the
   temperature on the picture. Opening motion (pull out and flip, or pull out with no flip) still
   to agree.
+- **2026-11-18 (user note): redesign the messages (toasts) and fix them; they don't go away on their
+  own** (design in "Messages (snackbars) redesign" above). Likely cause: messages with an action
+  (Undo) default to `SnackbarDuration.Indefinite` in Material 3. Fix: an explicit duration (Short,
+  or Long with Undo), together with the agreed "rise and swipe" redesign.
+- **2026-11-18 (agreed with the user): postcard opening, pull out with no flip.** Tapping a postcard
+  lifts it with a slight tilt, and it grows into a full-screen window with that place's Forecast and
+  This week. The white frame and stamp fade away while the sky photo grows into the window's sky,
+  and the forecast fades in as it grows (readable almost at once). Back plays it in reverse,
+  following the finger (predictive back, can be cancelled midway), and lands the card in its slot.
+  Chosen over the flip because checking a forecast is the most frequent action: no reading delay,
+  quick glance-and-back, and swiping between places inside the window later works like the pages.
