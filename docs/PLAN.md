@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **planned, F0 next**. Upstream base: `5ec3b9b` (2026-11-17).
+Status: **F0 in progress** (snapshot, identity, CI done; icon and first run on the phone left). Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -55,7 +55,7 @@ Out of scope for release 1: main weather screen, widgets, notifications, live wa
    - `applicationId` → `io.github.information89.breezyexpressive`; `namespace` stays
      `org.breezyweather` (keeps upstream code and diffs untouched).
    - Never build with the `breezy` flag; README says unofficial, not affiliated.
-3. **Build here:** JDK 17 + Android SDK (already on this Mac), `./gradlew :app:assembleBasicDebug`,
+3. **Build here:** JDK 21 (as upstream) + Android SDK (already on this Mac), `./gradlew assembleBasicDebug`,
    run on the Pixel 7.
 4. **Upstream updates without shared history:** keep a local full clone of upstream; to update,
    apply `git diff <old base>..<new base>` from upstream onto this repo (`git apply -3`), fix
@@ -111,3 +111,8 @@ _(none yet)_
 - **2026-11-17:** Studied upstream (`5ec3b9b`); wrote this draft. Name: Breezy Expressive.
 - **2026-11-17:** Decided: code as a no-history snapshot in this repo, `basic` flavor,
   `applicationId` `io.github.information89.breezyexpressive`, old custom design dropped. F0 detailed.
+- **2026-11-17:** F0 started: upstream snapshot at `5ec3b9b` without history (`.github/` and README
+  excluded, see `UPSTREAM_BASE`); app name "Breezy Expressive" and `applicationId`
+  `io.github.information89.breezyexpressive`; CI builds `basicDebug` + spotless (Java 21).
+  `assembleBasicDebug` builds locally (JDK 21, ~20 min cold). Not yet run on the phone; launcher icon
+  still upstream's generic fork icon.
