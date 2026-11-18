@@ -7,13 +7,12 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 
 - **Repo:** this one (`INFORMATION89/Breezy-Expressive`): upstream Breezy Weather's files at `5ec3b9b`
   **without upstream's git history** (see `UPSTREAM_BASE`). Never push upstream's history here.
-- **Done in F0:** snapshot, app name "Breezy Expressive", `applicationId`
-  `io.github.information89.breezyexpressive`, CI (`.github/workflows/build.yml`).
-  `./gradlew assembleBasicDebug` builds (first build 6–20 min). First run on the Pixel 7 works
-  (2026-11-18).
-- **Left in F0:** launcher icon: still upstream's generic fork icon in `app/src/res_fork/mipmap-*`;
-  needs our own (direction chosen: sun + wind swirl), with a monochrome layer for themed icons.
-- **F1 design decided** (see PLAN.md): sky-blue fallback, Google Sans Flex, full Expressive shapes.
+- **F0 done (2026-11-18):** snapshot, app name "Breezy Expressive", `applicationId`
+  `io.github.information89.breezyexpressive`, CI (`.github/workflows/build.yml`), first run on the
+  Pixel 7, own launcher icon with themed-icon layer (regenerate with `tools/make_icon.py`).
+  `./gradlew assembleBasicDebug` builds (first build 6–20 min).
+- **Design decided** (see PLAN.md): sky-blue fallback, Google Sans Flex, full Expressive shapes,
+  floating Forecast/Locations toolbar, interruptible spring motion.
 - **Next:** F1 (Expressive theme in `app/src/main/kotlin/org/breezyweather/ui/theme/compose/Theme.kt`),
   then F2 Settings, F3 Locations. Details in PLAN.md.
 
