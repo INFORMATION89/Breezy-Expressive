@@ -48,7 +48,7 @@ import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
  * Debug-only: swipe through the weathers and drag the slider through a whole day (sunrise 7:00,
  * sunset 18:30) to judge colours, golden hour, twilight, night and the sun/moon position.
  * adb shell am start -n io.github.information89.solstice.debug/org.breezyweather.ui.expressive.sky.SkyPreviewActivity
- * Optional extras: --ei page N (weather) --ef hour H (0–24).
+ * Optional extras: --ei page N (weather) --ef hour H (0–24) --ez static true (no drift).
  */
 class SkyPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +57,7 @@ class SkyPreviewActivity : ComponentActivity() {
         val weathers = SkyWeather.entries
         val startPage = intent.getIntExtra("page", 0).coerceIn(0, weathers.lastIndex)
         val startHour = intent.getFloatExtra("hour", 12f).coerceIn(0f, 24f)
+        val animated = !intent.getBooleanExtra("static", false)
         setContent {
             BreezyWeatherTheme {
                 var hour by remember { mutableFloatStateOf(startHour) }
@@ -67,7 +68,8 @@ class SkyPreviewActivity : ComponentActivity() {
                 HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                     val weather = weathers[page]
                     val sky = skyAt(weather, now, sunrise, sunset)
-                    SkyBackground(sky, Modifier.fillMaxSize()) {
+                    val skyModifier = Modifier.fillMaxSize()
+                    val body: @androidx.compose.runtime.Composable () -> Unit = {
                         Column(
                             modifier = Modifier.fillMaxSize().statusBarsPadding().padding(top = 48.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -85,6 +87,15 @@ class SkyPreviewActivity : ComponentActivity() {
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
+                    }
+                    if (animated) {
+                        AnimatedSkyBackground(
+                            sky,
+                            skyModifier,
+                            body
+                        )
+                    } else {
+                        SkyBackground(sky, skyModifier, body)
                     }
                 }
                 val current = skyAt(weathers[pager.currentPage], now, sunrise, sunset).palette

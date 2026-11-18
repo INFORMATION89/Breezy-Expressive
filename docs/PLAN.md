@@ -304,6 +304,51 @@ Forecast screen (top to bottom):
   theme's spatial springs, `SharedTransitionLayout` for the title; one shared definition in
   `ui/expressive`, one small edit in `SettingsActivity`.
 
+### Alerts and Live Updates (added 2026-11-18)
+Android's counterpart of iOS Live Activities is **Live Updates** (Android 16 promoted ongoing
+notifications: lock screen, status bar chip, always-on display; plain ongoing notification on older
+Android). Upstream already has weather-alert, precipitation and today/tomorrow notifications to
+build on (the separate notification *widget* was removed).
+- **Alerts for sudden changes and strong conditions:** a notification when the weather is about to
+  change sharply (rain starting soon, temperature drop, wind jump, storm arriving) and warnings for
+  strong conditions (official alerts from WMO/NWS/ECCC/MET Norway plus thresholds from the forecast:
+  very high UV, heat, strong gusts, heavy rain). Plain language ("Heavy rain in 20 min, until
+  about 16:00"), one notification per event, no repeats; per-type on/off and quiet hours.
+- **Live Update for ongoing rain:** while rain is coming or falling at the current location, an
+  ongoing Live Update shows the minute-by-minute picture (starts in / stops in, intensity bar from the
+  nowcast). It appears ~30 min before rain, updates as it goes, and disappears when it stops. Uses
+  the minutely (nowcast) data of Open-Meteo / MET Norway.
+- **Live Update for the daily brief:** a short forecast brief for the day ("Clear and mild, 12–22°,
+  rain after 18:00, take a jacket") as a Live Update at a **time the user chooses** (e.g. 7:00 on
+  weekdays, 9:00 at weekends), staying until dismissed or until the evening; optionally a second
+  brief in the evening for tomorrow. Shares the plain-language summary generator with the Forecast.
+- Needs: notification permission flow, background refresh timed for the brief, battery-friendly
+  scheduling (WorkManager, exact alarm only if needed), and a settings section for all three.
+
+### Sky motion setting (added 2026-11-18)
+- Appearance setting **"Sky motion"** as an inline button group: **Still · Calm · Gentle · Lively**.
+  - Still: no drift (the baked static sky, no animation running at all; saves battery).
+  - Calm: the first, very subtle drift (amplitude ~5–6 %, loops 79–151 s).
+  - **Gentle (default):** current drift (amplitude 8.5–10 %, loops 47–97 s), user-approved 2026-11-18.
+  - Lively: ~1.5× Gentle's amplitude and speed.
+- How: one `motion` factor (0 / calm / 1 / 1.5) passed to `AnimatedSkyBackground` as a shader uniform
+  scaling amplitude and speed; Still skips the shader. The weather effects (rain, snow, thunder) get
+  their own on/off, but also stop when Sky motion is Still. System "Remove animations" and battery
+  saver still override to Still.
+
+### Weather effects: rain, thunder, snow (added 2026-11-18)
+- Light, tasteful effects on top of the sky when it's actually happening at the location:
+  - **Rain:** fine diagonal streaks (density from the precipitation intensity; drizzle sparse,
+    downpour dense), slightly blurred, low contrast; optional droplets sliding on the "glass".
+  - **Thunder:** occasional soft flash that brightens the sky for a moment (random intervals,
+    rarer at low lightning probability), never strobing; no flashes if the user prefers reduced motion.
+  - **Snow:** slow drifting flakes of a few sizes with gentle sway (parallax: big flakes faster).
+  - Maybe later: fog banks drifting, wind making the streaks/flakes slant more.
+- Same performance rules as the drift: GPU only (AGSL shader or a small particle shader), throttled
+  frame rate, paused off-screen, in battery saver and with animations off (then: no effect, sky only).
+  Effects stay behind the text and cards and are toned down under them for readability.
+- Accessibility: flashes respect reduced-motion / "Remove animations"; option to turn effects off.
+
 ### App drawer name: "Solstice" or "Weather" (added 2026-11-18)
 - A setting (Appearance) to choose the name shown under the icon in the app drawer/home screen:
   **Solstice** or **Weather**, so the app can sit where people expect "Weather".
@@ -555,3 +600,19 @@ Forecast screen (top to bottom):
   and text always match. Used in the sky preview; the Forecast/Days/Places screens will call it too.
 - **2026-11-18:** User: per-sky matching of icons and text is fine for now, but to **revisit later**
   (open: how text, system icons and notification icons should look together on the skies).
+- **2026-11-18:** Drift built: `ui/expressive/sky/AnimatedSkyBackground` — one AGSL `RuntimeShader`
+  (same three fields, sun glow and overlay grain as the baked sky; fields wander on 79–151 s loops,
+  amplitude 5–6 % of the screen; the sun sways 1.5 %), redrawn at most 30 fps and only while the
+  screen is resumed (no recomposition, draw-only). Falls back to the baked `SkyBackground` below
+  Android 13, in battery saver and with animations off. Pixel 7 (debug build), 20 s idle on the
+  preview: ~28 fps, GPU 4 ms median, 99th percentile frame 16 ms, 1.8 % janky. Looks the same as
+  the static sky; drift is very subtle (mean change ~1/255 over 20 s): tune speed/amplitude after the
+  user has watched it. Preview: `--ez static true` shows the baked version.
+- **2026-11-18:** Added: alerts for sudden changes and strong conditions; Live Update for ongoing
+  rain; Live Update daily brief at a user-chosen time.
+- **2026-11-18:** Drift made more visible (amplitude 5–6 % → 8.5–10 %, loops 79–151 s → 47–97 s).
+  Added to plans: weather effects (rain streaks, thunder flashes, snow).
+  Cost after the change (20 s on the preview, debug build): ~28 fps, GPU 5 ms median, 99th
+  percentile frame 17 ms.
+- **2026-11-18:** Drift strength approved for now (Gentle). Added: "Sky motion" setting
+  (Still · Calm · Gentle · Lively).
