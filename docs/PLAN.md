@@ -830,3 +830,14 @@ Things to try on the phone before calling any motion done (debug and release bui
   only on the selected place. MainActivity window set to adjustResize on phones (the system was
   panning the window when the field got focus). Checked on the Pixel 7. Upstream's SearchActivity
   (and its sources panel) remains only for tablets.
+- **2026-11-18 (user notes + agreed):** Search round 2 (Arc-search-like): **one big card** holding the
+  results (segmented rows) and the field at its bottom, **fixed height with a handle**: drag up to
+  grow and show more (springs to compact / tall), drag down from compact follows the finger and
+  dismisses past a point (springs back if released early); **darker + blurred** content behind;
+  **no-results** state; results **settle in place** when they change (rows keep their spot and slide
+  on springs, new ones fade in with a small rise, removed ones fade out, card height eases). Search
+  button becomes a **round bubble bottom-right** above the toolbar on Places, morphing into the card.
+  Before typing: **5 big cities in your country (not within ~50 km) + 5 popular world cities**,
+  instead of nearby localities. Current location naming: **neighbourhood first**, city on a smaller
+  second line (Places card and Forecast), location icon next to the weather on the card; long names
+  shrink to fit, then ellipsize.
