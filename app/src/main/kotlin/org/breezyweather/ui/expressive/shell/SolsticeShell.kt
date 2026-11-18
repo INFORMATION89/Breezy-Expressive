@@ -75,9 +75,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -92,7 +99,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
@@ -391,35 +400,6 @@ fun SolsticeShell(
                     // The toolbar steps aside while search is open.
                     .graphicsLayer { alpha = 1f - searchProgress.value }
             ) {
-                // The search bubble: only on Places (it comes and goes with the swipe), bottom right
-                // above the toolbar. The search card grows out of it.
-                val onPlaces by remember {
-                    derivedStateOf { abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_PLACES) < 0.5f }
-                }
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(end = 16.dp, bottom = 12.dp)
-                        .size(56.dp)
-                        .onGloballyPositioned { searchOrigin = it.boundsInRoot() }
-                        .graphicsLayer {
-                            val d = abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_PLACES)
-                            val v = (1f - d * 2f).coerceIn(0f, 1f)
-                            alpha = if (searchProgress.value > 0f) 0f else v
-                            scaleX = 0.8f + 0.2f * v
-                            scaleY = 0.8f + 0.2f * v
-                        }
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable(enabled = onPlaces && !searchOpen) { searchOpen = true }
-                ) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = stringResource(R.string.shell_search_elsewhere),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
                 SnackbarHost(snackbar)
                 ShellToolbar(
                     pager = pager,
@@ -427,7 +407,10 @@ fun SolsticeShell(
                     weather = SkyWeather.of(location?.weather?.current?.weatherCode),
                     glass = glass,
                     labelShown = labelShown,
-                    onTab = { scope.launch { pager.animateScrollToPage(it) } }
+                    onTab = { scope.launch { pager.animateScrollToPage(it) } },
+                    searchEnabled = !searchOpen,
+                    onSearch = { searchOpen = true },
+                    onSearchBounds = { searchOrigin = it }
                 )
             }
         }
@@ -553,6 +536,9 @@ private fun ShellToolbar(
     glass: GlassSource,
     labelShown: List<Float>,
     onTab: (Int) -> Unit,
+    searchEnabled: Boolean,
+    onSearch: () -> Unit,
+    onSearchBounds: (Rect) -> Unit,
 ) {
     val tabs = listOf(
         Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
@@ -580,7 +566,70 @@ private fun ShellToolbar(
     val onPrimary = lerp(MaterialTheme.colorScheme.onPrimary, onSkyAccent, open[PAGE_FORECAST])
     val onSurface = MaterialTheme.colorScheme.onSurface
 
-    Box(Modifier.glass(glass, CircleShape, tint).padding(4.dp)) {
+    // The search bud (agreed 2026-11-18, "gooey bud"): on Places a round search button swells out of
+    // the pill's right end, held by a stretchy glass neck, and snaps free into its slot beside the
+    // toolbar. Pill, neck and bubble are one glass shape. The swipe drives it; only the neck's
+    // snap (and its regrowth on the way back) is a spring.
+    val bud = open[PAGE_PLACES]
+    val height = 52.dp
+    val gap = 10.dp
+    val pillWidth = starts.last() + 8.dp
+    val joined = bud < 0.97f
+    val neck = remember { Animatable(1f) }
+    LaunchedEffect(joined) {
+        neck.animateTo(if (joined) 1f else 0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow))
+    }
+    val density = LocalDensity.current
+    val shape = with(density) {
+        BudShape(
+            pillWidth = pillWidth.toPx(),
+            centre = (pillWidth - height / 2 + (gap + height) * bud).toPx(),
+            neck = neck.value,
+            gap = gap.toPx()
+        )
+    }
+    Box(Modifier.width(pillWidth + (gap + height) * bud).height(height).glass(glass, shape, tint)) {
+        ToolbarTabs(
+            pillWidth, open, shown, widths, starts, highlightX, highlightW, primary, onPrimary, onSurface, tabs,
+            pager, onTab
+        )
+        val iconAlpha = ((bud - 0.6f) / 0.4f).coerceIn(0f, 1f)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .offset(x = pillWidth - height / 2 + (gap + height) * bud - height / 2)
+                .size(height)
+                .onGloballyPositioned { onSearchBounds(it.boundsInRoot()) }
+                .clip(CircleShape)
+                .clickable(enabled = searchEnabled && bud > 0.9f, onClick = onSearch)
+        ) {
+            Icon(
+                Icons.Filled.Search,
+                contentDescription = if (bud > 0.5f) stringResource(R.string.shell_search_elsewhere) else null,
+                tint = onSurface,
+                modifier = Modifier.graphicsLayer { alpha = iconAlpha }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolbarTabs(
+    pillWidth: Dp,
+    open: List<Float>,
+    shown: List<Float>,
+    widths: List<Dp>,
+    starts: List<Dp>,
+    highlightX: Dp,
+    highlightW: Dp,
+    primary: Color,
+    onPrimary: Color,
+    onSurface: Color,
+    tabs: List<Tab>,
+    pager: PagerState,
+    onTab: (Int) -> Unit,
+) {
+    Box(Modifier.width(pillWidth).padding(4.dp)) {
         Box(
             Modifier
                 .offset(x = highlightX)
@@ -622,6 +671,48 @@ private fun ShellToolbar(
 }
 
 private operator fun Dp.times(f: Float): Dp = Dp(value * f)
+
+/**
+ * The toolbar pill plus the search bubble, as one outline. The bubble is a circle as tall as the
+ * pill whose centre slides from the pill's right cap ([centre] = cap centre: hidden in it) to its
+ * slot. Once they separate, a neck (two curves pinching towards the middle) joins them; it thins as
+ * they part and vanishes with [neck] = 0.
+ */
+private class BudShape(
+    private val pillWidth: Float,
+    private val centre: Float,
+    private val neck: Float,
+    private val gap: Float,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val r = size.height / 2f
+        val pill = Path().apply { addRoundRect(RoundRect(0f, 0f, pillWidth, size.height, CornerRadius(r, r))) }
+        val ball = Path().apply { addOval(Rect(centre - r, 0f, centre + r, size.height)) }
+        var path = Path.combine(PathOperation.Union, pill, ball)
+        val cap = pillWidth - r
+        val apart = (centre - r) - pillWidth // space between pill and bubble
+        if (neck > 0.02f && apart > 0f) {
+            // Attach where the circles face each other, 50 degrees above and below the axis.
+            val dx = r * 0.643f
+            val dy = r * 0.766f
+            val thinning = (apart / gap).coerceIn(0f, 1f)
+            val waist = (neck.coerceIn(0f, 1.3f) * (1.5f - 1.2f * thinning) * r).coerceAtMost(2 * dy)
+            val mid = (cap + centre) / 2f
+            // Control points chosen so the curve's midpoint is exactly at the waist.
+            val top = r + dy - waist
+            val bottom = r - dy + waist
+            val bridge = Path().apply {
+                moveTo(cap + dx, r - dy)
+                quadraticTo(mid, top, centre - dx, r - dy)
+                lineTo(centre - dx, r + dy)
+                quadraticTo(mid, bottom, cap + dx, r + dy)
+                close()
+            }
+            path = Path.combine(PathOperation.Union, path, bridge)
+        }
+        return Outline.Generic(path)
+    }
+}
 
 /** The Forecast tab's icon follows the current weather. */
 private fun conditionIcon(weather: SkyWeather, night: Boolean): ImageVector = when (weather) {

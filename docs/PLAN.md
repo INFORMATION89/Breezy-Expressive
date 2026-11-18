@@ -866,3 +866,31 @@ Things to try on the phone before calling any motion done (debug and release bui
   screen. The sky already follows the place; the app theme follows the system, and so does "More
   details". The search handle grabs a 40 dp strip but looks unchanged (user note). Removed the
   unused "Cities nearby" code and string.
+- **2026-11-18 (animations agreed with the user):**
+  - **Search bud: gooey bud.** On Places the search bubble swells out of the right edge of the
+    toolbar's Places pill. A stretchy glass neck keeps it joined, then it snaps free into its slot
+    in line with the toolbar on a soft spring. It is driven by the pager swipe (a half swipe gives
+    a half-out bud) and merges back the same way.
+  - **Messages: rise and swipe.** A message rises from behind the toolbar on a soft spring and
+    auto-hides by sinking back. Swipe it sideways to dismiss: it follows the finger with a slight
+    tilt and flies off past a threshold, or springs back.
+  - **Collapsing titles: follow and settle.** A single title moves and shrinks exactly with the
+    scroll. On release it springs to fully expanded or fully collapsed. No fades and never two
+    titles at once.
+  - **Screen transitions: iOS-style push.** The new screen slides in from the right while the old
+    one shifts slightly left and dims; back reverses it. Predictive back drags with the finger and
+    can be cancelled midway.
+- **2026-11-18 (built, checked on the Pixel):** The gooey search bud. The toolbar pill, the neck
+  and the search bubble are one glass outline (`BudShape` in `SolsticeShell.kt`). The pager swipe
+  slides the bubble out of the pill's right cap, and the group recentres as it widens. Once they
+  part, a neck pinches between them and thins with distance, then snaps away on a bouncy spring
+  (damping 0.5) near the end of the swipe and regrows on the way back. Tapping the bubble opens the
+  search card from it. The floating bubble above the toolbar is gone. Debug build while swiping:
+  GPU 5 ms median, 7.8 % janky frames (debug). Not yet measured in release.
+- **2026-11-18 (user note): first-time setup, redesigned and very simple.**
+  1. **"Where are you?"** A short line of text and a search box (the same search as Places),
+     plus "Use my current location".
+  2. **Where the weather comes from.** A very simplified source choice (one recommended option
+     preselected, a few plain-language alternatives), with a clear note that **you can change it
+     later** in settings.
+  Replaces upstream's onboarding. Screens and motion still to be proposed and agreed.
