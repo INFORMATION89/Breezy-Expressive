@@ -42,7 +42,9 @@ class AndroidGeocoderService @Inject constructor() : AndroidGeocoderServiceStub(
                         city = it.locality,
                         district = it.subLocality,
                         admin1 = it.adminArea,
-                        admin2 = it.subAdminArea,
+                        // Solstice: some geocoders leave the borough out (e.g. Mexico City's alcaldías);
+                        // it's the part of the address line just before the postcode and city.
+                        admin2 = it.subAdminArea ?: boroughFromAddressLine(it),
                         country = it.countryName,
                         countryCode = it.countryCode
                     )
@@ -50,5 +52,25 @@ class AndroidGeocoderService @Inject constructor() : AndroidGeocoderServiceStub(
             }
             send(locationList)
         }
+    }
+}
+
+/**
+ * Solstice: the borough from a full address line like "Calle 1, San Miguel Chapultepec I Secc,
+ * Miguel Hidalgo, 11850 Ciudad de México, CDMX, Mexico": the part right before the one that
+ * holds the postcode or the city, when it isn't the neighbourhood itself.
+ */
+private fun boroughFromAddressLine(address: android.location.Address): String? {
+    val line = address.getAddressLine(0) ?: return null
+    val parts = line.split(",").map { it.trim() }
+    val anchor = parts.indexOfFirst { part ->
+        (address.postalCode != null && part.contains(address.postalCode!!)) ||
+            (address.locality != null && part.startsWith(address.locality!!))
+    }
+    if (anchor <= 0) return null
+    val candidate = parts[anchor - 1]
+    return candidate.takeIf {
+        it.isNotEmpty() && it != address.subLocality && it != address.locality &&
+            it.none { c -> c.isDigit() }
     }
 }

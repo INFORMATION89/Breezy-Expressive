@@ -21,6 +21,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +75,9 @@ import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
+import org.breezyweather.ui.expressive.sky.SkySystemBars
 import org.breezyweather.ui.expressive.sky.SkyWeather
+import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
 import kotlin.math.abs
 
 /**
@@ -110,164 +116,174 @@ internal fun PlaceWindow(
         }
     }
     val sky = skyFor(location, now)
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
-    val page = if (dark) Color.Black else Color.White
-    val onPage = if (dark) Color.White else Color.Black
-    val pager = rememberPagerState(initialPage = 1) { 2 }
-    val days = rememberLazyListState()
+    // Night there: the window's own interface is dark (the main screen keeps your setting).
+    val night = sky.sunHeight < 0f
+    BreezyWeatherTheme(darkTheme = night || isSystemInDarkTheme()) {
+        val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
+        val page = if (dark) Color.Black else Color.White
+        val onPage = if (dark) Color.White else Color.Black
+        val pager = rememberPagerState(initialPage = 1) { 2 }
+        val days = rememberLazyListState()
+        // The status and navigation bar icons follow the window once it's mostly open: the sky's
+        // text colour on Forecast, the page's on This week (light icons on a dark night window).
+        val covers by remember { derivedStateOf { progress() > 0.5f } }
+        if (covers) {
+            SkySystemBars(if (pager.currentPage == 1) sky.palette else plainPalette(page, onPage))
+        }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val p = progress().coerceIn(0f, 1f)
-                val from = origin ?: Rect(0f, 0f, size.width, size.height)
-                val rect = Rect(
-                    from.left * (1f - p),
-                    from.top * (1f - p),
-                    from.right + (size.width - from.right) * p,
-                    from.bottom + (size.height - from.bottom) * p
-                )
-                // Clipped to the growing card; corners from the postcard's to square.
-                shape = RectShape(rect, 6.dp.toPx() * (1f - p))
-                clip = true
-                // Fades in over the postcard during the first moments (their skies are laid out
-                // differently), and out again at the very end of a close.
-                // A visit you didn't keep fades away all the way down instead.
-                alpha = if (fadeOut) p else (p / 0.12f).coerceIn(0f, 1f)
-            }
-            .drawWithContent {
-                drawContent()
-                val p = progress().coerceIn(0f, 1f)
-                val from = origin ?: return@drawWithContent
-                val rect = Rect(
-                    from.left * (1f - p),
-                    from.top * (1f - p),
-                    from.right + (size.width - from.right) * p,
-                    from.bottom + (size.height - from.bottom) * p
-                )
-                // The paper frame stretches out with it and thins away...
-                val edge = 7.dp.toPx() * (1f - p)
-                if (edge > 0.3f) {
-                    drawRoundRect(
-                        paper,
-                        topLeft = rect.topLeft + Offset(edge / 2, edge / 2),
-                        size = Size(rect.width - edge, rect.height - edge),
-                        cornerRadius = CornerRadius(6.dp.toPx()),
-                        style = Stroke(edge)
-                    )
-                }
-                // ...and the stamp fades.
-                val stampAlpha = (1f - p / 0.35f).coerceIn(0f, 1f)
-                if (stampAlpha > 0f) {
-                    val w = 46.dp.toPx()
-                    val h = 52.dp.toPx()
-                    drawRect(
-                        paper.copy(alpha = stampAlpha),
-                        topLeft = Offset(rect.right - w - 11.dp.toPx(), rect.top + 11.dp.toPx()),
-                        size = Size(w, h)
-                    )
-                }
-            }
-    ) {
-        // The window's own glass: its toolbar blurs the window's sky and pages, like the home toolbar.
-        val windowGlass = rememberGlassSource()
-        Box(Modifier.fillMaxSize().glassSource(windowGlass)) {
-            // The postcard's sky is what grows: laid out full screen and scaled down onto the card.
-            SkyBackground(
-                state = sky,
-                modifier = Modifier.fillMaxSize().graphicsLayer {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
                     val p = progress().coerceIn(0f, 1f)
                     val from = origin ?: Rect(0f, 0f, size.width, size.height)
-                    val left = from.left * (1f - p)
-                    val top = from.top * (1f - p)
-                    val right = from.right + (size.width - from.right) * p
-                    val bottom = from.bottom + (size.height - from.bottom) * p
-                    transformOrigin = TransformOrigin(0f, 0f)
-                    scaleX = (right - left) / size.width
-                    scaleY = (bottom - top) / size.height
-                    translationX = left
-                    translationY = top
+                    val rect = Rect(
+                        from.left * (1f - p),
+                        from.top * (1f - p),
+                        from.right + (size.width - from.right) * p,
+                        from.bottom + (size.height - from.bottom) * p
+                    )
+                    // Clipped to the growing card; corners from the postcard's to square.
+                    shape = RectShape(rect, 6.dp.toPx() * (1f - p))
+                    clip = true
+                    // Fades in over the postcard during the first moments (their skies are laid out
+                    // differently), and out again at the very end of a close.
+                    // A visit you didn't keep fades away all the way down instead.
+                    alpha = if (fadeOut) p else (p / 0.12f).coerceIn(0f, 1f)
                 }
-            ) {}
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
-                    .drawBehind {
-                        // This week sits on the plain page, like Outlook.
-                        val position = pager.currentPage + pager.currentPageOffsetFraction
-                        drawRect(page, alpha = abs(position - 1f).coerceIn(0f, 1f))
+                .drawWithContent {
+                    drawContent()
+                    val p = progress().coerceIn(0f, 1f)
+                    val from = origin ?: return@drawWithContent
+                    val rect = Rect(
+                        from.left * (1f - p),
+                        from.top * (1f - p),
+                        from.right + (size.width - from.right) * p,
+                        from.bottom + (size.height - from.bottom) * p
+                    )
+                    // The paper frame stretches out with it and thins away...
+                    val edge = 7.dp.toPx() * (1f - p)
+                    if (edge > 0.3f) {
+                        drawRoundRect(
+                            paper,
+                            topLeft = rect.topLeft + Offset(edge / 2, edge / 2),
+                            size = Size(rect.width - edge, rect.height - edge),
+                            cornerRadius = CornerRadius(6.dp.toPx()),
+                            style = Stroke(edge)
+                        )
                     }
-            ) {
-                HorizontalPager(
-                    state = pager,
-                    beyondViewportPageCount = 1,
-                    flingBehavior = PagerDefaults.flingBehavior(
-                        state = pager,
-                        snapAnimationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
-                    ),
-                    modifier = Modifier.fillMaxSize()
-                ) { index ->
-                    if (index == 0) {
-                        DaysPage(location, onPage, page, days) {
-                            abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
-                        }
-                    } else {
-                        ForecastPage(
-                            location = location,
-                            sky = sky,
-                            now = now,
-                            refreshing = false,
-                            onRefresh = {},
-                            onDetails = onDetails,
-                            onOpenPlaces = onClose
+                    // ...and the stamp fades.
+                    val stampAlpha = (1f - p / 0.35f).coerceIn(0f, 1f)
+                    if (stampAlpha > 0f) {
+                        val w = 46.dp.toPx()
+                        val h = 52.dp.toPx()
+                        drawRect(
+                            paper.copy(alpha = stampAlpha),
+                            topLeft = Offset(rect.right - w - 11.dp.toPx(), rect.top + 11.dp.toPx()),
+                            size = Size(w, h)
                         )
                     }
                 }
-                // "Visiting" until you pin it.
-                if (!pinned) {
-                    Text(
-                        stringResource(R.string.shell_visiting),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = sky.palette.text,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .statusBarsPadding()
-                            .padding(top = 6.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.28f))
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
+        ) {
+            // The window's own glass: its toolbar blurs the window's sky and pages, like the home toolbar.
+            val windowGlass = rememberGlassSource()
+            Box(Modifier.fillMaxSize().glassSource(windowGlass)) {
+                // The postcard's sky is what grows: laid out full screen and scaled down onto the card.
+                SkyBackground(
+                    state = sky,
+                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                        val p = progress().coerceIn(0f, 1f)
+                        val from = origin ?: Rect(0f, 0f, size.width, size.height)
+                        val left = from.left * (1f - p)
+                        val top = from.top * (1f - p)
+                        val right = from.right + (size.width - from.right) * p
+                        val bottom = from.bottom + (size.height - from.bottom) * p
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = (right - left) / size.width
+                        scaleY = (bottom - top) / size.height
+                        translationX = left
+                        translationY = top
+                    }
+                ) {}
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
+                        .drawBehind {
+                            // This week sits on the plain page, like Outlook.
+                            val position = pager.currentPage + pager.currentPageOffsetFraction
+                            drawRect(page, alpha = abs(position - 1f).coerceIn(0f, 1f))
+                        }
+                ) {
+                    HorizontalPager(
+                        state = pager,
+                        beyondViewportPageCount = 1,
+                        flingBehavior = PagerDefaults.flingBehavior(
+                            state = pager,
+                            snapAnimationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    ) { index ->
+                        if (index == 0) {
+                            DaysPage(location, onPage, page, days) {
+                                abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
+                            }
+                        } else {
+                            ForecastPage(
+                                location = location,
+                                sky = sky,
+                                now = now,
+                                refreshing = false,
+                                onRefresh = {},
+                                onDetails = onDetails,
+                                onOpenPlaces = onClose
+                            )
+                        }
+                    }
+                    // "Visiting" until you pin it.
+                    if (!pinned) {
+                        Text(
+                            stringResource(R.string.shell_visiting),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = sky.palette.text,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .statusBarsPadding()
+                                .padding(top = 6.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.28f))
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
-        }
-        // The home toolbar, as is: This week and Forecast, and Pin budding out of Forecast like search
-        // does out of Places (pin keeps the place; otherwise it's gone when you go back).
-        val scope = rememberCoroutineScope()
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 12.dp)
-                .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
-        ) {
-            ShellToolbar(
-                pager = pager,
-                sky = sky,
-                weather = weather,
-                glass = windowGlass,
-                labelShown = listOf(1f, 1f),
-                onTab = { scope.launch { pager.animateScrollToPage(it) } },
-                searchEnabled = true,
-                onSearch = onPin,
-                onSearchBounds = {},
-                withPlaces = false,
-                budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
-                budChecked = pinned
-            )
+            // The home toolbar, as is: This week and Forecast, and Pin budding out of Forecast like search
+            // does out of Places (pin keeps the place; otherwise it's gone when you go back).
+            val scope = rememberCoroutineScope()
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp)
+                    .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
+            ) {
+                ShellToolbar(
+                    pager = pager,
+                    sky = sky,
+                    weather = weather,
+                    glass = windowGlass,
+                    labelShown = listOf(1f, 1f),
+                    onTab = { scope.launch { pager.animateScrollToPage(it) } },
+                    searchEnabled = true,
+                    onSearch = onPin,
+                    onSearchBounds = {},
+                    withPlaces = false,
+                    budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                    budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
+                    budChecked = pinned
+                )
+            }
         }
     }
 }

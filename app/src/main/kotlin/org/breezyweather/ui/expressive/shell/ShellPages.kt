@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -792,12 +793,13 @@ private fun SwipeablePlace(
 }
 
 /**
- * A place as a vintage travel postcard (agreed 2026-11-18, style A): a thin white border; the
- * place's sky is the "photo" on the left two-thirds, with its weather and temperature; the address
- * side on the right has the stamp (local time when it differs from yours), a postmark, and the
- * name written on the address line in ink. The main place is held on the page by a strip of kraft
- * tape and wears a star sticker on its stamp; a visit has a dashed border. Soft, low shadow. The
- * sky is baked and static, so scrolling stays cheap. Sinks a little while pressed.
+ * A place as the front of a vintage postcard (user's references, 2026-11-18): an aged cream card
+ * with a deckled edge and fine paper grain, captions in small capitals above and below the picture
+ * (place and weather on top, region and local time below), the place's sky as the picture with a
+ * faint linen texture and the temperature on it, a postmark over the corner, and a stamp. The
+ * main place wears a star sticker on its stamp; a visit has a dashed inner frame. Postcard
+ * proportions (about 3:2). The sky is baked and static, so scrolling stays cheap. Sinks a little
+ * while pressed.
  */
 @Composable
 private fun PlaceCard(
@@ -811,7 +813,6 @@ private fun PlaceCard(
     modifier: Modifier = Modifier,
 ) {
     val sky = skyFor(location, now)
-    val text = sky.palette.text
     val current = location.weather?.current
     val press = remember { MutableInteractionSource() }
     val pressed by press.collectIsPressedAsState()
@@ -819,192 +820,255 @@ private fun PlaceCard(
     LaunchedEffect(pressed) {
         sink.animateTo(if (pressed) 0.98f else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
     }
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val card = if (dark) Color(0xFFEDE8DC) else Color(0xFFFFFDF8)
-    val ink = Color(0xFF34312B)
-    val frame = RoundedCornerShape(3.dp)
+    val card = Color(0xFFF8F2E4)
+    val ink = Color(0xFF2E2A24)
     // Sticker peel (agreed 2026-11-18): when it gets the star, a gold star sticker drops onto the
     // stamp slightly too big and tilted, presses down (squash, haptic), settles, and a shine sweeps
     // across it as it flattens. Waits for the card's glide to the top.
     var hadStar by remember { mutableStateOf(starred) }
     val peel = remember { Animatable(1f) }
     val shine = remember { Animatable(1f) }
-    val tape = remember { Animatable(if (starred) 1f else 0f) }
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(starred) {
         if (starred && !hadStar) {
             peel.snapTo(0f)
             shine.snapTo(0f)
-            launch {
-                delay(380)
-                tape.animateTo(1f, tween(260))
-            }
             delay(520)
             launch {
-                delay(230)
+                delay(330)
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                shine.animateTo(1f, tween(420))
             }
-            peel.animateTo(1f, tween(520, easing = LinearEasing))
-        } else if (!starred) {
-            tape.snapTo(0f)
+            peel.animateTo(1f, tween(560, easing = LinearEasing))
         }
         hadStar = starred
     }
-    Box(modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(128.dp)
-                .graphicsLayer {
-                    scaleX = sink.value
-                    scaleY = sink.value
-                    // A visit is lighter until you keep it.
-                    alpha = if (visiting) 0.92f else 1f
-                }
-                // A soft, low shadow, like card lying on paper.
-                .shadow(
-                    elevation = if (selected) 4.dp else 2.dp,
-                    shape = frame,
-                    ambientColor = Color.Black.copy(alpha = 0.06f),
-                    spotColor = Color.Black.copy(alpha = 0.10f)
+    val grain = remember { paperGrain(light = true) }
+    val grainBrush = remember(grain) { ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)) }
+    val linen = remember { ShaderBrush(ImageShader(linenTexture(), TileMode.Repeated, TileMode.Repeated)) }
+    val caption = MaterialTheme.typography.labelMedium.copy(
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.sp
+    )
+    val (title, city) = placeName(context, location)
+    val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(1.5f)
+            .graphicsLayer {
+                scaleX = sink.value
+                scaleY = sink.value
+                // A visit is lighter until you keep it.
+                alpha = if (visiting) 0.92f else 1f
+            }
+            // Taps are taken on the whole card (outside the deckled clip, which can swallow them).
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
+            // A soft, low shadow, like card lying on paper.
+            .shadow(
+                elevation = if (selected) 4.dp else 2.dp,
+                shape = Deckled,
+                ambientColor = Color.Black.copy(alpha = 0.06f),
+                spotColor = Color.Black.copy(alpha = 0.12f)
+            )
+            .clip(Deckled)
+            .drawBehind {
+                drawRect(card)
+                drawRect(grainBrush)
+                // Aged edges: a faint warm darkening towards the border.
+                drawRect(
+                    Brush.radialGradient(
+                        0.6f to Color.Transparent,
+                        1f to Color(0xFF8A6A3A).copy(alpha = 0.16f),
+                        center = center,
+                        radius = size.maxDimension * 0.62f
+                    )
                 )
-                .clip(frame)
-                .background(card)
-                .then(if (visiting) Modifier.dashedEdge(ink, 3.dp) else Modifier)
-                .clickable(interactionSource = press, indication = ripple(), onClick = onClick)
-                .padding(5.dp)
-        ) {
-            Row(Modifier.fillMaxSize()) {
-                // The photo: the place's sky, its weather and temperature.
-                SkyBackground(
-                    state = sky,
-                    modifier = Modifier.weight(0.62f).fillMaxHeight().clip(RoundedCornerShape(2.dp))
-                ) {
-                    Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 9.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.align(Alignment.TopStart)
-                        ) {
-                            if (location.isCurrentPosition) {
-                                Icon(
-                                    Icons.Filled.NearMe,
-                                    contentDescription = stringResource(R.string.location_current),
-                                    tint = text.copy(alpha = 0.85f),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                            }
-                            Text(
-                                // "Visiting" only shows on the selected place. The stamp has the time.
-                                placeSubtitle(context, location, visiting && selected, now, withTime = false),
-                                color = text.copy(alpha = 0.85f),
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Text(
-                            current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
-                            color = text,
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Light,
-                            modifier = Modifier.align(Alignment.BottomStart)
+            }
+            .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            // Top caption, on the picture: the place, and its weather.
+            val topCaption: @Composable (Modifier) -> Unit = { captionModifier ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = captionModifier) {
+                    if (location.isCurrentPosition) {
+                        Icon(
+                            Icons.Filled.NearMe,
+                            contentDescription = stringResource(R.string.location_current),
+                            tint = sky.palette.text,
+                            modifier = Modifier.size(12.dp)
                         )
+                        Spacer(Modifier.width(4.dp))
                     }
+                    Text(
+                        title.uppercase(),
+                        style = caption,
+                        color = sky.palette.text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        listOfNotNull(
+                            if (visiting && selected) context.getString(R.string.shell_visiting) else null,
+                            current?.weatherText
+                        ).joinToString(" · ").uppercase(),
+                        style = caption,
+                        color = sky.palette.text,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
-                // The address side: stamp and postmark top right, the name on the address line.
-                Box(
-                    Modifier
-                        .weight(0.38f)
-                        .fillMaxHeight()
-                        .drawBehind {
-                            // The dashed divider between photo and address side.
-                            drawLine(
-                                ink.copy(alpha = 0.25f),
-                                start = Offset(0f, 6.dp.toPx()),
-                                end = Offset(0f, size.height - 6.dp.toPx()),
-                                strokeWidth = 1.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))
+            }
+            // The picture: the place's sky, linen-textured, with the temperature.
+            SkyBackground(
+                state = sky,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(linen, blendMode = BlendMode.Multiply)
+                        if (visiting) {
+                            drawRect(
+                                ink.copy(alpha = 0.5f),
+                                style = Stroke(
+                                    width = 1.2.dp.toPx(),
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 5.dp.toPx()))
+                                )
                             )
                         }
-                        .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
-                ) {
-                    Postmark(
-                        country = location.countryCode,
-                        ink = ink,
-                        modifier = Modifier.align(Alignment.TopStart).padding(top = 10.dp)
-                    )
-                    val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
-                    Stamp(
-                        time = if (showTime) time(context, Date(now), location.timeZone) else null,
-                        starred = starred,
-                        peel = { peel.value },
-                        shine = { shine.value },
-                        paper = Color(0xFFF6EBD6),
-                        ink = ink,
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    )
-                    val (title, city) = placeName(context, location)
-                    Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
-                        Text(
-                            title,
-                            color = ink,
-                            style = MaterialTheme.typography.titleSmall,
-                            autoSize = TextAutoSize.StepBased(11.sp, MaterialTheme.typography.titleSmall.fontSize),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        // The address line.
-                        Box(Modifier.fillMaxWidth().padding(top = 2.dp).height(1.dp).background(ink.copy(alpha = 0.3f)))
-                        Text(
-                            city ?: location.country,
-                            color = ink.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
                     }
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    topCaption(Modifier.align(Alignment.TopStart).padding(start = 10.dp, end = 10.dp, top = 8.dp))
+                    Text(
+                        current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                        color = sky.palette.text,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Light,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 6.dp)
+                    )
+                }
+            }
+            // Bottom caption: the region, and the local time when it differs from yours.
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 5.dp)) {
+                Text(
+                    location.country.uppercase(),
+                    style = caption,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                if (showTime) {
+                    Text(
+                        listOfNotNull(
+                            time(context, Date(now), location.timeZone),
+                            timeDifference(location.timeZone, now)
+                        ).joinToString(" · ").uppercase(),
+                        style = caption,
+                        color = ink,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
             }
         }
+        // The stamp sits on the picture's top right corner, the postmark half over it.
+        // The star stamp marks the main place only. Placed and pressed (agreed 2026-11-18): it
+        // lowers onto the card from a little above (bigger, soft shadow), touches down tilted, gets
+        // pressed flat (shadow gone, slight squash, haptic) and rests at a small natural angle.
+        if (starred) {
+            Stamp(
+                time = null,
+                starred = true,
+                paper = Color(0xFFF6EBD6),
+                ink = ink,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 36.dp, end = 16.dp)
+                    .graphicsLayer {
+                        val t = peel.value
+                        val lower = (t / 0.6f).coerceIn(0f, 1f)
+                        val press = ((t - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                        // Lowering: 1.35 to 1, then a small squash that releases.
+                        val squash = if (press <
+                            0.5f
+                        ) {
+                            1f - 0.05f * (press / 0.5f)
+                        } else {
+                            0.95f + 0.05f * ((press - 0.5f) / 0.5f)
+                        }
+                        val k = (1.35f - 0.35f * (1f - (1f - lower) * (1f - lower))) * squash
+                        scaleX = k
+                        scaleY = k
+                        rotationZ = -9f + 6f * lower
+                        shadowElevation = 10.dp.toPx() * (1f - lower)
+                        ambientShadowColor = Color.Black.copy(alpha = 0.12f)
+                        spotShadowColor = Color.Black.copy(alpha = 0.18f)
+                        alpha = (t * 6f).coerceIn(0f, 1f)
+                    }
+            )
+        }
+        // The postmark is inked over the picture, so it takes the picture's text colour.
+        Postmark(
+            country = location.countryCode,
+            ink = sky.palette.text,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 26.dp, end = 12.dp)
+        )
     }
 }
 
-/** A strip of brown kraft tape, a little crooked and see-through, with torn ends. */
-@Composable
-private fun KraftTape(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(width = 86.dp, height = 22.dp)
-            .graphicsLayer { rotationZ = -3.5f }
-            .clip(TornTape)
-            .background(Color(0xFFC49A6C).copy(alpha = 0.82f))
-            .drawBehind {
-                // A faint paper fibre texture: a few lighter streaks.
-                for (i in 0 until 5) {
-                    val y = size.height * (0.15f + 0.17f * i)
-                    drawLine(Color.White.copy(alpha = 0.08f), Offset(0f, y), Offset(size.width, y + 2f), 1.dp.toPx())
-                }
-            }
-    )
-}
-
-/** Tape with zig-zag torn ends. */
-private val TornTape = GenericShape { size, _ ->
-    val teeth = 5
-    val tooth = size.height / teeth
-    moveTo(size.width * 0.02f, 0f)
-    lineTo(size.width * 0.98f, 0f)
-    for (i in 0 until teeth) {
-        lineTo(size.width - if (i % 2 == 0) 3f else 0f, tooth * (i + 1))
+/** A deckled (finely scalloped) card edge, like an old postcard's. */
+private val Deckled = GenericShape { size, _ ->
+    val step = 5f
+    val bite = 1.6f
+    var x = 0f
+    moveTo(0f, bite)
+    while (x < size.width) {
+        lineTo(x + step / 2, 0f)
+        lineTo(x + step, bite)
+        x += step
     }
-    lineTo(size.width * 0.02f, size.height)
-    for (i in teeth - 1 downTo 0) {
-        lineTo(if (i % 2 == 0) 3f else 0f, tooth * i)
+    var y = 0f
+    while (y < size.height) {
+        lineTo(size.width, y + step / 2)
+        lineTo(size.width - bite, y + step)
+        y += step
+    }
+    x = size.width
+    while (x > 0f) {
+        lineTo(x - step / 2, size.height)
+        lineTo(x - step, size.height - bite)
+        x -= step
+    }
+    y = size.height
+    while (y > 0f) {
+        lineTo(0f, y - step / 2)
+        lineTo(bite, y - step)
+        y -= step
     }
     close()
+}
+
+/** A small tile of fine horizontal and vertical threads, like linen-finish card stock. */
+private fun linenTexture(): ImageBitmap {
+    val size = 64
+    val pixels = IntArray(size * size)
+    val random = java.util.Random(3)
+    for (yy in 0 until size) {
+        val row = random.nextFloat()
+        for (xx in 0 until size) {
+            val thread = if (yy % 3 == 0) 0.10f else 0f
+            val warp = if (xx % 4 == 0) 0.05f else 0f
+            val dark = (thread + warp + row * 0.03f).coerceIn(0f, 0.2f)
+            val v = (255 * (1f - dark)).toInt()
+            pixels[yy * size + xx] = (255 shl 24) or (v shl 16) or (v shl 8) or v
+        }
+    }
+    val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+    bitmap.setPixels(pixels, 0, size, 0, 0, size, size)
+    return bitmap.asImageBitmap()
 }
 
 /** A faint round postmark with the country code, partly over the stamp. */
@@ -1070,8 +1134,7 @@ private fun Stamp(
                     modifier = Modifier
                         .size(if (time != null) 14.dp else 22.dp)
                         .graphicsLayer {
-                            // Drops in big and tilted, presses down (squash), springs to size.
-                            val t = peel()
+                            val t = 1f
                             val sc = when {
                                 t < 0.45f -> 1.55f - 0.69f * (t / 0.45f)
                                 t < 0.7f -> 0.86f + 0.18f * ((t - 0.45f) / 0.25f)
@@ -1149,9 +1212,12 @@ private fun paperGrain(light: Boolean): ImageBitmap {
  * e.g. "Providencia" over "Guadalajara". Other places keep their usual name.
  */
 internal fun placeName(context: Context, location: Location): Pair<String, String?> {
+    // For now the borough (e.g. "Miguel Hidalgo") rather than the neighbourhood: shorter.
+    val borough = location.admin2?.takeIf { it.isNotEmpty() && it != location.city && it != location.admin1 }
     val district = location.district?.takeIf { it.isNotEmpty() && it != location.city }
-    return if (location.isCurrentPosition && location.customName.isNullOrEmpty() && district != null) {
-        district to location.city.takeIf { it.isNotEmpty() }
+    val local = borough ?: district
+    return if (location.isCurrentPosition && location.customName.isNullOrEmpty() && local != null) {
+        local to location.city.takeIf { it.isNotEmpty() }
     } else {
         location.getPlace(context) to null
     }

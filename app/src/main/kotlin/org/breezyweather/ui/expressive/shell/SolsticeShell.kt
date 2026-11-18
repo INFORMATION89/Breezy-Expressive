@@ -274,7 +274,6 @@ fun SolsticeShell(
     val page = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.Black else Color.White
     val onPage = if (page == Color.Black) Color.White else Color.Black
     // System bar icons follow whatever is behind them.
-    SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
     val glass = rememberGlassSource()
     val searchBlur = rememberGraphicsLayer()
@@ -291,6 +290,12 @@ fun SolsticeShell(
     var windowId by rememberSaveable { mutableStateOf<String?>(null) }
     var windowOrigin by remember { mutableStateOf<Rect?>(null) }
     val windowProgress = remember { Animatable(0f) }
+    // System bar icons follow whatever is behind them; a postcard window sets its own once it's
+    // mostly open.
+    val windowCovers by remember { derivedStateOf { windowId != null && windowProgress.value > 0.5f } }
+    if (!windowCovers) {
+        SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
+    }
     var windowFade by remember { mutableStateOf(false) }
     val windowSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
     // Grows once the place is in the list (a place just picked in search is added a moment later),
@@ -624,7 +629,7 @@ internal fun rememberMinuteClock() = produceState(System.currentTimeMillis()) {
 }
 
 /** A palette standing for a plain page colour, so system bar icons can follow it. */
-private fun plainPalette(page: Color, text: Color) = SkyPalette(
+internal fun plainPalette(page: Color, text: Color) = SkyPalette(
     base = page,
     blobs = listOf(page, page, page),
     text = text,

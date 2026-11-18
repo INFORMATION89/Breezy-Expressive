@@ -1161,3 +1161,31 @@ Things to try on the phone before calling any motion done (debug and release bui
     and it settles and sinks back.
   - **Postcards to redesign** from the user's references (Arc membership card; grainy gradient
     posters; vintage postcards with a deckled edge, a captioned front, a postmark and a stamp).
+- **2026-11-18 (built from the user's postcard references, checked in the debug app on the Pixel):**
+  Places cards are now the front of a vintage postcard:
+  - An aged cream card (fine grain, warm darker edges) with a **deckled edge**, in postcard
+    proportions (3:2, taller than before).
+  - **Small-capital captions** above (place, weather) and below (region and country; local time
+    and difference when it differs) the picture.
+  - The sky as the **picture, with a linen texture**, and the temperature on it.
+  - A stamp (with the star sticker on the main place) and a postmark over the picture's corner,
+    inked in the picture's text colour.
+  - Visits get a dashed frame on the picture.
+- **2026-11-18 (user feedback, built, checked in the debug app on the Pixel):**
+  - Postcards: a whiter card, and an even border on top and both sides (the top caption now sits
+    on the picture, in its text colour).
+  - Captions: the top line is the city, or the borough for the current position; the bottom line
+    is the country only (plus the local time when it differs).
+  - The postmark sits in the picture's lower right.
+  - **The star stamp only on the starred postcard**, going on as **"placed and pressed"**
+    (agreed): it lowers from a little above (×1.35, soft shadow), touches down tilted, is pressed
+    flat (slight squash, haptic) and rests at about −3°. No shine.
+  - **Borough:** Google's geocoder leaves Mexico City's alcaldía out (`subAdminArea` is empty).
+    The Android geocoder service now falls back to the part of the full address line before the
+    postcode and city, so your location reads "MIGUEL HIDALGO".
+  - **A postcard window for a place where it's night uses dark mode** (Forecast, Outlook, toolbar);
+    the main screen keeps your setting.
+  - Fixed: taps on the new deckled postcard didn't register (the clip swallowed them).
+  - Fixed (checked): once a postcard window is mostly open, it sets the system bar icons (the sky's
+    text colour on Forecast, the page's on This week), so they're light on a dark night window.
+    The shell sets them again once it closes.
