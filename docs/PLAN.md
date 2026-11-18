@@ -237,11 +237,53 @@ Forecast screen (top to bottom):
 - **Decided 2026-11-18 (from mockups A/B/C): gradient field (A).** Soft blurred colour fields with
   film grain, no sun/moon orb; the sun path stays a drawn curve with a dot for the sun, sunrise
   left and sunset right.
+- **Palette approved 2026-11-18** (base colour + three soft blobs, film grain on top; text colour):
+  | Condition | Base | Blob 1 | Blob 2 | Blob 3 | Text |
+  |---|---|---|---|---|---|
+  | Clear day | `#BFD3F2` | `#8FB0EE` | `#FFE1A8` | `#F3EBDD` | `#1E2340` |
+  | Partly cloudy | `#F2D7C9` | `#9DAEE6` | `#F4A46B` | `#F7E3C8` | `#2A1A1A` |
+  | Sunrise / sunset | `#F6B48A` | `#8C8FD6` | `#FF7B4A` | `#FFC870` | `#2B1408` |
+  | Clear night | `#1D1A3D` | `#C9B6F2` | `#5B5BD6` | `#0F0D22` | `#ECE9FF` |
+  | Overcast | `#C9CBD3` | `#A7ABB8` | `#E2DED8` | `#B9B4C4` | `#22252E` |
+  | Rain | `#7E8FA8` | `#4D6185` | `#9FB7C9` | `#5B6E7E` | `#F2F5FA` |
+  | Thunderstorm | `#3A3550` | `#1E1B33` | `#7A5FB0` | `#4A5570` | `#F1EEFA` |
+  | Snow | `#E7ECF4` | `#C3D2EC` | `#FFFFFF` | `#D8D2EA` | `#1F2633` |
+  | Fog / haze | `#D9D6D1` | `#EDEAE4` | `#C4C0BA` | `#E4E0DA` | `#26241F` |
+  Dawn/dusk blend between the day and night palettes over time; grain stronger on dark palettes.
 - Colours: derived from conditions and time of day, harmonised with the wallpaper (dynamic) palette
   so cards and text stay readable; text contrast checked in both themes.
 - Performance first: draw it cheaply, e.g. a few blurred shapes / a small pre-rendered bitmap scaled
   up, or an AGSL shader on Android 13+; grain as a tiled noise texture. No per-frame redraw unless
   something moves; measure frame times on the Pixel 7 (release build).
+
+### Collapsing title: one title that moves and shrinks (added 2026-11-18)
+- Today (settings and every screen using `FitStatusBarTopAppBar` / `LargeFlexibleTopAppBar`), the
+  large title **cross-fades** into the small one when scrolling: both texts are visible at once
+  for a moment. Replace it with a real transition: **a single title** whose position and size are
+  driven by the scroll (`TopAppBarState.collapsedFraction`): it slides up and left from the large
+  position into the bar and scales from the large to the small text size, never duplicated.
+- Follows the finger exactly (no time-based animation), so it reverses mid-scroll; on release it
+  settles to fully expanded or collapsed with the theme's spring (interruptible).
+- How: our own top bar in `ui/expressive` (one `Text` with `graphicsLayer` scale/translation, measured
+  once for both sizes; no re-layout per frame), swapped in at `FitStatusBarTopAppBar`, so all screens
+  get it in one edit. Same component later for the Forecast/Days/Places titles.
+
+### Screen transitions: no plain fade (added 2026-11-18)
+- Tapping a settings entry (and opening any sub-screen) today **cross-fades** to the next screen:
+  `SettingsActivity`'s `NavHost` sets no transitions, so Compose's default fade is used. Replace it
+  with something smoother and more refined:
+  - **Forward:** the new screen slides in from the right while the old one shifts slightly left and
+    dims (parallax, Material shared-axis X / iOS-style push), spring-driven; **back** does the
+    reverse.
+  - **Predictive back:** the back gesture drags the screen with the finger (scales/peeks the
+    previous one) and can be cancelled mid-way; release finishes with a spring.
+  - Optional: the tapped row's **title flies into the new screen's large title** (shared element),
+    so the user sees where they went.
+- Interruptible, no fixed-duration fades; same transitions for the reorder and other expressive
+  screens, and later for pages inside the app (Days/Forecast/Places use the pager swipe instead).
+- How: `NavHost(enterTransition/exitTransition/popEnter/popExit)` with slide + slight scale using the
+  theme's spatial springs, `SharedTransitionLayout` for the title; one shared definition in
+  `ui/expressive`, one small edit in `SettingsActivity`.
 
 ### App drawer name: "Solstice" or "Weather" (added 2026-11-18)
 - A setting (Appearance) to choose the name shown under the icon in the app drawer/home screen:
@@ -470,3 +512,8 @@ Forecast screen (top to bottom):
   So most of the lag the user felt was the debug build; the remaining release jank (worst 1 % at
   34 ms) is the target for a performance pass (baseline profile, the View screens). Added: Location
   cards use their location's condition gradient.
+- **2026-11-18:** Added: collapsing title should move and scale as one text instead of cross-fading
+  between two.
+- **2026-11-18:** Added: replace the fade between settings screens with a spring push/parallax
+  transition, predictive back, optional shared title.
+- **2026-11-18:** Gradient palette approved (nine conditions, table under "Forecast background").
