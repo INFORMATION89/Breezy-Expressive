@@ -24,4 +24,6 @@
     <string name="shell_place_removed">%1$s removed</string>
     <string name="shell_undo">Undo</string>
     <string name="shell_use_current_location">Use my current location</string>
+    <string name="shell_visiting">Visiting</string>
+    <string name="shell_visiting_hint">Visiting %1$s. Star it to keep it.</string>
 </resources>

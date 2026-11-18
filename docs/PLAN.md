@@ -506,6 +506,15 @@ before choosing; check each license.
   bar and the results area, the list behind recedes), and closing morphs it back into the button,
   so everything feels fluid. Exact motion still to be proposed and agreed before building.
 
+### Messages (snackbars) redesign (added 2026-11-18)
+- Short, icon-led messages instead of sentences with buttons: e.g. "Guadalajara removed" becomes
+  **[unpinned icon] Guadalajara unpinned**; "Visiting Puebla. Star it to keep it." becomes
+  [compass icon] Visiting Puebla, etc.
+- **No close (X) button:** dismiss by swiping the message away (sideways or down), following the
+  finger; it still times out on its own. Undo stays as a compact action where it applies.
+- Same glass look as the toolbar, sitting just above it. Motion (appear, swipe away) to propose to
+  the user before building.
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -788,3 +797,18 @@ Things to try on the phone before calling any motion done (debug and release bui
 - **2026-11-18:** Added: the "Search somewhere else" button morphs into the search section.
 - **2026-11-18:** Added: a way to tell apart places with the same current weather (generated map
   overlay idea).
+- **2026-11-18:** Added: redesign messages/snackbars (icon + short text, no X, swipe to dismiss).
+- **2026-11-18:** Visiting places built: a search result is added, marked as a visit
+  (`ui/expressive/shell/Visits.kt`), selected and shown in Forecast with a "Visiting X. Star it to
+  keep it." message; in Places it sits first, lighter, with a dashed edge and "Visiting · weather ·
+  local time, ±h"; starring keeps it; unstarred visits are removed on the next app start (checked).
+  Cards in another time zone show local time and difference. Found: upstream **recreates
+  MainActivity when the location-based theme flips** (night here, day there), which dropped the
+  pending page/message; now handed over process-wide. To do: in the shell, avoid that recreate
+  (the sky already follows the place), it causes a visible flash. Fixed: Outlook's edge blur now
+  fades in with the plain page instead of showing over the sky when a swipe starts.
+- **2026-11-18:** Checked on the Pixel 7: picking a search result now lands on its Forecast (Tokyo test,
+  even with the theme-flip recreate); half-started swipe to Outlook shows no edge darkening over the
+  sky. **F3 done** for phones (shell, Outlook, Forecast v1, Places with star/delete, reorder, current
+  location, edit, visits). Open F3 follow-ups: search redesign, message redesign, avoid the
+  theme-flip recreate, tablets.

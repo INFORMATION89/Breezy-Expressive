@@ -117,7 +117,26 @@ interface ShellActions {
 
 /** Lets the host move the shell between pages (e.g. show Places when there are no locations). */
 class ShellController {
+    companion object {
+        const val FORECAST = PAGE_FORECAST
+    }
+
     internal var request by mutableStateOf<Int?>(null)
+    internal var visitsChanged by mutableStateOf(0)
+
+    internal var message by mutableStateOf<String?>(null)
+
+    /** A place picked from search: mark it as a visit; the host then shows its Forecast. */
+    fun visit(context: Context, id: String) {
+        Visits.mark(context, id)
+        visitsChanged++
+    }
+
+    /** Called by the host when it's resumed: go to [page] and show [text] in the shell's message bar. */
+    fun show(page: Int?, text: String?) {
+        if (page != null) request = page
+        if (text != null) message = text
+    }
     fun showPlaces(visible: Boolean) {
         request = if (visible) PAGE_PLACES else PAGE_FORECAST
     }
@@ -151,6 +170,23 @@ fun SolsticeShell(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var starred by remember { mutableStateOf(loadStarred(context)) }
+    val visiting = remember(controller.visitsChanged, locations) { Visits.all(context) }
+    // Visits left from the previous run go away unless they were starred.
+    val initCompleted by viewModel.initCompleted.collectAsState()
+    LaunchedEffect(initCompleted) {
+        if (!initCompleted) return@LaunchedEffect
+        Visits.takeStale(context).filter { it !in starred }.forEach { id ->
+            val index = viewModel.validLocationList.value.indexOfFirst { it.formattedId == id }
+            if (index >= 0) viewModel.deleteLocation(index)
+        }
+        controller.visitsChanged++
+    }
+    LaunchedEffect(controller.message) {
+        controller.message?.let {
+            controller.message = null
+            snackbar.showSnackbar(it, withDismissAction = true)
+        }
+    }
     LaunchedEffect(controller.request) {
         controller.request?.let {
             pager.animateScrollToPage(it)
@@ -199,7 +235,10 @@ fun SolsticeShell(
                 modifier = Modifier.fillMaxSize()
             ) { index ->
                 when (index) {
-                    PAGE_DAYS -> DaysPage(location, onPage, page, daysList)
+                    PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
+                        // The edge blur fades in with the plain page, not before it.
+                        abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_FORECAST).coerceIn(0f, 1f)
+                    }
                     PAGE_FORECAST -> ForecastPage(
                         location = location,
                         sky = sky,
@@ -215,6 +254,7 @@ fun SolsticeShell(
                         locations = locations,
                         currentId = location?.formattedId,
                         starred = starred,
+                        visiting = visiting,
                         now = now,
                         onPage = onPage,
                         onSelect = {
@@ -225,6 +265,9 @@ fun SolsticeShell(
                             val id = it.formattedId
                             starred = if (id in starred) starred - id else starred + id
                             saveStarred(context, starred)
+                            // Starring a visit keeps it.
+                            if (id in starred) Visits.unmark(context, id)
+                            controller.visitsChanged++
                         },
                         onDelete = { place ->
                             val index = locations.indexOfFirst { it.formattedId == place.formattedId }

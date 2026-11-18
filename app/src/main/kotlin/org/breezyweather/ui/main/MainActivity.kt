@@ -84,6 +84,7 @@ import org.breezyweather.common.utils.helpers.IntentHelper
 import org.breezyweather.common.utils.helpers.LogHelper
 import org.breezyweather.common.utils.helpers.SnackbarHelper
 import org.breezyweather.databinding.ActivityMainBinding
+import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsChangedMessage
 import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.AlertDialogConfirmOnly
@@ -124,6 +125,12 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
     companion object {
         const val SEARCH_ACTIVITY = 4
 
+        // Solstice: what the shell should do next time a MainActivity resumes. Process-wide, because
+        // upstream recreates the activity when the location-based theme changes (e.g. selecting a
+        // place where it's day while it's night here), which would drop instance fields.
+        private var pendingShellPage: Int? = null
+        private var pendingShellMessage: String? = null
+
         const val ACTION_MAIN = "${BuildConfig.APPLICATION_ID}.Main"
         const val KEY_MAIN_ACTIVITY_LOCATION_FORMATTED_ID = "MAIN_ACTIVITY_LOCATION_FORMATTED_ID"
         const val KEY_MAIN_ACTIVITY_ALERT_ID = "MAIN_ACTIVITY_ALERT_ID"
@@ -160,7 +167,17 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
                         SnackbarHelper.showSnackbar(getString(R.string.location_message_already_exists))
                     } else {
                         viewModel.addLocation(location, null, this)
-                        SnackbarHelper.showSnackbar(getString(R.string.location_message_added))
+                        if (binding.solsticeShell != null) {
+                            // Solstice: open it as a visit (kept only if starred).
+                            viewModel.setLocation(location.formattedId)
+                            shellController.visit(this, location.formattedId)
+                            // Applied in onResume, on the instance actually shown (this one may be
+                            // replaced while the search screen is in front).
+                            pendingShellPage = ShellController.FORECAST
+                            pendingShellMessage = getString(R.string.shell_visiting_hint, location.getPlace(this))
+                        } else {
+                            SnackbarHelper.showSnackbar(getString(R.string.location_message_added))
+                        }
                     }
                 }
             }
@@ -282,6 +299,16 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         super.onConfigurationChanged(newConfig)
         updateSystemBarStyle()
         updateDayNightColors()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Solstice: apply what happened while another screen (e.g. search) was in front.
+        if (pendingShellPage != null || pendingShellMessage != null) {
+            shellController.show(pendingShellPage, pendingShellMessage)
+            pendingShellPage = null
+            pendingShellMessage = null
+        }
     }
 
     override fun onStart() {

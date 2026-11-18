@@ -85,9 +85,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -312,7 +315,13 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
 
 /** Plain page (white/black); each day's card wears its own weather, as a daytime sky. */
 @Composable
-internal fun DaysPage(location: Location?, onPage: Color, page: Color, listState: LazyListState) {
+internal fun DaysPage(
+    location: Location?,
+    onPage: Color,
+    page: Color,
+    listState: LazyListState,
+    pageFade: () -> Float,
+) {
     val context = LocalContext.current
     val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(10)
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -322,7 +331,7 @@ internal fun DaysPage(location: Location?, onPage: Color, page: Color, listState
         state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 40.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp)
+        modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp, strength = pageFade)
     ) {
         item {
             Text(
@@ -383,6 +392,7 @@ internal fun PlacesPage(
     locations: List<Location>,
     currentId: String?,
     starred: Set<String>,
+    visiting: Set<String>,
     now: Long,
     onPage: Color,
     onSelect: (Location) -> Unit,
@@ -400,8 +410,15 @@ internal fun PlacesPage(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val byId = locations.associateBy { it.formattedId }
-    // The current position is always first and stays pinned there.
-    val sortedIds = locations.sortedByDescending { it.isCurrentPosition }.map { it.formattedId }
+    // Visits first, then the current position; both stay pinned where they are.
+    val sortedIds = locations
+        .sortedWith(
+            compareByDescending<Location> {
+                it.formattedId in visiting
+            }.thenByDescending { it.isCurrentPosition }
+        )
+        .map { it.formattedId }
+    fun isPinned(id: String) = id in visiting || byId[id]?.isCurrentPosition == true
 
     // Reorder state: while a card is carried we show our own copy of the order and save on drop.
     val order = remember { mutableStateListOf<String>() }
@@ -419,7 +436,7 @@ internal fun PlacesPage(
         val cur = info.firstOrNull { it.key == carried } ?: return
         val centre = cur.offset + carryY + cur.size / 2f
         val target = info.firstOrNull {
-            it.key != carried && it.key in order && byId[it.key]?.isCurrentPosition == false &&
+            it.key != carried && it.key in order && (it.key as? String)?.let { k -> !isPinned(k) } == true &&
                 centre > it.offset && centre < it.offset + it.size
         } ?: return
         val from = order.indexOf(carried)
@@ -471,7 +488,7 @@ internal fun PlacesPage(
         items(shown, key = { it }) { id ->
             val location = byId[id] ?: return@items
             val isCarried = carried == id
-            val pinned = location.isCurrentPosition
+            val pinned = isPinned(id)
             // Neighbours' landing bump when a carried card is dropped near them.
             val bump = remember { Animatable(0f) }
             LaunchedEffect(landed) {
@@ -510,6 +527,7 @@ internal fun PlacesPage(
                         location = location,
                         selected = id == currentId,
                         starred = id in starred,
+                        visiting = id in visiting,
                         now = now,
                         context = context,
                         onClick = { onSelect(location) },
@@ -706,6 +724,7 @@ private fun PlaceCard(
     location: Location,
     selected: Boolean,
     starred: Boolean,
+    visiting: Boolean,
     now: Long,
     context: Context,
     onClick: () -> Unit,
@@ -728,8 +747,11 @@ private fun PlaceCard(
             .graphicsLayer {
                 scaleX = sink.value
                 scaleY = sink.value
+                // A visit is lighter until you keep it.
+                alpha = if (visiting) 0.86f else 1f
             }
             .clip(RoundedCornerShape(if (selected) 32.dp else 24.dp))
+            .then(if (visiting) Modifier.dashedEdge(text, if (selected) 32.dp else 24.dp) else Modifier)
             .clickable(interactionSource = press, indication = ripple(), onClick = onClick)
     ) {
         Row(
@@ -766,7 +788,7 @@ private fun PlaceCard(
                     }
                 }
                 Text(
-                    current?.weatherText ?: "",
+                    placeSubtitle(context, location, visiting, now),
                     color = text.copy(alpha = 0.72f),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1
@@ -780,6 +802,35 @@ private fun PlaceCard(
             )
         }
     }
+}
+
+/**
+ * Under the place name: its weather, plus its local time and time difference when it's in another
+ * time zone (always for a visit), e.g. "Visiting · Overcast · 14:32, +1 h".
+ */
+private fun placeSubtitle(context: Context, location: Location, visiting: Boolean, now: Long): String {
+    val diff = timeDifference(location.timeZone, now)
+    val local = if (diff != null || visiting) {
+        listOfNotNull(time(context, Date(now), location.timeZone), diff).joinToString(", ")
+    } else {
+        null
+    }
+    return listOfNotNull(
+        if (visiting) context.getString(R.string.shell_visiting) else null,
+        location.weather?.current?.weatherText,
+        local
+    ).joinToString(" · ")
+}
+
+/** A dashed outline marking a place you're only visiting. */
+private fun Modifier.dashedEdge(color: Color, corner: androidx.compose.ui.unit.Dp) = drawWithContent {
+    drawContent()
+    val r = corner.toPx()
+    drawRoundRect(
+        color = color.copy(alpha = 0.55f),
+        cornerRadius = CornerRadius(r, r),
+        style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
+    )
 }
 
 // ---------------------------------------------------------------------------------------------

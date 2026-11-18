@@ -41,18 +41,28 @@ import androidx.compose.ui.unit.dp
  * colour fade only.
  */
 @Composable
-fun Modifier.edgeBlur(page: Color, top: Dp = 96.dp, bottom: Dp = 140.dp, blur: Dp = 18.dp): Modifier {
+fun Modifier.edgeBlur(
+    page: Color,
+    top: Dp = 96.dp,
+    bottom: Dp = 140.dp,
+    blur: Dp = 18.dp,
+    strength: () -> Float = { 1f },
+): Modifier {
     val content = rememberGraphicsLayer()
     val topBand = rememberGraphicsLayer()
     val bottomBand = rememberGraphicsLayer()
     return this.drawWithContent {
         val topPx = top.toPx()
         val bottomPx = bottom.toPx()
+        // Read in the draw phase, e.g. how far the page behind has faded in.
+        val k = strength().coerceIn(0f, 1f)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             drawContent()
         } else {
             content.record { this@drawWithContent.drawContent() }
             drawLayer(content)
+            topBand.alpha = k
+            bottomBand.alpha = k
             band(topBand, content, offsetY = 0f, height = topPx, blur.toPx(), fadeDown = true)
             band(
                 bottomBand,
@@ -65,12 +75,12 @@ fun Modifier.edgeBlur(page: Color, top: Dp = 96.dp, bottom: Dp = 140.dp, blur: D
         }
         // A soft fade into the page colour on top, so text near the edges never fights the system bars.
         drawRect(
-            Brush.verticalGradient(0f to page.copy(alpha = 0.85f), 1f to page.copy(alpha = 0f), endY = topPx * 0.8f)
+            Brush.verticalGradient(0f to page.copy(alpha = 0.85f * k), 1f to page.copy(alpha = 0f), endY = topPx * 0.8f)
         )
         drawRect(
             Brush.verticalGradient(
                 0f to page.copy(alpha = 0f),
-                1f to page.copy(alpha = 0.85f),
+                1f to page.copy(alpha = 0.85f * k),
                 startY = size.height - bottomPx * 0.7f,
                 endY = size.height
             )
