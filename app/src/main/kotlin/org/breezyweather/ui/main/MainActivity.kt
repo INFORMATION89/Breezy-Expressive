@@ -882,10 +882,12 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
                 SolsticeShell(
                     viewModel = viewModel,
                     controller = shellController,
+                    sourceManager = sourceManager,
                     actions = object : ShellActions {
                         override fun openSearch() = onSearchBarClicked()
                         override fun openDetails() = showDetails(true)
                         override fun openSettings() = IntentHelper.startSettingsActivity(this@MainActivity)
+                        override fun openLocationSettings() = onEditIconClicked()
                     }
                 )
             }

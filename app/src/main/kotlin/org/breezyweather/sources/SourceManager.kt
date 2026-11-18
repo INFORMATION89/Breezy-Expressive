@@ -338,7 +338,10 @@ class SourceManager @Inject constructor(
                 it.isFeatureSupportedForLocation(location, feature) && BuildConfig.FLAVOR != "freenet"
             }
 
-            SourceFeature.ALERT -> if (BuildConfig.FLAVOR != "freenet") getWeatherSource("accu") else null
+            // Solstice: official WMO alerts by default (no key needed); AccuWeather stays selectable.
+            SourceFeature.ALERT -> getWeatherSource("wmosevereweather")?.takeIf {
+                it.isFeatureSupportedForLocation(location, feature)
+            } ?: if (BuildConfig.FLAVOR != "freenet") getWeatherSource("accu") else null
             SourceFeature.NORMALS -> if (!location.countryCode.equals("CN", ignoreCase = true) &&
                 BuildConfig.FLAVOR != "freenet"
             ) {

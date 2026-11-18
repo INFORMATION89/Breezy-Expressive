@@ -180,6 +180,13 @@ widgets, notifications, live wallpaper.
   **Left for F3:** swipe a card to edit/delete with undo, drag to reorder, current location pinned
   first + "add current location", pull-to-refresh/loading polish, transitions.
 - **Location cards:** swipe one way to Edit (location details), the other way to delete with undo.
+- **Telling places apart when their weather is the same (added 2026-11-18):** two overcast places
+  get the same sky, so cards look alike. Idea from the user: a **generated map overlay** per place,
+  e.g. a soft, low-contrast silhouette of the area around it (coastline, rivers, street grid or
+  terrain contours drawn from OpenStreetMap / Natural Earth data, or a stylised outline of the
+  city/region), blended into the card's gradient with the grain. Alternatives to weigh: a small
+  local-time clock face, the country/region shape, a per-place accent hue from its coordinates.
+  Must stay cheap (render once, cache per place) and keep text readable; data/license to check.
 - **Swipe stages, animated (added 2026-11-18):** the change from the star stage to the delete stage
   should itself animate (the revealed colour sweeps from amber to red, the star morphs into the bin
   icon with a little scale/rotate, the card's corners round more as it nears delete), following the
@@ -489,6 +496,27 @@ before choosing; check each license.
   `app.privacy_policy_link`, …) pointing at this GitHub repo; that also fixes the build warnings
   and the About screen links.
 
+### Search redesign: search bar at the bottom (added 2026-11-18)
+- Redesign "Search somewhere else": the search field sits at the **bottom** of the screen (thumb
+  reach, like a bottom address bar), results appear above it growing upwards, keyboard pushes the
+  field up with it. Replaces upstream's top search screen (`SearchActivity`) with a Compose screen
+  or sheet in `ui/expressive`; picking a result opens it as a visit (see Places: visit vs pin).
+- **Transition (user's direction, 2026-11-18):** the "Search somewhere else" button **morphs into the
+  search section** (container transform / shared element: the button grows into the bottom search
+  bar and the results area, the list behind recedes), and closing morphs it back into the button,
+  so everything feels fluid. Exact motion still to be proposed and agreed before building.
+
+## Motion test checklist (added 2026-11-18)
+Things to try on the phone before calling any motion done (debug and release builds):
+- **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
+  passes over Forecast: check the plain page fade, the sky, the highlight colour (sky colour on the
+  way through Forecast?), the folding labels and the icon colours all stay smooth and don't flash;
+  same when tapping during an ongoing swipe or animation (interrupt mid-way).
+- **In-between states of the title hand-off:** half-scrolled titles (label half unfolded), a swipe
+  between pages while a list is half-scrolled, scrolling while the pager is mid-swipe, fast flings
+  and reversing direction; the label must never show twice or jump.
+- Every gesture: hold still, release, reverse mid-way, interrupt with a second touch.
+
 ## Risks
 - **Upstream merges:** F3 rewrites `ManagementFragment`; conflicts there are likely. Mitigation:
   new file next to it, switch over in one small edit; merge upstream often.
@@ -731,3 +759,32 @@ before choosing; check each license.
   page's big title is on screen, and its label unfolds as the title scrolls away (driven by the list's
   scroll, so it follows the finger both ways); Forecast keeps its label (its page title is the place
   name). Checked on the Pixel 7, plus the stuck-swipe fix (hold 1.5 s then release: card springs back).
+- **2026-11-18:** Long-press a place to edit it (opens upstream's place settings), with playful
+  feedback: the card sinks while pressed, then pops, bumps (haptic) and wiggles. **Later refinement:**
+  a more playful, physical long-press animation (e.g. the card lifts off the list with a shadow and
+  a jelly squash-and-stretch, the others make room), shared with drag-to-reorder: lift then drag to
+  move, lift then release to edit. Also: "Use my current location" in Places (current position always
+  first), upstream's source chooser drawn by the shell, and new places default to WMO alerts
+  (AccuWeather still selectable).
+- **2026-11-18:** Checked on the Pixel 7: "Use my current location" opens the source chooser (cancelled
+  in the test, nothing added); long-press opens "Edit this location" after the pop-and-wiggle (dialog
+  now waits for the wiggle). Upstream's edit dialog is still the old style: restyle as a sheet later.
+  **F3 left:** drag to reorder (lift then drag, sharing the long-press), visit vs pin.
+- **2026-11-18 (agreed with the user):** Places reorder = **lift & drag**: long-press lifts the card
+  (~3 % larger, deeper shadow, haptic); drag it, it tilts slightly with your speed; cards near it are
+  nudged a little out of its way before it reaches them (feels like moving a physical object), then
+  slide on springs as it passes, with a tick per slot; release without moving opens the place's
+  settings. **Drop:** soft, non-bouncy settle of the card; the neighbours give a subtle bounce as it
+  lands. Replaces the placeholder wiggle. **Visiting:** a search result opens as a visit (Forecast
+  right away, not saved); in Places a lighter "Visiting" card with a dashed edge, local time and time
+  difference sits at the top; star (swipe) to keep it, otherwise it's gone on the next app start.
+- **2026-11-18:** Added a motion test checklist (tab taps at the extremes, title hand-off in-between
+  states, interrupt/reverse every gesture). Built: Places lift & drag reorder (agreed spec).
+- **2026-11-18 (user note):** don't let the app go into landscape on phones: lock to portrait
+  (manifest / per-activity), decide later whether tablets keep rotation.
+- **2026-11-18:** Reorder checked on the Pixel 7 (temporary second place): long-press lifts and
+  tilts the card, drag passes over the neighbour, drop saves the order (kept after restart). Test
+  place removed afterwards. Added: search redesign with the search bar at the bottom.
+- **2026-11-18:** Added: the "Search somewhere else" button morphs into the search section.
+- **2026-11-18:** Added: a way to tell apart places with the same current weather (generated map
+  overlay idea).

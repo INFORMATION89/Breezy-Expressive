@@ -88,8 +88,12 @@ import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
+import org.breezyweather.common.utils.helpers.SnackbarHelper
+import org.breezyweather.domain.location.model.applyDefaultPreset
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.location.model.isDaylight
+import org.breezyweather.sources.SourceManager
+import org.breezyweather.ui.common.composables.SecondarySourcesPreference
 import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
@@ -108,6 +112,7 @@ interface ShellActions {
     fun openSearch()
     fun openDetails()
     fun openSettings()
+    fun openLocationSettings()
 }
 
 /** Lets the host move the shell between pages (e.g. show Places when there are no locations). */
@@ -132,6 +137,7 @@ fun SolsticeShell(
     viewModel: MainActivityViewModel,
     actions: ShellActions,
     controller: ShellController,
+    sourceManager: SourceManager,
 ) {
     val context = LocalContext.current
     val current by viewModel.currentLocation.collectAsState()
@@ -239,6 +245,23 @@ fun SolsticeShell(
                                 }
                             }
                         },
+                        onAddCurrent = {
+                            viewModel.openChooseWeatherSourcesDialog(
+                                Location(isCurrentPosition = true).applyDefaultPreset(sourceManager)
+                            )
+                        },
+                        onEdit = {
+                            viewModel.setLocation(it.formattedId)
+                            actions.openLocationSettings()
+                        },
+                        onMove = { id, beforeId ->
+                            // Same move in the saved list (where the current position may sit anywhere).
+                            val from = locations.indexOfFirst { it.formattedId == id }
+                            val rest = locations.filter { it.formattedId != id }
+                            val to = beforeId?.let { b -> rest.indexOfFirst { it.formattedId == b } }
+                                ?.takeIf { it >= 0 } ?: rest.size
+                            if (from >= 0) viewModel.swapLocations(from, to)
+                        },
                         onSearch = actions::openSearch,
                         onSettings = actions::openSettings,
                         listState = placesList
@@ -262,7 +285,43 @@ fun SolsticeShell(
                 )
             }
         }
+        ChooseSourcesDialog(viewModel, sourceManager)
     }
+}
+
+/** Upstream's weather-source chooser shown when adding a place (it used to live in its Locations page). */
+@Composable
+private fun ChooseSourcesDialog(viewModel: MainActivityViewModel, sourceManager: SourceManager) {
+    val context = LocalContext.current
+    val open by viewModel.dialogChooseWeatherSourcesOpen.collectAsState()
+    val selected by viewModel.selectedLocation.collectAsState()
+    if (!open) return
+    val location = selected ?: return
+    SecondarySourcesPreference(
+        sourceManager = sourceManager,
+        location = location,
+        onClose = { newLocation: Location? ->
+            viewModel.closeChooseWeatherSourcesDialog()
+            if (newLocation != null) {
+                if (viewModel.locationExists(location)) {
+                    if (location.forecastSource != newLocation.forecastSource &&
+                        viewModel.locationExists(newLocation)
+                    ) {
+                        SnackbarHelper.showSnackbar(context.getString(R.string.location_message_already_exists))
+                    } else {
+                        viewModel.updateLocation(newLocation, location)
+                        SnackbarHelper.showSnackbar(context.getString(R.string.location_message_updated))
+                    }
+                } else if (viewModel.locationExists(newLocation)) {
+                    SnackbarHelper.showSnackbar(context.getString(R.string.location_message_already_exists))
+                } else {
+                    viewModel.addLocation(newLocation, null, context)
+                    SnackbarHelper.showSnackbar(context.getString(R.string.location_message_added))
+                }
+            }
+        },
+        locationExists = { viewModel.locationExists(it) }
+    )
 }
 
 /** 1 while the list's big title (its first item) is fully on screen, 0 once it has scrolled away. */
