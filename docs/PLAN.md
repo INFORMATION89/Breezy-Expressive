@@ -168,6 +168,17 @@ widgets, notifications, live wallpaper.
   (Forecast first, Locations to the right; see Design direction). New shell in `ui.expressive`
   hosting both; `MainActivity` switches to it in one small edit. Tapping a location in the
   Locations tab slides to Forecast showing it.
+- **Step 1 built 2026-11-18 (phones):** `ui/expressive/shell/` — `SolsticeShell` (pager Days ← Forecast →
+  Places over the current location's animated sky; floating toolbar whose highlight follows the
+  swipe; opens on Places when there are no locations), `ShellPages` (first simple Compose Forecast:
+  title with current-location icon, big temperature, condition, feels-like line, sun path with
+  sunrise/sunset, Today card with the next 6 hours, pull to refresh; Days list; Places with sky
+  cards, tap to select and slide to Forecast, Add a place → upstream search, settings button).
+  `MainActivity` hosts it in a new `solstice_shell` ComposeView (phone layout only); upstream's
+  Forecast stays underneath, hidden, as **"More details"** (Back returns to the shell);
+  `setManagementFragmentVisibility` routes to the Places page. Tablets keep upstream's drawer for now.
+  **Left for F3:** swipe a card to edit/delete with undo, drag to reorder, current location pinned
+  first + "add current location", pull-to-refresh/loading polish, transitions.
 - **Location cards:** swipe one way to Edit (location details), the other way to delete with undo.
 - **Location cards wear their own weather (added 2026-11-18):** each card's background is the
   same condition/time-of-day gradient that location's Forecast would show (gradient field + grain,
@@ -303,6 +314,22 @@ Forecast screen (top to bottom):
 - How: `NavHost(enterTransition/exitTransition/popEnter/popExit)` with slide + slight scale using the
   theme's spatial springs, `SharedTransitionLayout` for the title; one shared definition in
   `ui/expressive`, one small edit in `SettingsActivity`.
+
+### Days: a tactile (skeuomorphic) view, optional (added 2026-11-18)
+- Besides the plain list of the next 10 days, an optional **skeuomorphic** presentation: a physical-
+  feeling object for the week, e.g. a flip calendar / tear-off pages, a dial to turn through the days,
+  or cards stacked like a deck that you flick through, with real depth, light and texture.
+- A setting chooses between the clean list and the tactile view. Exact metaphor to decide with
+  mockups; same motion rules (follows the finger, interruptible springs, haptics).
+
+### Places: visit vs pin, time difference (added 2026-11-18)
+- Places behave like a map of places you **visit**: search somewhere else, look at its weather, and
+  it stays only for the session (a "visiting" card) unless you **pin** it, which saves it
+  permanently. Lets you consult other places without adding them for good.
+- Pinned places are the saved list (the star from the swipe is the first form of this).
+- Each place shows its **time difference** to you ("+1 h", "−6 h") and local time.
+- Needs: a non-persisted "visiting" location in the view model (upstream saves every searched
+  place), pin/unpin, and clearing visits after a while or on app restart.
 
 ### Alerts and Live Updates (added 2026-11-18)
 Android's counterpart of iOS Live Activities is **Live Updates** (Android 16 promoted ongoing
@@ -616,3 +643,13 @@ build on (the separate notification *widget* was removed).
   percentile frame 17 ms.
 - **2026-11-18:** Drift strength approved for now (Gentle). Added: "Sky motion" setting
   (Still · Calm · Gentle · Lively).
+- **2026-11-18:** F3 step 1 built and checked on the Pixel 7: add a place via search → sky card in
+  Places → tap → Forecast; swipe to Days; More details opens upstream's Forecast, Back returns.
+  Found: new places default to AccuWeather for alerts/normals, which needs a key the fork doesn't
+  have. To do: default alerts to WMO Severe Weather (AccuWeather stays available as an option,
+  user wants to keep it).
+- **2026-11-18:** Added: optional skeuomorphic Days view (setting); Places as visit vs pin with time
+  difference.
+- **2026-11-18:** Added (first version built with the toolbar): the Forecast tab adopts the current
+  weather (condition icon, highlight colour from the sky) and morphs into the Material You colour
+  as you swipe to Outlook or Places.
