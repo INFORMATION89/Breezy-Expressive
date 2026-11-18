@@ -134,15 +134,15 @@ object IntentHelper {
     }
 
     fun startCardDisplayManageActivity(activity: Activity) {
-        ReorderActivity.start(activity, ReorderActivity.KIND_CARDS) // Breezy Expressive: Compose reorder screen
+        ReorderActivity.start(activity, ReorderActivity.KIND_CARDS) // Solstice: Compose reorder screen
     }
 
     fun startDailyTrendDisplayManageActivity(activity: Activity) {
-        ReorderActivity.start(activity, ReorderActivity.KIND_DAILY) // Breezy Expressive: Compose reorder screen
+        ReorderActivity.start(activity, ReorderActivity.KIND_DAILY) // Solstice: Compose reorder screen
     }
 
     fun startHourlyTrendDisplayManageActivity(activity: Activity) {
-        ReorderActivity.start(activity, ReorderActivity.KIND_HOURLY) // Breezy Expressive: Compose reorder screen
+        ReorderActivity.start(activity, ReorderActivity.KIND_HOURLY) // Solstice: Compose reorder screen
     }
 
     fun startMainScreenSettingsActivity(activity: Activity) {

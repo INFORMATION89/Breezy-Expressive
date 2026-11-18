@@ -1,4 +1,4 @@
-# Breezy Expressive
+# Solstice
 
 Unofficial fork of [Breezy Weather](https://github.com/breezy-weather/breezy-weather), redesigned in Material You Expressive. Not affiliated with or endorsed by Breezy Weather.
 

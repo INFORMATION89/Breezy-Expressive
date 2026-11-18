@@ -115,7 +115,7 @@ fun ModulesSettingsScreen(
         ) {
             // widget.
             sectionHeaderItem(R.string.settings_modules_section_general)
-            // Breezy Expressive: live wallpaper removed.
+            // Solstice: live wallpaper removed.
             listPreferenceItem(R.string.settings_modules_week_icon_mode_title) { id ->
                 ListPreferenceView(
                     titleId = id,
@@ -206,7 +206,7 @@ fun ModulesSettingsScreen(
 
             largeSeparatorItem()
 
-            // Breezy Expressive: notification widget removed.
+            // Solstice: notification widget removed.
 
             sectionHeaderItem(R.string.settings_modules_broadcast_title)
             broadcastSources

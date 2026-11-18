@@ -1,4 +1,4 @@
-# Breezy Expressive
+# Solstice
 
 Unofficial fork of Breezy Weather, redesigned in Material You Expressive.
 

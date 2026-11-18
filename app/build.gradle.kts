@@ -23,7 +23,7 @@ configure<ApplicationExtension> {
     namespace = "org.breezyweather"
 
     defaultConfig {
-        applicationId = "io.github.information89.breezyexpressive"
+        applicationId = "io.github.information89.solstice"
         versionCode = 60203
         versionName = "6.2.3"
 

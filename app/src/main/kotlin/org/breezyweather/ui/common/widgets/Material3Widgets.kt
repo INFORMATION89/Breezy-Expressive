@@ -201,7 +201,7 @@ fun Material3ExpressiveCardListItem(
     isLast: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // Breezy Expressive: inner corners morph while the row is pressed.
+    // Solstice: inner corners morph while the row is pressed.
     val (pressObserver, shape) = rememberPressMorphShape(
         isFirst = isFirst,
         isLast = isLast,

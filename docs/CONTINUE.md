@@ -7,8 +7,8 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 
 - **Repo:** this one (`INFORMATION89/Breezy-Expressive`): upstream Breezy Weather's files at `5ec3b9b`
   **without upstream's git history** (see `UPSTREAM_BASE`). Never push upstream's history here.
-- **F0 done (2026-11-18):** snapshot, app name "Breezy Expressive", `applicationId`
-  `io.github.information89.breezyexpressive`, CI (`.github/workflows/build.yml`), first run on the
+- **F0 done (2026-11-18):** snapshot, app name "Solstice", `applicationId`
+  `io.github.information89.solstice` (renamed 2026-11-18; was `…breezyexpressive`), CI (`.github/workflows/build.yml`), first run on the
   Pixel 7, own launcher icon with themed-icon layer (regenerate with `tools/make_icon.py`).
   `./gradlew assembleBasicDebug` builds (first build 6–20 min).
 - **F1 done:** Expressive theme in `ui/expressive/theme/` (Google Sans Flex, expressive motion,
@@ -42,7 +42,7 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
    ```bash
    adb install -r app/build/outputs/apk/basic/debug/app-basic-arm64-v8a-debug.apk
    ```
-   The debug app is `io.github.information89.breezyexpressive.debug`.
+   The debug app is `io.github.information89.solstice.debug`.
 
 **Never** build with `-Pbreezy`: that config is reserved for the official Breezy Weather app.
 

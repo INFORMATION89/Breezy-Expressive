@@ -31,5 +31,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: breezy-expressive-basic-debug
+          name: solstice-basic-debug
           path: app/build/outputs/apk/basic/debug/*.apk

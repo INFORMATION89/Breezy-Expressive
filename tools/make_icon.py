@@ -1,4 +1,4 @@
-"""Generate Breezy Expressive launcher icon (option C: sun + two curled gusts).
+"""Generate Solstice launcher icon (option C: sun + two curled gusts).
 
 Writes vector drawables (foreground, monochrome, background) and legacy webp
 bitmaps into app/src/res_fork. Usage: python make_icon.py <res_fork dir> <preview png>
@@ -82,7 +82,7 @@ def path_d(geom):
 
 
 HEAD = ('<?xml version="1.0" encoding="utf-8"?>\n'
-        '<!-- Breezy Expressive launcher icon: sun with two curled gusts. Generated. -->\n'
+        '<!-- Solstice launcher icon: sun with two curled gusts. Generated. -->\n'
         '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
         '    android:width="108dp"\n    android:height="108dp"\n'
         '    android:viewportWidth="108"\n    android:viewportHeight="108">\n')

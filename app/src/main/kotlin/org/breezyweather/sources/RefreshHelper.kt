@@ -1133,7 +1133,7 @@ class RefreshHelper @Inject constructor(
         }
     }
 
-    // Breezy Expressive: notification widget and live wallpaper were removed; these stay as no-ops
+    // Solstice: notification widget and live wallpaper were removed; these stay as no-ops
     // so upstream's callers don't need changing.
     @Suppress("UNUSED_PARAMETER")
     fun updateNotificationIfNecessary(context: Context, locationList: List<Location>) = Unit

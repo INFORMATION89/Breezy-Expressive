@@ -185,7 +185,7 @@ fun MultiListPreferenceView(
 
     if (dialogOpenState.value) {
         if (itemsArray.isNotEmpty()) {
-            // Breezy Expressive: bottom sheet instead of upstream's dialog.
+            // Solstice: bottom sheet instead of upstream's dialog.
             SheetDialog(
                 onDismissRequest = {
                     listSelectedState.apply {

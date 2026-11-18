@@ -22,7 +22,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import org.breezyweather.ui.expressive.theme.ExpressiveTheme
 
-// Breezy Expressive: the whole Compose UI is themed by ExpressiveTheme (ui/expressive/theme).
+// Solstice: the whole Compose UI is themed by ExpressiveTheme (ui/expressive/theme).
 @Composable
 fun BreezyWeatherTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

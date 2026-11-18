@@ -347,7 +347,7 @@ class SourceManager @Inject constructor(
                 null
             }
 
-            // Breezy Expressive: the phone's own geocoder first (no key, local names), Nominatim otherwise.
+            // Solstice: the phone's own geocoder first (no key, local names), Nominatim otherwise.
             SourceFeature.REVERSE_GEOCODING -> if (BuildConfig.FLAVOR != "freenet" && Geocoder.isPresent()) {
                 getReverseGeocodingSource("nativegeocoder") ?: getReverseGeocodingSource("nominatim")
             } else {

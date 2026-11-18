@@ -188,7 +188,7 @@ fun ListPreferenceView(
     val listSelectedState = remember { mutableStateOf(selectedKey) }
     val dialogOpenState = remember { mutableStateOf(false) }
     val currentSummary = summary(LocalContext.current, if (withState) listSelectedState.value else selectedKey)
-    // Breezy Expressive: 2–3 short options are shown inline as a connected button group.
+    // Solstice: 2–3 short options are shown inline as a connected button group.
     val inline = isInlineChoice(valueArray, nameArray, enableArray, dismissButton != null || trailingContent != null)
 
     ListItem(
@@ -279,7 +279,7 @@ fun ListPreferenceView(
     )
 
     if (dialogOpenState.value) {
-        // Breezy Expressive: bottom sheet instead of upstream's dialog.
+        // Solstice: bottom sheet instead of upstream's dialog.
         ChoiceSheet(
             title = title,
             valueArray = valueArray,

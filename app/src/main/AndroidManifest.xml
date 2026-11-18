@@ -158,7 +158,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Breezy Expressive: Compose reorder screen (blocks, daily and hourly trends). -->
+        <!-- Solstice: Compose reorder screen (blocks, daily and hourly trends). -->
         <activity
             android:name=".ui.expressive.reorder.ReorderActivity"
             android:theme="@style/BreezyWeatherTheme" />

@@ -1,6 +1,6 @@
-# Breezy Expressive: plan
+# Solstice: plan
 
-**Breezy Expressive** is a fork of [Breezy Weather](https://github.com/breezy-weather/breezy-weather) redesigned in full
+**Solstice** (working name until 2026-11-18: Breezy Expressive) is a fork of [Breezy Weather](https://github.com/breezy-weather/breezy-weather) redesigned in full
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
@@ -24,7 +24,7 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
 
 | Topic | Decision (2026-11-17) |
 |---|---|
-| Name | Breezy Expressive (unofficial fork; rename if upstream asks) |
+| Name | **Solstice** (decided 2026-11-18; replaces the working name Breezy Expressive) |
 | `applicationId` | `io.github.information89.breezyexpressive` (debug: `.debug` suffix, as upstream) |
 | Flavor shipped | `basic` (all sources) |
 | Code in this repo | Yes, as a snapshot of upstream **without its history** (29 MB; the full history is ~1 GB) |
@@ -33,6 +33,21 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
 | Typeface | Google Sans Flex, bundled; emphasized headlines via weight (2026-11-18; check license before bundling) |
 | Shapes | Full Expressive: large corners, pill buttons, morph on press/selection (2026-11-18) |
 | Launcher icon | Sun partly wrapped by a wind swirl, plus a monochrome layer (2026-11-18) |
+
+## Rename to Solstice (decided 2026-11-18)
+- **Why it's required, not just cosmetic:** upstream's license terms say a fork must not use the
+  Breezy name. In release builds, `BreezyWeather.isImpersonatingBreezyWeather` is true when the app
+  name **or** the applicationId contains "breezy"; the app then hides all locations and shows a
+  blocking "License compliance" dialog that closes the app (`ui/main/dialogs/LicenseComplianceDialog`).
+  Debug builds are exempt. Today both our name and ID contain "breezy", so **release builds are
+  unusable until the rename.**
+- **What changes:** `brand_name` in `res_fork/values/strings.xml` → "Solstice";
+  `applicationId` → e.g. `io.github.information89.solstice` (a new app ID means a separate install:
+  settings and locations on the phone don't carry over; fine at this stage); README, CLAUDE.md,
+  CONTINUE.md, PRIVACY.md/INSTALL.md wording; `app.github.release_prefix`; optionally the GitHub
+  repo name (GitHub redirects the old URL). The code package `org.breezyweather` stays (keeps
+  upstream merges easy; the license check doesn't look at it).
+- Check before release: no confusing clash with other apps called Solstice in the stores.
 
 ## Design direction
 
@@ -46,9 +61,11 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
   shape morphing on press and selection.
 - **Days page (added 2026-11-18):** the multi-day forecast moves to **its own page to the left of
   Forecast**: swipe with the finger moving right from Forecast to reach it. Pages, left to right:
-  **Days ← Forecast → Locations**; Forecast stays the screen the app opens on. Open question: does
-  the pill toolbar get a third tab (Days / Forecast / Locations), and does Forecast keep a small
-  "next days" teaser that opens the Days page?
+  **Days ← Forecast → Locations**; Forecast stays the screen the app opens on. Decided 2026-11-18: the pill
+  toolbar has **three tabs: Days · Forecast · Places**. A small "next days" preview card appears on
+  Forecast **only near the end of the day** (evening/night, when tomorrow matters more than the
+  rest of today); tapping it opens the Days page. Exact switch-over time to tune (e.g. after
+  sunset or after the last daytime hour).
 - **Navigation (updated 2026-11-18):** two pages side by side. **Forecast is the first screen**;
   **Locations is to its right**: swipe with the finger moving left to reach it, right to come back.
   The page follows the finger and can reverse mid-swipe. A floating pill toolbar (M3 Expressive
@@ -152,6 +169,11 @@ widgets, notifications, live wallpaper.
   hosting both; `MainActivity` switches to it in one small edit. Tapping a location in the
   Locations tab slides to Forecast showing it.
 - **Location cards:** swipe one way to Edit (location details), the other way to delete with undo.
+- **Location cards wear their own weather (added 2026-11-18):** each card's background is the
+  same condition/time-of-day gradient that location's Forecast would show (gradient field + grain,
+  see "Forecast background"), so the list reads at a glance: sunny afternoon here, night and rain
+  there. Performance: render each card's gradient once per weather update (small cached bitmap or
+  a cheap shader), never per frame; text contrast checked on every gradient.
 - **Forecast top:** only the location title (current location: real place name + location icon);
   remove upstream's toolbar actions, including "edit this location", from the Forecast screen.
 
@@ -212,14 +234,25 @@ Forecast screen (top to bottom):
   near-black at night; peach/orange/yellow for sun; blue sky into warm sunset). This updates the
   earlier "no custom sky look" decision for the Forecast background only; the rest of the app
   stays Material You.
-- **Open question:** a free gradient field like the references, or a **circular shape that stands
-  for the sun or moon** (a soft glowing orb whose position/colour follows the time of day) on a
-  gradient. Decide with mockups before building.
+- **Decided 2026-11-18 (from mockups A/B/C): gradient field (A).** Soft blurred colour fields with
+  film grain, no sun/moon orb; the sun path stays a drawn curve with a dot for the sun, sunrise
+  left and sunset right.
 - Colours: derived from conditions and time of day, harmonised with the wallpaper (dynamic) palette
   so cards and text stay readable; text contrast checked in both themes.
 - Performance first: draw it cheaply, e.g. a few blurred shapes / a small pre-rendered bitmap scaled
   up, or an AGSL shader on Android 13+; grain as a tiled noise texture. No per-frame redraw unless
   something moves; measure frame times on the Pixel 7 (release build).
+
+### App drawer name: "Solstice" or "Weather" (added 2026-11-18)
+- A setting (Appearance) to choose the name shown under the icon in the app drawer/home screen:
+  **Solstice** or **Weather**, so the app can sit where people expect "Weather".
+- How: two `<activity-alias>` launcher entries for the main activity, each with its own label;
+  the setting enables one and disables the other with
+  `PackageManager.setComponentEnabledSetting(..., DONT_KILL_APP)`.
+- Caveats to handle: some launchers take a moment to refresh or remove a home-screen shortcut
+  when the alias switches (warn in the setting's summary); app shortcuts and widgets must point at
+  the real activity, not the alias. The app's own name elsewhere (About, notifications) stays
+  "Solstice".
 
 ### New Material You Expressive icons everywhere
 - Replace upstream's UI icons (settings, toolbar, actions, rows) with Material Symbols in the
@@ -424,3 +457,16 @@ Forecast screen (top to bottom):
   Pirate Weather (need own keys) and Debug; NWS/ECCC apply to US/Canada locations automatically.
 - **2026-11-18:** Added: multi-day forecast gets its own page to the left of Forecast
   (Days ← Forecast → Locations); toolbar third tab and Forecast teaser still open.
+- **2026-11-18:** Forecast mockups reviewed: gradient field background (A), three-tab toolbar
+  (Days · Forecast · Places), next-days preview only near the end of the day.
+- **2026-11-18:** New name: **Solstice**. Found that release builds are blocked by upstream's
+  license-compliance check while name or app ID contain "breezy"; rename needed before release
+  builds can be used or measured. Release APK size (arm64): 15.1 MB vs 41.5 MB debug.
+- **2026-11-18:** Added: setting to switch the app drawer name between "Solstice" and "Weather".
+- **2026-11-18:** Renamed to **Solstice** (`io.github.information89.solstice`, debug `.debug`). The
+  release build now opens normally (no license-compliance block). Same scripted settings scroll
+  test on the Pixel 7, debug vs release (R8, signed with the debug key): janky frames 6.7 % → 1.75 %,
+  median 7 → 6 ms, 95th percentile 38 → 13 ms, worst 1 % 77 → 34 ms; arm64 APK 41.5 → 15.1 MB.
+  So most of the lag the user felt was the debug build; the remaining release jank (worst 1 % at
+  34 ms) is the target for a performance pass (baseline profile, the View screens). Added: Location
+  cards use their location's condition gradient.

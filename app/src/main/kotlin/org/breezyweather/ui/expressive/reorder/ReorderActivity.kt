@@ -1,17 +1,17 @@
 /*
- * This file is part of Breezy Expressive, a fork of Breezy Weather.
+ * This file is part of Solstice, a fork of Breezy Weather.
  *
- * Breezy Expressive is free software: you can redistribute it and/or modify it
+ * Solstice is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
  * Free Software Foundation, version 3 of the License.
  *
- * Breezy Expressive is distributed in the hope that it will be useful, but
+ * Solstice is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
  * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
  * License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with Breezy Expressive. If not, see <https://www.gnu.org/licenses/>.
+ * along with Solstice. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.breezyweather.ui.expressive.reorder
