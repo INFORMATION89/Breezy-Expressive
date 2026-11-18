@@ -161,6 +161,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Breezy Expressive: Compose reorder screen (blocks, daily and hourly trends). -->
+        <activity
+            android:name=".ui.expressive.reorder.ReorderActivity"
+            android:theme="@style/BreezyWeatherTheme" />
+
         <activity
             android:name=".ui.settings.activities.CardDisplayManageActivity"
             android:label="@string/settings_main_cards_title"

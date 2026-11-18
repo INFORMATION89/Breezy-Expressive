@@ -63,6 +63,8 @@ import org.breezyweather.common.extensions.toBitmap
 import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
+import org.breezyweather.ui.expressive.components.IconBadge
+import org.breezyweather.ui.expressive.components.SheetDialog
 import org.breezyweather.ui.theme.compose.themeRipple
 import java.text.Collator
 
@@ -148,12 +150,7 @@ fun MultiListPreferenceView(
             .padding(PaddingValues(vertical = 8.dp)),
         leadingContent = if (iconId != null) {
             {
-                Icon(
-                    painter = painterResource(iconId),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
+                IconBadge(iconId)
             }
         } else {
             null
@@ -188,7 +185,8 @@ fun MultiListPreferenceView(
 
     if (dialogOpenState.value) {
         if (itemsArray.isNotEmpty()) {
-            AlertDialogNoPadding(
+            // Breezy Expressive: bottom sheet instead of upstream's dialog.
+            SheetDialog(
                 onDismissRequest = {
                     listSelectedState.apply {
                         clear()

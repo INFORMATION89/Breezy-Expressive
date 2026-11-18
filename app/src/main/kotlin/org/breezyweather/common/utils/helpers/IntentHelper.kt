@@ -30,12 +30,10 @@ import org.breezyweather.common.options.appearance.DetailScreen
 import org.breezyweather.ui.about.AboutActivity
 import org.breezyweather.ui.alert.AlertActivity
 import org.breezyweather.ui.details.DetailsActivity
+import org.breezyweather.ui.expressive.reorder.ReorderActivity
 import org.breezyweather.ui.main.MainActivity
 import org.breezyweather.ui.search.SearchActivity
-import org.breezyweather.ui.settings.activities.CardDisplayManageActivity
-import org.breezyweather.ui.settings.activities.DailyTrendDisplayManageActivity
 import org.breezyweather.ui.settings.activities.DependenciesActivity
-import org.breezyweather.ui.settings.activities.HourlyTrendDisplayManageActivity
 import org.breezyweather.ui.settings.activities.PreviewIconActivity
 import org.breezyweather.ui.settings.activities.PrivacyPolicyActivity
 import org.breezyweather.ui.settings.activities.SettingsActivity
@@ -136,15 +134,15 @@ object IntentHelper {
     }
 
     fun startCardDisplayManageActivity(activity: Activity) {
-        activity.startActivity(Intent(activity, CardDisplayManageActivity::class.java))
+        ReorderActivity.start(activity, ReorderActivity.KIND_CARDS) // Breezy Expressive: Compose reorder screen
     }
 
     fun startDailyTrendDisplayManageActivity(activity: Activity) {
-        activity.startActivity(Intent(activity, DailyTrendDisplayManageActivity::class.java))
+        ReorderActivity.start(activity, ReorderActivity.KIND_DAILY) // Breezy Expressive: Compose reorder screen
     }
 
     fun startHourlyTrendDisplayManageActivity(activity: Activity) {
-        activity.startActivity(Intent(activity, HourlyTrendDisplayManageActivity::class.java))
+        ReorderActivity.start(activity, ReorderActivity.KIND_HOURLY) // Breezy Expressive: Compose reorder screen
     }
 
     fun startMainScreenSettingsActivity(activity: Activity) {

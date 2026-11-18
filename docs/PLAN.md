@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **F0 and F1 done** (2026-11-18); next F2. Upstream base: `5ec3b9b` (2026-11-17).
+Status: **F0, F1 and F2 done** (2026-11-18; F2 blur pending); next F3. Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -141,6 +141,47 @@ widgets, notifications, live wallpaper.
 - Check: light/dark, dynamic color on/off, Android 12 and 17, font scale 200 %, RTL, TalkBack.
 - Release build with our name/icon; changelog; screenshots.
 
+## Planned next (added 2026-11-18, not yet scheduled into a phase)
+
+### Edit the Forecast blocks in place, like Pixel Weather
+- Instead of (or as well as) the separate Blocks list in Settings: long-press the Forecast screen
+  to enter an edit mode where the real blocks shrink slightly and can be dragged into a new order
+  right there, hidden with a remove button, and added back from a tray of hidden blocks. Done
+  ends edit mode. Reference: how the Pixel Weather app reorders its home screen cards.
+- Same motion rules: the dragged block follows the finger, others slide with springs, haptic
+  ticks, interruptible; TalkBack move up/down actions.
+- Depends on the main Forecast screen being Compose (upstream's is View/RecyclerView today), so it
+  comes with or after a Compose Forecast screen. Reuses the stored `cardDisplayList` and the drag
+  logic from `ui/expressive/reorder/ReorderList`.
+
+### Forecast screen: no fade-ins, progressive blur at the edges
+- **Don't fade in blocks.** Upstream animates the Forecast blocks in as they appear; remove that so
+  blocks are simply there when the screen opens or scrolls (feels faster, less busy). Check the
+  "animations" options in Main screen settings, which control this upstream.
+- **Progressive blur at the top and bottom edges:** content scrolling out of view under the top
+  bar / floating toolbar gets gradually more blurred (and dimmed) towards the edge instead of being
+  cut off hard, like iOS. Android 12+ (`RenderEffect`), plain gradient fade as fallback.
+- Performance first: blur is costly on the GPU, so measure frame times on the Pixel 7 (release
+  build) and keep the blurred band small; same technique as the translucent overlays above.
+
+### New Material You Expressive icons everywhere
+- Replace upstream's UI icons (settings, toolbar, actions, rows) with Material Symbols in the
+  Expressive style: Rounded, filled when selected, consistent weight/grade, matching the type.
+- Approach: map each upstream `ic_*` drawable to a Material Symbol and regenerate the vector
+  drawables under the same names, so call sites don't change (small upstream diff). Check the
+  Material Symbols license (Apache 2.0) and record it.
+- Weather condition icons (icon packs) are separate: keep upstream's packs for now; an Expressive
+  weather icon set is its own later decision.
+
+### Simplify settings
+- The Daily trends and Hourly trends options are too much. Proposal to discuss before building:
+  fold them into the Forecast blocks (configure from the block itself / in-place edit mode), show
+  only the few that matter by default, and move the rest under a single "More" or "Advanced"
+  section.
+- Then a pass over all settings screens: remove or merge rarely used options, shorter summaries,
+  fewer levels of nesting. Nothing removed from upstream's stored settings, only from what's shown,
+  so upstream merges stay easy.
+
 ## Risks
 - **Upstream merges:** F3 rewrites `ManagementFragment`; conflicts there are likely. Mitigation:
   new file next to it, switch over in one small edit; merge upstream often.
@@ -168,6 +209,14 @@ widgets, notifications, live wallpaper.
 - `ui/settings/preference/composables/Preference.kt`: leading icon → `IconBadge` (F2).
 - `ui/common/widgets/insets/FitSystemBarComposeWrappers.kt`: `LargeTopAppBar` →
   `LargeFlexibleTopAppBar` (F2).
+- `ui/common/widgets/Material3Widgets.kt`: `Material3ExpressiveCardListItem` morphs its inner corners
+  while pressed (F2).
+- `ui/settings/preference/composables/MultiListPreference.kt`: `AlertDialogNoPadding` → `SheetDialog`;
+  row icons → `IconBadge` (also in `ListPreference.kt`, `SwitchPreference.kt`) (F2).
+- `common/utils/helpers/IntentHelper.kt`: the three reorder screens open `ReorderActivity` (F2).
+- `AndroidManifest.xml`: `ReorderActivity` entry (F2).
+- Added: `res/values/strings_expressive.xml` (new strings kept out of upstream's `strings.xml`;
+  English only so far).
 - Added (no upstream equivalent): `.gitattributes` (LF, so Spotless passes on Windows),
   `app/src/main/res/font/google_sans_flex.ttf`, `third_party/fonts/GoogleSansFlex-OFL.txt`,
   `tools/make_icon.py`, `app/src/main/kotlin/org/breezyweather/ui/expressive/**`.
@@ -219,3 +268,17 @@ widgets, notifications, live wallpaper.
 - Performance, quick look: the release build was too slow to wait for, so work continues on debug.
   Debug frame stats on the Pixel: median 7 ms, ~4–5 % janky frames, worst 1 % at 125–250 ms.
   Judge smoothness on a release build before the next milestone.
+- **2026-11-18:** **F2 done** (except real blur). Multi-select lists open `SheetDialog` (same slots as
+  upstream's dialog, so the call site changed one name); all settings rows with icons use
+  `IconBadge`; segmented rows morph their inner corners while pressed (spring, interruptible).
+  New Compose `ReorderActivity` + `ReorderList` replace the three reorder screens (blocks, daily,
+  hourly trends): drag the handle or long-press a row, others slide with springs, auto-scroll at the
+  edges, haptic ticks, TalkBack move up/down/remove actions, hidden items as chips, reset to
+  default, saves on leave. Upstream's old activities stay in place, unused.
+  Checked on the Pixel 7: drag reorder works and saves (test drag was undone afterwards), press
+  morph visible. Not seen: the multi-select sheet with items (no compatible app installed).
+- **2026-11-18:** Added to "Planned next": in-place block editing on the Forecast screen (like Pixel
+  Weather), Material You Expressive icons everywhere, and simplifying settings (Daily/Hourly
+  trends options first).
+- **2026-11-18:** Added to "Planned next": no fade-in of Forecast blocks, progressive blur at the
+  top and bottom edges of the Forecast screen.

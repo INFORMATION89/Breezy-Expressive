@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import org.breezyweather.R
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
+import org.breezyweather.ui.expressive.components.IconBadge
 import org.breezyweather.ui.expressive.components.SwitchThumbIcon
 import org.breezyweather.ui.theme.compose.themeRipple
 
@@ -171,12 +172,7 @@ fun SwitchPreferenceView(
                 ),
             leadingContent = if (iconId != null) {
                 {
-                    Icon(
-                        painter = painterResource(iconId),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    IconBadge(iconId)
                 }
             } else {
                 null

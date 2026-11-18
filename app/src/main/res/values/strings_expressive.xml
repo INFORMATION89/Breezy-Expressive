@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Breezy Expressive: strings for new UI. Kept apart from upstream's strings.xml so upstream
+     translation updates merge cleanly. English only for now. -->
+<resources>
+    <string name="action_move_up_expressive">Move up</string>
+    <string name="action_move_down_expressive">Move down</string>
+    <string name="action_remove_expressive">Remove</string>
+    <string name="reorder_hidden_expressive">Hidden, tap to add</string>
+</resources>

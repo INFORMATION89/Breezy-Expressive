@@ -70,6 +70,7 @@ import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
 import org.breezyweather.ui.expressive.components.ChoiceSheet
+import org.breezyweather.ui.expressive.components.IconBadge
 import org.breezyweather.ui.expressive.components.InlineChoiceButtons
 import org.breezyweather.ui.expressive.components.choiceLabel
 import org.breezyweather.ui.expressive.components.isInlineChoice
@@ -205,12 +206,7 @@ fun ListPreferenceView(
             .padding(PaddingValues(vertical = 8.dp)),
         leadingContent = if (iconId != null) {
             {
-                Icon(
-                    painter = painterResource(iconId),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
+                IconBadge(iconId)
             }
         } else {
             null

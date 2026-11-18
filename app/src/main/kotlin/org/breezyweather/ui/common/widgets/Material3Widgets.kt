@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.rememberPressMorphShape
 import kotlin.math.ln
 
 // helper.
@@ -199,33 +200,20 @@ fun Material3ExpressiveCardListItem(
     isFirst: Boolean = true,
     isLast: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
-) = Card(
-    modifier = modifier,
-    shape = RoundedCornerShape(
-        topStart = if (isFirst) {
-            dimensionResource(R.dimen.material3_card_settings_list_item_corner_radius)
-        } else {
-            2.dp
-        },
-        topEnd = if (isFirst) {
-            dimensionResource(R.dimen.material3_card_settings_list_item_corner_radius)
-        } else {
-            2.dp
-        },
-        bottomStart = if (isLast) {
-            dimensionResource(R.dimen.material3_card_settings_list_item_corner_radius)
-        } else {
-            2.dp
-        },
-        bottomEnd = if (isLast) {
-            dimensionResource(R.dimen.material3_card_settings_list_item_corner_radius)
-        } else {
-            2.dp
-        }
-    ),
-    colors = CardDefaults.cardColors(
-        containerColor = getWidgetSurfaceColor(elevation, surface),
-        contentColor = onSurface
-    ),
-    content = content
-)
+) {
+    // Breezy Expressive: inner corners morph while the row is pressed.
+    val (pressObserver, shape) = rememberPressMorphShape(
+        isFirst = isFirst,
+        isLast = isLast,
+        outer = dimensionResource(R.dimen.material3_card_settings_list_item_corner_radius)
+    )
+    Card(
+        modifier = modifier.then(pressObserver),
+        shape = shape,
+        colors = CardDefaults.cardColors(
+            containerColor = getWidgetSurfaceColor(elevation, surface),
+            contentColor = onSurface
+        ),
+        content = content
+    )
+}
