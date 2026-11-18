@@ -894,3 +894,13 @@ Things to try on the phone before calling any motion done (debug and release bui
      preselected, a few plain-language alternatives), with a clear note that **you can change it
      later** in settings.
   Replaces upstream's onboarding. Screens and motion still to be proposed and agreed.
+- **2026-11-18 (user note):** **Animations feel a bit broken after the latest changes** (search
+  card, gooey bud, no theme-flip recreate). To do: go through the motion test checklist on the
+  Pixel (tabs, swipes, search open/close, handle drag, bud in-between states, reorder) in a release
+  build, find what regressed and fix it.
+  - **When the toolbar changes size it breaks for a second** (tab label unfolding, search bud).
+    Likely cause: the glass reads its own position from layout state one frame late, so for a
+    frame the blurred backdrop is drawn from the wrong spot. Fix: read positions at draw time.
+    **Fixed 2026-11-18:** the glass now clips while drawing, using an outline built from the size
+    being drawn, and reads positions at draw time. The bud outline is measured from that size too.
+    A screen recording shows the toolbar's ends stay round through the resize.

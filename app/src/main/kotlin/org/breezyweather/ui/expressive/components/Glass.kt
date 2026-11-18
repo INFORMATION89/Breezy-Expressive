@@ -32,12 +32,17 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Dp
@@ -55,7 +60,17 @@ import androidx.compose.ui.unit.dp
  */
 @Stable
 class GlassSource internal constructor(internal val layer: GraphicsLayer) {
-    internal var origin by mutableStateOf(Offset.Zero)
+    // Plain field, read at draw time: a state read here would lag a frame behind layout changes.
+    internal var coordinates: LayoutCoordinates? = null
+
+    // Bumped when the source moves, so glass redraws even if nothing else asks it to.
+    internal var moved by mutableStateOf(Offset.Zero)
+}
+
+/** Holds a glass element's own coordinates, read at draw time like [GlassSource.coordinates]. */
+private class Placed {
+    var coordinates: LayoutCoordinates? = null
+    var moved by mutableStateOf(Offset.Zero)
 }
 
 @Composable
@@ -66,7 +81,10 @@ fun rememberGlassSource(): GlassSource {
 
 /** Marks the content that glass elements should show, blurred, behind them. */
 fun Modifier.glassSource(source: GlassSource): Modifier = this
-    .onGloballyPositioned { source.origin = it.positionInRoot() }
+    .onGloballyPositioned {
+        source.coordinates = it
+        source.moved = it.positionInRoot()
+    }
     .drawWithContent {
         source.layer.record { this@drawWithContent.drawContent() }
         drawLayer(source.layer)
@@ -85,21 +103,33 @@ fun Modifier.glass(
         return this.clip(shape).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(0.5.dp, edge, shape)
     }
     val blurLayer = rememberGraphicsLayer()
-    var origin by remember { mutableStateOf(Offset.Zero) }
+    val placed = remember { Placed() }
     return this
-        .onGloballyPositioned { origin = it.positionInRoot() }
-        .clip(shape)
+        .onGloballyPositioned {
+            placed.coordinates = it
+            placed.moved = it.positionInRoot()
+        }
+        // Clip in the draw pass, with the outline built for this frame's size: a layer clip
+        // (Modifier.clip) can lag a frame behind a resize and cut the toolbar off square.
         .drawBehind {
+            val outline = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawBehind)) }
             val radius = blur.toPx()
             blurLayer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
             blurLayer.record(size = IntSize(size.width.toInt(), size.height.toInt())) {
-                // Only this element's rectangle of the backdrop goes through the blur.
-                translate(source.origin.x - origin.x, source.origin.y - origin.y) {
+                // Only this element's rectangle of the backdrop goes through the blur. Positions are
+                // read now, not from last frame's layout, so a resize never shows a shifted backdrop.
+                source.moved // subscribe: redraw when either side moves
+                placed.moved
+                val from = source.coordinates?.takeIf { it.isAttached }?.positionInRoot() ?: Offset.Zero
+                val to = placed.coordinates?.takeIf { it.isAttached }?.positionInRoot() ?: Offset.Zero
+                translate(from.x - to.x, from.y - to.y) {
                     drawLayer(source.layer)
                 }
             }
-            drawLayer(blurLayer)
-            drawRect(tint)
+            clipPath(outline) {
+                drawLayer(blurLayer)
+                drawRect(tint)
+            }
+            drawPath(outline, edge, style = Stroke(0.5.dp.toPx()))
         }
-        .border(0.5.dp, edge, shape)
 }

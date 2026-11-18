@@ -581,12 +581,7 @@ private fun ShellToolbar(
     }
     val density = LocalDensity.current
     val shape = with(density) {
-        BudShape(
-            pillWidth = pillWidth.toPx(),
-            centre = (pillWidth - height / 2 + (gap + height) * bud).toPx(),
-            neck = neck.value,
-            gap = gap.toPx()
-        )
+        BudShape(budExtra = ((gap + height) * bud).toPx(), neck = neck.value, gap = gap.toPx())
     }
     Box(Modifier.width(pillWidth + (gap + height) * bud).height(height).glass(glass, shape, tint)) {
         ToolbarTabs(
@@ -674,18 +669,20 @@ private operator fun Dp.times(f: Float): Dp = Dp(value * f)
 
 /**
  * The toolbar pill plus the search bubble, as one outline. The bubble is a circle as tall as the
- * pill whose centre slides from the pill's right cap ([centre] = cap centre: hidden in it) to its
+ * pill whose centre slides [budExtra] from the pill's right cap (hidden in it) to its
  * slot. Once they separate, a neck (two curves pinching towards the middle) joins them; it thins as
  * they part and vanishes with [neck] = 0.
  */
 private class BudShape(
-    private val pillWidth: Float,
-    private val centre: Float,
+    private val budExtra: Float,
     private val neck: Float,
     private val gap: Float,
 ) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val r = size.height / 2f
+        // Measured from the size being drawn, so the outline always fits the box exactly.
+        val pillWidth = size.width - budExtra
+        val centre = pillWidth - r + budExtra
         val pill = Path().apply { addRoundRect(RoundRect(0f, 0f, pillWidth, size.height, CornerRadius(r, r))) }
         val ball = Path().apply { addOval(Rect(centre - r, 0f, centre + r, size.height)) }
         var path = Path.combine(PathOperation.Union, pill, ball)
