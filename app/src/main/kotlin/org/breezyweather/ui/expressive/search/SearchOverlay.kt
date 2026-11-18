@@ -18,12 +18,17 @@ package org.breezyweather.ui.expressive.search
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -33,7 +38,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
@@ -41,9 +46,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,7 +56,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -60,9 +67,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,12 +90,15 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.shell.timeDifference
@@ -94,16 +106,16 @@ import org.breezyweather.ui.search.LoadableLocationStatus
 import org.breezyweather.ui.search.SearchViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.roundToInt
 
 /**
- * Search, morphing out of the "Search somewhere else" button (agreed motion, 2026-11-18): the
- * button's rectangle grows into a search bar at the bottom of the screen, above the keyboard; the
- * page behind dims; results rise from the bar, nearest result closest to the thumb and the first
- * one highlighted (Enter picks it). [progress] (0 = the button, 1 = open) drives everything, so
- * opening and closing are the same spring and can reverse mid-way. Back, a tap on the dimmed page
- * or swiping the bar down closes it back into the button.
+ * Search as one big card (agreed 2026-11-18). It grows out of the round search bubble into a card
+ * docked at the bottom, above the keyboard: a handle on top, results (segmented rows) in the
+ * middle, the field at the bottom. The card has a fixed height; drag the handle up to show more,
+ * or down to dismiss (it follows the finger; releasing early springs it back). Results settle in
+ * place when they change. [progress] (0 = bubble, 1 = open) is one spring for opening and closing.
  */
 @Composable
 fun SearchOverlay(
@@ -112,6 +124,7 @@ fun SearchOverlay(
     origin: Rect?,
     searchViewModel: SearchViewModel,
     near: Pair<Double, Double>?,
+    countryCode: String?,
     onPickLocation: (Location) -> Unit,
     onPickCity: (City) -> Unit,
     onClose: () -> Unit,
@@ -119,14 +132,23 @@ fun SearchOverlay(
     if (progress <= 0f && !open) return
     val context = LocalContext.current
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var query by rememberSaveable { mutableStateOf("") }
     val results by searchViewModel.listResource.collectAsState()
+    // Handle drag: extra height above the compact size, and how far the card is pulled down.
+    var extra by remember { mutableFloatStateOf(0f) }
+    var pulled by remember { mutableFloatStateOf(0f) }
+    var settle by remember { mutableStateOf<Job?>(null) }
+    // The query last sent, so "no results" only shows once that search has answered.
+    var requested by remember { mutableStateOf("") }
 
     BackHandler(enabled = open, onBack = onClose)
     LaunchedEffect(open) {
         if (open) {
+            extra = 0f
+            pulled = 0f
             delay(120)
             runCatching { focus.requestFocus() }
         } else {
@@ -134,41 +156,37 @@ fun SearchOverlay(
             query = ""
         }
     }
-    // Results as you type, after a short pause.
     LaunchedEffect(query) {
         if (query.trim().length < 2) return@LaunchedEffect
         delay(300)
         searchViewModel.requestLocationList(query)
+        requested = query
     }
-    val nearby by produceState(emptyList<City>(), near) {
-        value = near?.let { (lat, lon) -> withContext(Dispatchers.IO) { Cities.nearby(context, lat, lon) } }.orEmpty()
+    val suggestions by produceState(emptyList<City>(), near, countryCode) {
+        value = withContext(Dispatchers.IO) { Cities.topPlaces(context, countryCode, near) }
     }
     val recents = remember(open) { RecentSearches.all(context) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val width = constraints.maxWidth.toFloat()
         val height = constraints.maxHeight.toFloat()
-        val margin = with(density) { 16.dp.toPx() }
-        val barHeight = with(density) { 56.dp.toPx() }
-        // The window may already shrink for the keyboard (then our height is smaller than the root's):
-        // only add the part of the keyboard that the resize hasn't taken away.
         val view = LocalView.current
         // constraints (not view.height) so a resize recomposes this.
         val shrunk = (view.rootView.height - constraints.maxHeight).coerceAtLeast(0)
         val ime = WindowInsets.ime.getBottom(density)
-        val bottomInset = if (ime >
-            0
-        ) {
+        val bottomInset = if (ime > 0) {
             (ime - shrunk).coerceAtLeast(0)
         } else {
             WindowInsets.navigationBars.getBottom(density)
         }
-        val target = Rect(
-            left = margin,
-            top = height - bottomInset - margin - barHeight,
-            right = width - margin,
-            bottom = height - bottomInset - margin
-        )
+        val top = WindowInsets.statusBars.getTop(density) + with(density) { 12.dp.toPx() }
+        val margin = with(density) { 12.dp.toPx() }
+        val chrome = with(density) { (24.dp + 64.dp).toPx() } // handle + field
+        val compact = with(density) { 280.dp.toPx() }
+        val tall = (height - bottomInset - margin - top - chrome).coerceAtLeast(compact)
+        val content = (compact + extra).coerceIn(compact, tall)
+        val bottom = height - bottomInset - margin + pulled
+        val target = Rect(margin, bottom - content - chrome, width - margin, bottom)
         val start = origin ?: target
         val p = progress.coerceIn(0f, 1f)
         val rect = Rect(
@@ -177,96 +195,241 @@ fun SearchOverlay(
             right = start.right + (target.right - start.right) * p,
             bottom = start.bottom + (target.bottom - start.bottom) * p
         )
+        val inside = ((p - 0.45f) / 0.55f).coerceIn(0f, 1f)
+        // Pulling down also lightens the scrim, so dismissing feels continuous.
+        val pullFade = 1f - (pulled / with(density) { 220.dp.toPx() }).coerceIn(0f, 1f)
 
-        // The page behind dims; a tap on it closes search.
+        // The page behind goes darker (the shell also blurs it).
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f * p))
+                .graphicsLayer { alpha = p * pullFade }
+                .background(Color.Black.copy(alpha = 0.6f))
                 .clickable(
-                    interactionSource = remember {
-                        MutableInteractionSource()
-                    },
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    enabled = open
-                ) {
-                    onClose()
-                }
+                    enabled = open,
+                    onClick = onClose
+                )
         )
 
-        // Results rise from the bar.
-        val listBottom = with(density) { (height - rect.top + 8.dp.toPx()).toDp() }
         Box(
             Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 8.dp, bottom = listBottom)
-                .graphicsLayer {
-                    alpha = ((p - 0.4f) / 0.6f).coerceIn(0f, 1f)
-                    translationY = (1f - p) * 48.dp.toPx()
-                },
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            ResultList(
-                context = context,
-                query = query,
-                results = results.first,
-                loading = results.second == LoadableLocationStatus.LOADING,
-                nearby = nearby,
-                recents = recents,
-                onPickLocation = onPickLocation,
-                onPickCity = onPickCity,
-                maxHeight = with(density) { (rect.top * 0.85f).toDp() }
-            )
-        }
-
-        // The morphing container: the button's rectangle becoming the bar.
-        val corner = 24.dp + 4.dp * p
-        Box(
-            contentAlignment = Alignment.CenterStart,
-            modifier = Modifier
                 .offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
                 .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() })
-                .clip(RoundedCornerShape(corner))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .draggable(
-                    orientation = Orientation.Vertical,
-                    state = rememberDraggableState { },
-                    onDragStopped = { velocity -> if (velocity > 300f) onClose() }
-                )
-                .padding(horizontal = 18.dp)
+                .clip(RoundedCornerShape(32.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            stringResource(R.string.shell_search_elsewhere),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 1
-                        )
+            // While still small it's the bubble's search icon.
+            Icon(
+                Icons.Filled.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside }
+            )
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside }) {
+                Handle(
+                    onDelta = { delta ->
+                        settle?.cancel()
+                        if (delta > 0f) {
+                            // Down: shrink back to compact first, then pull the card down.
+                            val shrink = minOf(delta, extra)
+                            extra -= shrink
+                            pulled += delta - shrink
+                        } else {
+                            // Up: undo any pull first, then grow.
+                            val lift = minOf(-delta, pulled)
+                            pulled -= lift
+                            extra = (extra + (-delta - lift)).coerceAtMost(tall - compact)
+                        }
+                    },
+                    onRelease = { velocity ->
+                        val far = with(density) { 110.dp.toPx() }
+                        val some = with(density) { 24.dp.toPx() }
+                        if (pulled > far || (pulled > some && velocity > 900f)) {
+                            onClose()
+                        } else {
+                            val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+                            val goTall = (extra > (tall - compact) / 2 && velocity < 900f) || velocity < -900f
+                            val to = if (goTall) tall - compact else 0f
+                            settle = scope.launch {
+                                launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
+                                launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
+                            }
+                        }
                     }
-                    BasicTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(
-                            onSearch = { results.first.firstOrNull()?.let(onPickLocation) }
-                        ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                )
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    Results(
+                        context = context,
+                        query = query,
+                        results = results.first,
+                        loading = results.second == LoadableLocationStatus.LOADING || requested != query,
+                        suggestions = suggestions,
+                        recents = recents,
+                        onPickLocation = onPickLocation,
+                        onPickCity = onPickCity
                     )
+                }
+                SearchField(
+                    query = query,
+                    onQuery = { query = it },
+                    focus = focus,
+                    onSearch = { results.first.firstOrNull()?.let(onPickLocation) }
+                )
+            }
+        }
+    }
+}
+
+/** The grab bar: drag up for more, down to dismiss. */
+@Composable
+private fun Handle(onDelta: (Float) -> Unit, onRelease: (Float) -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(24.dp)
+            .draggable(
+                orientation = Orientation.Vertical,
+                state = rememberDraggableState(onDelta),
+                onDragStopped = { velocity -> onRelease(velocity) }
+            )
+    ) {
+        Box(
+            Modifier
+                .width(36.dp)
+                .height(4.dp)
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+        )
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRequester, onSearch: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+            .height(56.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(horizontal = 16.dp)
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(
+                    stringResource(R.string.shell_search_elsewhere),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1
+                )
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
+            )
+        }
+    }
+}
+
+/** Rows keep their place when results change: they slide on springs, new ones fade in, gone ones fade out. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun Results(
+    context: Context,
+    query: String,
+    results: List<Location>,
+    loading: Boolean,
+    suggestions: List<City>,
+    recents: List<City>,
+    onPickLocation: (Location) -> Unit,
+    onPickCity: (City) -> Unit,
+) {
+    val now = System.currentTimeMillis()
+    val searching = query.trim().length >= 2
+    val rowSpring =
+        spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset(1, 1))
+    when {
+        searching && loading && results.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            LoadingIndicator()
+        }
+        searching && results.isEmpty() -> Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(24.dp)
+        ) {
+            Icon(
+                Icons.Outlined.SearchOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.search_no_results, query.trim()),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                stringResource(R.string.search_no_results_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+        searching -> LazyColumn(
+            reverseLayout = true, // the best result sits right above the field
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            itemsIndexed(results, key = { _, it -> it.formattedId }) { i, location ->
+                ResultRow(
+                    title = location.city.ifEmpty { location.customName ?: location.country },
+                    subtitle = listOfNotNull(location.admin1?.takeIf { it.isNotEmpty() }, location.country)
+                        .distinct()
+                        .joinToString(", "),
+                    zone = location.timeZone,
+                    now = now,
+                    context = context,
+                    highlighted = i == 0,
+                    first = i == results.lastIndex,
+                    last = i == 0,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(180),
+                        placementSpec = rowSpring,
+                        fadeOutSpec = tween(120)
+                    ),
+                    onClick = { onPickLocation(location) }
+                )
+            }
+        }
+        else -> LazyColumn(
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (recents.isNotEmpty()) {
+                item(key = "recent") { SectionTitle(stringResource(R.string.search_recent), Icons.Outlined.History) }
+                itemsIndexed(recents, key = { _, c -> "r" + c.name + c.countryCode }) { i, city ->
+                    CityRow(city, now, context, first = i == 0, last = i == recents.lastIndex) { onPickCity(city) }
+                }
+            }
+            if (suggestions.isNotEmpty()) {
+                item(key = "top") { SectionTitle(stringResource(R.string.search_top_places), Icons.Outlined.Public) }
+                itemsIndexed(suggestions, key = { _, c -> "t" + c.name + c.countryCode }) { i, city ->
+                    CityRow(city, now, context, first = i == 0, last = i == suggestions.lastIndex) {
+                        onPickCity(city)
+                    }
                 }
             }
         }
@@ -274,80 +437,24 @@ fun SearchOverlay(
 }
 
 @Composable
-private fun ResultList(
-    context: Context,
-    query: String,
-    results: List<Location>,
-    loading: Boolean,
-    nearby: List<City>,
-    recents: List<City>,
-    onPickLocation: (Location) -> Unit,
-    onPickCity: (City) -> Unit,
-    maxHeight: androidx.compose.ui.unit.Dp,
-) {
-    val now = System.currentTimeMillis()
-    val shape = RoundedCornerShape(28.dp)
-    Box(
-        Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .heightIn(max = maxHeight)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        when {
-            query.trim().length >= 2 && loading && results.isEmpty() -> Box(
-                Modifier.fillMaxWidth().padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) { LoadingIndicator() }
-            query.trim().length >= 2 -> LazyColumn(
-                reverseLayout = true, // the first (best) result sits right above the bar
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                itemsIndexed(results, key = { _, it -> it.formattedId }) { i, location ->
-                    ResultRow(
-                        title = location.city.ifEmpty { location.customName ?: location.country },
-                        subtitle = listOfNotNull(location.admin1?.takeIf { it.isNotEmpty() }, location.country)
-                            .distinct().joinToString(", "),
-                        zone = location.timeZone,
-                        now = now,
-                        context = context,
-                        highlighted = i == 0,
-                        onClick = { onPickLocation(location) }
-                    )
-                }
-            }
-            // Before typing: recent first, then cities nearby right above the bar (top-down list,
-            // so each heading stays above its rows).
-            else -> LazyColumn(contentPadding = PaddingValues(8.dp)) {
-                if (recents.isNotEmpty()) {
-                    item(key = "recent") {
-                        SectionTitle(stringResource(R.string.search_recent), Icons.Outlined.History)
-                    }
-                    itemsIndexed(recents, key = { _, c -> "r" + c.name + c.countryCode }) { _, city ->
-                        ResultRow(city.name, city.country, TimeZone.getTimeZone(city.timeZone), now, context, false) {
-                            onPickCity(city)
-                        }
-                    }
-                }
-                if (nearby.isNotEmpty()) {
-                    item(key = "nearby") { SectionTitle(stringResource(R.string.search_nearby), Icons.Outlined.NearMe) }
-                    itemsIndexed(nearby, key = { _, c -> "n" + c.name + c.countryCode }) { _, city ->
-                        ResultRow(city.name, city.country, TimeZone.getTimeZone(city.timeZone), now, context, false) {
-                            onPickCity(city)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+private fun CityRow(city: City, now: Long, context: Context, first: Boolean, last: Boolean, onClick: () -> Unit) =
+    ResultRow(
+        title = city.name,
+        subtitle = city.country,
+        zone = TimeZone.getTimeZone(city.timeZone),
+        now = now,
+        context = context,
+        highlighted = false,
+        first = first,
+        last = last,
+        onClick = onClick
+    )
 
 @Composable
 private fun SectionTitle(text: String, icon: ImageVector) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp)
+        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 6.dp)
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
@@ -355,7 +462,10 @@ private fun SectionTitle(text: String, icon: ImageVector) {
     }
 }
 
-/** Name, region/country, local time and time difference; the first result is highlighted. */
+/**
+ * One segment of a group: big outer corners on the group's first/last row, small ones inside.
+ * Name, region/country, local time and time difference; the best result is highlighted.
+ */
 @Composable
 private fun ResultRow(
     title: String,
@@ -364,26 +474,41 @@ private fun ResultRow(
     now: Long,
     context: Context,
     highlighted: Boolean,
+    first: Boolean,
+    last: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val is24 = android.text.format.DateFormat.is24HourFormat(context)
-    val time = SimpleDateFormat(if (is24) "HH:mm" else "h:mm a", java.util.Locale.getDefault())
-        .apply { timeZone = zone }.format(Date(now))
+    val time = SimpleDateFormat(if (is24) "HH:mm" else "h:mm a", Locale.getDefault())
+        .apply { timeZone = zone }
+        .format(Date(now))
     val diff = timeDifference(zone, now)
+    val big = 20.dp
+    val small = 4.dp
+    val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (highlighted) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .padding(vertical = 1.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = if (first) big else small,
+                    topEnd = if (first) big else small,
+                    bottomStart = if (last) big else small,
+                    bottomEnd = if (last) big else small
+                )
+            )
+            .background(if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -391,20 +516,16 @@ private fun ResultRow(
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(time, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text(time, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
             if (diff != null) {
-                Text(
-                    diff,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(diff, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         }
     }

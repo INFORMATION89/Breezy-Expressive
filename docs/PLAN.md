@@ -841,3 +841,22 @@ Things to try on the phone before calling any motion done (debug and release bui
   instead of nearby localities. Current location naming: **neighbourhood first**, city on a smaller
   second line (Places card and Forecast), location icon next to the weather on the card; long names
   shrink to fit, then ellipsize.
+- **2026-11-18 (user note):** **Remove the star feature**: the visiting system replaces it. Open
+  question for when we build it: how a visit becomes a kept place once stars are gone (today,
+  starring a visit is what keeps it). The first swipe stage would need a new job (for example
+  "Keep" on visits).
+- **2026-11-18 (built, checked on the Pixel):** Search round 2. One card with a handle (drag up
+  grows it to tall, drag down dismisses; checked both). The page behind is darker and blurred
+  (API 31+). "No places called …" shows only once the search has answered, with a loading
+  indicator while waiting. Result rows settle in place (`animateItem` springs). The round search
+  bubble sits bottom right on Places; it fades and scales with the swipe and the card grows out
+  of it. Before typing: Recent, then **Popular places** (5 big cities in your country, at least
+  50 km from you and from each other, then 5 world cities from a fixed list). The current position
+  shows its neighbourhood first, the city smaller on the next line, and the location icon next to
+  the weather. Long names shrink (`TextAutoSize`) and then ellipsize. The old `Cities.nearby` is
+  unused now.
+- **2026-11-18 (user note):** The search bubble should **come out of the Places icon on the
+  toolbar**, a bit like Apple's Liquid Glass: when you land on Places, the bubble buds off the
+  toolbar's Places pill (glass, gooey join) and settles **in line with the toolbar**, as a round
+  glass button beside it on the same row (not floating above it), then merges back into the pill
+  when you leave. Animation options still need to be proposed and agreed first (consult rule).

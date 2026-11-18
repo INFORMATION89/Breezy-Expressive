@@ -76,15 +76,45 @@ object Cities {
         }.also { all = it }
     }
 
-    /** The [count] biggest-nearest cities around a point, skipping the one you're in (< 8 km). */
-    fun nearby(context: Context, latitude: Double, longitude: Double, count: Int = 6): List<City> =
-        load(context)
-            .map { it to distanceKm(latitude, longitude, it.latitude, it.longitude) }
-            .filter { it.second in 8.0..250.0 }
-            // Closer and bigger first: distance weighted down by population.
-            .sortedBy { (city, d) -> d / (1.0 + kotlin.math.log10(1.0 + city.population)) }
-            .take(count)
-            .map { it.first }
+    /** Popular places around the world, in order; the first ones outside your country are shown. */
+    private val WORLD = listOf(
+        "Tokyo" to "JP",
+        "New York City" to "US",
+        "London" to "GB",
+        "Paris" to "FR",
+        "Seoul" to "KR",
+        "Sydney" to "AU",
+        "Barcelona" to "ES",
+        "Mexico City" to "MX",
+        "Rome" to "IT",
+        "Dubai" to "AE"
+    )
+
+    /**
+     * Shown before you type: the 5 biggest cities in your country that aren't where you are
+     * (or right next to it, or to each other: no suburbs), then 5 popular world cities.
+     */
+    fun topPlaces(context: Context, countryCode: String?, near: Pair<Double, Double>?): List<City> {
+        val all = load(context)
+        val country = countryCode?.uppercase()?.takeIf { it.length == 2 }
+            ?: near?.let { (lat, lon) -> all.minByOrNull { distanceKm(lat, lon, it.latitude, it.longitude) } }
+                ?.countryCode
+        val home = mutableListOf<City>()
+        if (country != null) {
+            for (city in all) { // sorted by population
+                if (home.size == 5) break
+                if (city.countryCode != country) continue
+                val tooClose =
+                    (near != null && distanceKm(near.first, near.second, city.latitude, city.longitude) < 50) ||
+                        home.any { distanceKm(it.latitude, it.longitude, city.latitude, city.longitude) < 50 }
+                if (!tooClose) home += city
+            }
+        }
+        val world = WORLD.filter { it.second != country }.take(5).mapNotNull { (name, cc) ->
+            all.firstOrNull { it.name == name && it.countryCode == cc }
+        }
+        return home + world
+    }
 
     private fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val r = 6371.0

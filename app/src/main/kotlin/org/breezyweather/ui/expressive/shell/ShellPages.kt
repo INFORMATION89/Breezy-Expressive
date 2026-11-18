@@ -54,6 +54,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -165,6 +166,7 @@ internal fun ForecastPage(
                 .padding(top = 40.dp, bottom = 120.dp)
         ) {
             // Only the location's title at the top (plus an icon for the current position).
+            val (title, city) = placeName(context, location)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (location.isCurrentPosition) {
                     Icon(
@@ -175,10 +177,21 @@ internal fun ForecastPage(
                     )
                     Spacer(Modifier.width(6.dp))
                 }
+                // Long names shrink to fit, then ellipsize.
                 Text(
-                    location.getPlace(context),
+                    title,
                     color = text,
                     style = MaterialTheme.typography.titleLarge,
+                    autoSize = TextAutoSize.StepBased(16.sp, MaterialTheme.typography.titleLarge.fontSize),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            city?.let {
+                Text(
+                    it,
+                    color = text.copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -404,9 +417,6 @@ internal fun PlacesPage(
     onAddCurrent: () -> Unit,
     onEdit: (Location) -> Unit,
     onMove: (id: String, beforeId: String?) -> Unit,
-    onSearch: () -> Unit,
-    onSearchBounds: (Rect) -> Unit,
-    searchButtonAlpha: () -> Float,
     onSettings: () -> Unit,
     listState: LazyListState,
 ) {
@@ -597,21 +607,6 @@ internal fun PlacesPage(
                 }
             }
         }
-        item(key = "search") {
-            // The button the search grows out of; hidden while search is open (it *is* the search bar).
-            FilledTonalButton(
-                onClick = onSearch,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp)
-                    .onGloballyPositioned { onSearchBounds(it.boundsInRoot()) }
-                    .graphicsLayer { alpha = searchButtonAlpha() }
-            ) {
-                Icon(Icons.Filled.Search, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.shell_search_elsewhere))
-            }
-        }
     }
 }
 
@@ -769,21 +764,18 @@ private fun PlaceCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)
         ) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                val (title, city) = placeName(context, location)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (location.isCurrentPosition) {
-                        Icon(
-                            Icons.Filled.NearMe,
-                            contentDescription = null,
-                            tint = text,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
+                    // Long names shrink to fit, then ellipsize.
                     Text(
-                        location.getPlace(context),
+                        title,
                         color = text,
                         style = MaterialTheme.typography.titleLargeEmphasized,
+                        autoSize = TextAutoSize.StepBased(
+                            16.sp,
+                            MaterialTheme.typography.titleLargeEmphasized.fontSize
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -798,13 +790,35 @@ private fun PlaceCard(
                         )
                     }
                 }
-                Text(
-                    // "Visiting" only shows on the selected place.
-                    placeSubtitle(context, location, visiting && selected, now),
-                    color = text.copy(alpha = 0.72f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
+                city?.let {
+                    Text(
+                        it,
+                        color = text.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                // The current-position icon sits with the weather, on the line below the name.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (location.isCurrentPosition) {
+                        Icon(
+                            Icons.Filled.NearMe,
+                            contentDescription = stringResource(R.string.location_current),
+                            tint = text.copy(alpha = 0.72f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        // "Visiting" only shows on the selected place.
+                        placeSubtitle(context, location, visiting && selected, now),
+                        color = text.copy(alpha = 0.72f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Text(
                 current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
@@ -813,6 +827,19 @@ private fun PlaceCard(
                 fontWeight = FontWeight.Light
             )
         }
+    }
+}
+
+/**
+ * The current position's name: neighbourhood first, its city second (when the address has both),
+ * e.g. "Providencia" over "Guadalajara". Other places keep their usual name.
+ */
+internal fun placeName(context: Context, location: Location): Pair<String, String?> {
+    val district = location.district?.takeIf { it.isNotEmpty() && it != location.city }
+    return if (location.isCurrentPosition && location.customName.isNullOrEmpty() && district != null) {
+        district to location.city.takeIf { it.isNotEmpty() }
+    } else {
+        location.getPlace(context) to null
     }
 }
 

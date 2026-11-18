@@ -17,6 +17,7 @@
 package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -40,6 +42,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -69,14 +72,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -287,6 +295,13 @@ fun SolsticeShell(
                     val k = 1f - 0.04f * searchProgress.value
                     scaleX = k
                     scaleY = k
+                    // ...and blurs behind the search card.
+                    val blur = 24.dp.toPx() * searchProgress.value
+                    renderEffect = if (blur > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        BlurEffect(blur, blur, TileMode.Decal)
+                    } else {
+                        null
+                    }
                 }
             ) { index ->
                 when (index) {
@@ -360,9 +375,6 @@ fun SolsticeShell(
                                 ?.takeIf { it >= 0 } ?: rest.size
                             if (from >= 0) viewModel.swapLocations(from, to)
                         },
-                        onSearch = { searchOpen = true },
-                        onSearchBounds = { searchOrigin = it },
-                        searchButtonAlpha = { if (searchProgress.value > 0f) 0f else 1f },
                         onSettings = actions::openSettings,
                         listState = placesList
                     )
@@ -373,11 +385,41 @@ fun SolsticeShell(
             androidx.compose.foundation.layout.Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(bottom = 12.dp)
                     // The toolbar steps aside while search is open.
                     .graphicsLayer { alpha = 1f - searchProgress.value }
             ) {
+                // The search bubble: only on Places (it comes and goes with the swipe), bottom right
+                // above the toolbar. The search card grows out of it.
+                val onPlaces by remember {
+                    derivedStateOf { abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_PLACES) < 0.5f }
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(end = 16.dp, bottom = 12.dp)
+                        .size(56.dp)
+                        .onGloballyPositioned { searchOrigin = it.boundsInRoot() }
+                        .graphicsLayer {
+                            val d = abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_PLACES)
+                            val v = (1f - d * 2f).coerceIn(0f, 1f)
+                            alpha = if (searchProgress.value > 0f) 0f else v
+                            scaleX = 0.8f + 0.2f * v
+                            scaleY = 0.8f + 0.2f * v
+                        }
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clickable(enabled = onPlaces && !searchOpen) { searchOpen = true }
+                ) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.shell_search_elsewhere),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 SnackbarHost(snackbar)
                 ShellToolbar(
                     pager = pager,
@@ -401,6 +443,7 @@ fun SolsticeShell(
             origin = searchOrigin,
             searchViewModel = searchViewModel,
             near = nearPoint,
+            countryCode = (locations.firstOrNull { it.isCurrentPosition } ?: location)?.countryCode,
             onPickLocation = { pick(it) },
             onPickCity = { pick(it.toLocation()) },
             onClose = { searchOpen = false }
