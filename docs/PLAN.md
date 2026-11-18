@@ -1150,3 +1150,14 @@ Things to try on the phone before calling any motion done (debug and release bui
     with Pin budding out of Forecast. It has the window's own glass source.
   - **Toolbar:** no square ripple (a squeeze-press instead); slide along the pill to move between
     pages, with the page following the finger and settling on release.
+- **2026-11-18 (user feedback, built, checked in the debug app on the Pixel):**
+  - **Fix: dark mode followed the visited place.** The shell now takes light or dark only from the
+    app setting (system, light or dark). It reads the application's configuration, not the
+    activity's, and clears any per-place night override.
+  - **Grainy paper** behind Places: a warm off-white with a seeded noise tile. The notebook lines
+    and the kraft tape are gone.
+  - **Toolbar slide like iOS 27:** hold the pill and the selection pops out (×1.12, soft shadow);
+    drag and it moves at the finger's pace (one page per ~84 dp), with the page following; let go
+    and it settles and sinks back.
+  - **Postcards to redesign** from the user's references (Arc membership card; grainy gradient
+    posters; vintage postcards with a deckled edge, a captioned front, a postmark and a stamp).

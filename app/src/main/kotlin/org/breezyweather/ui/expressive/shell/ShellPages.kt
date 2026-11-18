@@ -102,9 +102,14 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -494,9 +499,9 @@ internal fun PlacesPage(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(start = 34.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize().notebookPaper(onPage).statusBarsPadding()
+        modifier = Modifier.fillMaxSize().grainyPaper(onPage).statusBarsPadding()
     ) {
         item(key = "header") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
@@ -964,10 +969,6 @@ private fun PlaceCard(
                 }
             }
         }
-        // Kraft tape holds the main place to the page.
-        if (starred || tape.value > 0f) {
-            KraftTape(Modifier.align(Alignment.TopCenter).offset(y = (-9).dp).graphicsLayer { alpha = tape.value })
-        }
     }
 }
 
@@ -1115,19 +1116,32 @@ private fun Stamp(
     }
 }
 
-/** Lined notebook paper for the Places page: faint ruled lines and a soft red margin. */
-private fun Modifier.notebookPaper(onPage: Color): Modifier = drawBehind {
+/** Grainy paper for the Places page: a warm off-white (or deep warm grey) with fine fibre grain. */
+@Composable
+private fun Modifier.grainyPaper(onPage: Color): Modifier {
     val light = onPage.luminance() < 0.5f
-    drawRect(if (light) Color(0xFFFBF8F1) else Color(0xFF1C1B18))
-    val rule = if (light) Color(0xFF9DB6DB).copy(alpha = 0.32f) else Color.White.copy(alpha = 0.06f)
-    val step = 28.dp.toPx()
-    var y = 120.dp.toPx()
-    while (y < size.height) {
-        drawLine(rule, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-        y += step
+    val grain = remember(light) { paperGrain(light) }
+    val brush = remember(grain) { ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)) }
+    return drawBehind {
+        drawRect(if (light) Color(0xFFF7F3EA) else Color(0xFF1D1C19))
+        drawRect(brush)
     }
-    val margin = if (light) Color(0xFFE08C86).copy(alpha = 0.55f) else Color(0xFFE08C86).copy(alpha = 0.25f)
-    drawLine(margin, Offset(22.dp.toPx(), 0f), Offset(22.dp.toPx(), size.height), 1.dp.toPx())
+}
+
+/** A small tile of soft noise (seeded, so it's the same every time), drawn repeated. */
+private fun paperGrain(light: Boolean): ImageBitmap {
+    val size = 128
+    val pixels = IntArray(size * size)
+    val random = java.util.Random(7)
+    for (i in pixels.indices) {
+        val n = random.nextGaussian().toFloat()
+        val alpha = (kotlin.math.abs(n) * if (light) 16f else 12f).toInt().coerceIn(0, 48)
+        val shade = if (n > 0f) 255 else 0
+        pixels[i] = (alpha shl 24) or (shade shl 16) or (shade shl 8) or shade
+    }
+    val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+    bitmap.setPixels(pixels, 0, size, 0, 0, size, size)
+    return bitmap.asImageBitmap()
 }
 
 /**

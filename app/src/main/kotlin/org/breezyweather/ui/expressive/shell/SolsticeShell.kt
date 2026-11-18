@@ -24,6 +24,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -755,27 +756,40 @@ private fun ToolbarTabs(
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    // Slide along the pill to switch pages (like iOS 26/27): the page follows the finger, one tab's
-    // width of finger per page, and settles on the nearest page when you let go.
+    // Slide to switch pages (like iOS 26/27): hold the pill and the selection pops out (lifts and
+    // grows a little); then it follows the finger at the finger's pace, tab by tab, with the page
+    // following along. Let go and it settles on the nearest page and sinks back in.
+    val pop = remember { Animatable(0f) }
     Box(
         Modifier
             .width(pillWidth)
-            .pointerInput(pager) {
-                val tabPx = with(density) { 52.dp.toPx() }
-                detectHorizontalDragGestures(
+            .pointerInput(pager, tabs.size) {
+                val collapsedPx = 52.dp.toPx()
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        scope.launch {
+                            pop.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
+                        }
+                    },
                     onDragEnd = {
                         val position = pager.currentPage + pager.currentPageOffsetFraction
                         scope.launch { pager.animateScrollToPage(position.roundToInt().coerceIn(0, tabs.lastIndex)) }
+                        scope.launch {
+                            pop.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow))
+                        }
                     },
                     onDragCancel = {
                         scope.launch { pager.animateScrollToPage(pager.currentPage) }
+                        scope.launch { pop.animateTo(0f) }
                     },
-                    onHorizontalDrag = { change, dx ->
+                    onDrag = { change, amount ->
                         change.consume()
                         val pagePx =
                             pager.layoutInfo.pageSize.toFloat().takeIf { it > 0f }
-                                ?: return@detectHorizontalDragGestures
-                        pager.dispatchRawDelta(dx * pagePx / tabPx)
+                                ?: return@detectDragGesturesAfterLongPress
+                        // One page per tab's width of finger travel (the unselected tabs' width), so
+                        // it moves at the finger's pace rather than racing ahead.
+                        pager.dispatchRawDelta(amount.x * pagePx / (collapsedPx * 1.6f))
                     }
                 )
             }
@@ -786,6 +800,14 @@ private fun ToolbarTabs(
                 .offset(x = highlightX)
                 .width(highlightW)
                 .height(44.dp)
+                .graphicsLayer {
+                    // Popped out while held: a bit bigger, lifted with a soft shadow.
+                    val k = 1f + 0.12f * pop.value
+                    scaleX = k
+                    scaleY = k
+                    shadowElevation = 6.dp.toPx() * pop.value
+                    shape = CircleShape
+                }
                 .background(primary, CircleShape)
         )
         Row {

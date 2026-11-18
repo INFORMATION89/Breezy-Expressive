@@ -27,6 +27,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -80,6 +81,7 @@ import org.breezyweather.common.extensions.getThemeColor
 import org.breezyweather.common.extensions.hasPermission
 import org.breezyweather.common.extensions.isLandscape
 import org.breezyweather.common.extensions.isRtl
+import org.breezyweather.common.options.DarkMode
 import org.breezyweather.common.snackbar.SnackbarContainer
 import org.breezyweather.common.utils.helpers.IntentHelper
 import org.breezyweather.common.utils.helpers.LogHelper
@@ -87,6 +89,7 @@ import org.breezyweather.common.utils.helpers.SnackbarHelper
 import org.breezyweather.databinding.ActivityMainBinding
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsChangedMessage
+import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.AlertDialogConfirmOnly
 import org.breezyweather.ui.common.composables.AlertDialogNoPadding
@@ -937,8 +940,22 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         // system pan the whole window when a field gets focus.
         @Suppress("DEPRECATION")
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        // Solstice: light or dark comes from the phone's setting only, never from the place on screen
+        // (upstream switched the activity's night mode per place, e.g. dark while looking at a city
+        // where it's night). Clear any such override and read the system, not the activity.
+        if (delegate.localNightMode != AppCompatDelegate.MODE_NIGHT_UNSPECIFIED) {
+            delegate.localNightMode = AppCompatDelegate.MODE_NIGHT_UNSPECIFIED
+        }
         shell.setContent {
-            BreezyWeatherTheme {
+            val systemDark = (
+                applicationContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                ) == Configuration.UI_MODE_NIGHT_YES
+            val appDark = when (SettingsManager.getInstance(this@MainActivity).darkMode) {
+                DarkMode.LIGHT -> false
+                DarkMode.DARK -> true
+                else -> systemDark
+            }
+            BreezyWeatherTheme(darkTheme = appDark) {
                 SolsticeShell(
                     viewModel = viewModel,
                     controller = shellController,
