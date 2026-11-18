@@ -196,6 +196,32 @@ widgets, notifications, live wallpaper.
   fewer levels of nesting. Nothing removed from upstream's stored settings, only from what's shown,
   so upstream merges stay easy.
 
+### Simplify and lighten the app (decided 2026-11-18)
+- **Approach: cut whole modules.** Delete entire features and sources we don't want as clean cuts
+  (whole packages, their resources, settings and manifest entries), and keep everything else
+  syncable with upstream. Not "hide only" (no size win), not "rewrite freely" (too costly to keep
+  taking upstream fixes). Each cut gets listed under "Upstream files touched" and is applied again
+  after each upstream sync (deleted files stay deleted; conflicts only where we cut references).
+- **Remove:** live wallpaper; notification widget (persistent weather in the shade).
+- **Keep:** data sharing with other apps (Gadgetbridge, watches, launchers: content provider and
+  broadcasts).
+- **Widgets: later.** Maybe keep one or two, decided much later; no widget work until then.
+- **Weather sources (to decide):** upstream ships ~60 source modules (national weather services of
+  many countries). Pick the few to keep (Open-Meteo stays default) and cut the rest.
+- **Use platform components** where they do the job: Android's own geocoder, system location,
+  stock Material 3 components instead of upstream's custom ones as screens move to Compose.
+- **Measure:** debug APK today is 43 MB (31 MB code). Compare release APK size, startup and frame
+  times on the Pixel 7 before and after each cut.
+
+### Current-location name: Android built-in geocoder (decided 2026-11-18)
+- Use the phone's own geocoder (`nativegeocoder` source, available in the `basic` build) as the
+  default address lookup for the current location: no key, no setup, good local names.
+- Fallback when it isn't available (phones without Google services): Nominatim. It fails today only
+  because the fork's contact link is empty (`app.report_issue` in `gradle.properties`, required by
+  Nominatim's usage policy). Fill in the fork's links (`app.report_issue`, `app.source_code_link`,
+  `app.privacy_policy_link`, …) pointing at this GitHub repo; that also fixes the build warnings
+  and the About screen links.
+
 ## Risks
 - **Upstream merges:** F3 rewrites `ManagementFragment`; conflicts there are likely. Mitigation:
   new file next to it, switch over in one small edit; merge upstream often.
@@ -304,3 +330,7 @@ widgets, notifications, live wallpaper.
   moves left), pill toolbar stays at the bottom; only the location title at the top of Forecast
   (current location: place name + icon); no "edit this location" button; swipe a location card to
   edit its details. Side effect noted: no more swiping between locations on Forecast.
+- **2026-11-18:** Decided: simplify by cutting whole modules (remove live wallpaper and
+  notification widget; keep data sharing; widgets much later; weather sources to pick). Current
+  location name from Android's built-in geocoder, Nominatim as fallback once the fork's contact
+  links are set.
