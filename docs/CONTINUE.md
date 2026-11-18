@@ -9,11 +9,11 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   **without upstream's git history** (see `UPSTREAM_BASE`). Never push upstream's history here.
 - **Done in F0:** snapshot, app name "Breezy Expressive", `applicationId`
   `io.github.information89.breezyexpressive`, CI (`.github/workflows/build.yml`).
-  `./gradlew assembleBasicDebug` builds (first build ~20 min).
-- **Left in F0:**
-  1. Run the app on a phone and check it starts (not done yet: the phone was unplugged).
-  2. Launcher icon: still upstream's generic fork icon in `app/src/res_fork/mipmap-*`; needs our own,
-     with a monochrome layer for themed icons.
+  `./gradlew assembleBasicDebug` builds (first build 6–20 min). First run on the Pixel 7 works
+  (2026-11-18).
+- **Left in F0:** launcher icon: still upstream's generic fork icon in `app/src/res_fork/mipmap-*`;
+  needs our own (direction chosen: sun + wind swirl), with a monochrome layer for themed icons.
+- **F1 design decided** (see PLAN.md): sky-blue fallback, Google Sans Flex, full Expressive shapes.
 - **Next:** F1 (Expressive theme in `app/src/main/kotlin/org/breezyweather/ui/theme/compose/Theme.kt`),
   then F2 Settings, F3 Locations. Details in PLAN.md.
 

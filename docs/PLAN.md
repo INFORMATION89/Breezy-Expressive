@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **F0 in progress** (snapshot, identity, CI done; icon and first run on the phone left). Upstream base: `5ec3b9b` (2026-11-17).
+Status: **F0 in progress** (snapshot, identity, CI, first run on the phone done; launcher icon left). Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -29,6 +29,10 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
 | Flavor shipped | `basic` (all sources) |
 | Code in this repo | Yes, as a snapshot of upstream **without its history** (29 MB; the full history is ~1 GB) |
 | Weather-App-Experiment design (sky, glass, sun path) | Dropped: pure Material You Expressive |
+| Fallback color (dynamic color off / Android < 12) | Sky blue seed (2026-11-18) |
+| Typeface | Google Sans Flex, bundled; emphasized headlines via weight (2026-11-18; check license before bundling) |
+| Shapes | Full Expressive: large corners, pill buttons, morph on press/selection (2026-11-18) |
+| Launcher icon | Sun partly wrapped by a wind swirl, plus a monochrome layer (2026-11-18) |
 
 ## Design direction
 
@@ -40,11 +44,26 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
   corners, like Android 16 Settings), connected `ButtonGroup`s for small choices, `Switch` with
   icons, `LoadingIndicator`, Expressive `SearchBar`, `FloatingToolbar`/FAB menu for actions,
   shape morphing on press and selection.
+- **Navigation:** a floating pill toolbar (M3 Expressive `HorizontalFloatingToolbar`) at the bottom
+  with two tabs, **Forecast** and **Locations**. Switch by tapping or swiping sideways; the selection
+  indicator follows the finger and can reverse mid-swipe. Replaces upstream's pushed Locations page
+  (phones) and drawer (tablets).
+- **Motion: fluid and interruptible, iOS-like refinement.** Priority whenever we animate:
+  - Every animation can be interrupted and retargeted mid-flight, keeping its current velocity; no
+    animation blocks input or has to finish first.
+  - Springs, not fixed-duration tweens, for anything the user can touch (`spring()` /
+    `MotionScheme.expressive()`, `Animatable.animateTo`, `animate*AsState`); tweens only for things
+    nobody can interrupt (e.g. a fade-in of loaded data).
+  - Gesture-driven where possible: transitions track the finger (swipes, predictive back, drag to
+    reorder) and settle from the release velocity.
+  - Shared elements between screens instead of cross-fades where the same thing appears in both.
+  - 60/120 Hz smooth: no layout work during animations, measure with frame timing on the Pixel 7.
 - **Accessibility first:** font scale up to 200 %, TalkBack order and labels, 48 dp targets, RTL.
 
-## Release 1 scope: Settings and Locations
+## Release 1 scope: Settings, Locations and the tab toolbar
 
-Out of scope for release 1: main weather screen, widgets, notifications, live wallpaper.
+Out of scope for release 1: the main weather screen's content (it sits in the Forecast tab unchanged),
+widgets, notifications, live wallpaper.
 
 ### F0: Fork setup
 1. **Snapshot:** one commit with upstream's files at the base commit (now `5ec3b9b`), no history.
@@ -86,6 +105,9 @@ Out of scope for release 1: main weather screen, widgets, notifications, live wa
 - Add / search: Expressive `SearchBar` expanding to full screen, results as segmented list,
   `LoadingIndicator` while searching, clear empty and error states.
 - Location settings screen (`LocationSettingsScreen.kt`) follows F2.
+- **Tab toolbar:** floating pill with Forecast and Locations, tap or swipe to switch (see Design
+  direction). New shell in `ui.expressive` hosting both; `MainActivity` switches to it in one small
+  edit. Tapping a location in the Locations tab slides to Forecast showing it.
 
 ### F4: Polish and release
 - Motion pass (shared transitions between list and search, press/selection morphs).
@@ -97,10 +119,15 @@ Out of scope for release 1: main weather screen, widgets, notifications, live wa
   new file next to it, switch over in one small edit; merge upstream often.
 - **Reordering in Compose:** needs careful drag/scroll/haptics and TalkBack actions
   (move up/down) as an alternative.
+- **Swipe conflict:** upstream's Forecast already swipes sideways between locations. Options to
+  settle when designing F3: tab swipe only past the last location, from the screen edge, or move
+  location switching to the toolbar/Locations tab.
+- **Tab shell vs `MainActivity`:** upstream's activity (910 lines) manages the pushed page and drawer;
+  replacing that touches more upstream code than other phases. Keep the edit to one switch-over.
 - **Expressive APIs are experimental:** pin `material3`, expect API changes on updates.
 
 ## Open questions
-1. The launcher icon design.
+1. Launcher icon: direction chosen (sun + wind swirl); exact drawing still to agree.
 2. Contribute generic fixes back upstream (e.g. the location list rewrite)?
 3. Distribution: GitHub releases only, or also an F-Droid-style repo (e.g. Obtainium/IzzyOnDroid)?
 
@@ -116,3 +143,11 @@ _(none yet)_
   `io.github.information89.breezyexpressive`; CI builds `basicDebug` + spotless (Java 21).
   `assembleBasicDebug` builds locally (JDK 21, ~20 min cold). Not yet run on the phone; launcher icon
   still upstream's generic fork icon.
+- **2026-11-18:** First run on the Pixel 7: `basicDebug` installs and starts without crashing, opens
+  on the empty Locations screen with dynamic color. Built on Windows with Android Studio's bundled
+  JDK 25 (works; no toolchain pin), 6 min cold; Gradle fetched Build-Tools 37 itself.
+- **2026-11-18:** Design decisions for F1: sky-blue fallback seed, Google Sans Flex, full Expressive
+  shapes and motion; launcher icon direction: sun + wind swirl.
+- **2026-11-18:** Added to the design: floating pill tab toolbar (Forecast / Locations, tap or swipe)
+  in release 1 (F3), and a motion principle: every animation interruptible, spring-based and
+  gesture-driven, aiming for iOS-like fluidity.
