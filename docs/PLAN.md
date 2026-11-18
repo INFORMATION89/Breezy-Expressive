@@ -812,3 +812,21 @@ Things to try on the phone before calling any motion done (debug and release bui
   sky. **F3 done** for phones (shell, Outlook, Forecast v1, Places with star/delete, reorder, current
   location, edit, visits). Open F3 follow-ups: search redesign, message redesign, avoid the
   theme-flip recreate, tablets.
+- **2026-11-18 (agreed with the user):** Search redesign: the "Search somewhere else" button **grows
+  into a glass search bar at the bottom** (rises with the keyboard; Places dims and recedes; results
+  rise from the bar; back / swipe down reverses into the button). Results: **simple rows** (name,
+  region/country, local time and difference), **first result highlighted, Enter picks it**. Before
+  typing: **cities nearby** and **recent searches**. Results **as you type** (~300 ms pause). Adding a
+  place **skips the weather-sources panel** (default sources; change them later in the place's
+  settings as an advanced option).
+- **2026-11-18:** Search redesign built (`ui/expressive/search/`): `SearchOverlay` morphs out of the
+  Places button into a bottom bar above the keyboard (one spring for open/close, page dims and
+  recedes, toolbar steps aside, back / tap outside / swipe down closes), results as you type (300 ms),
+  first result highlighted right above the bar, Enter picks it; before typing: Recent and Cities
+  nearby. Picking adds the place as a visit with no weather-sources panel (`setSelectedLocation` then
+  add directly), recent searches stored (`RecentSearches`). Cities nearby from a bundled GeoNames
+  cities15000 list (`res/raw/solstice_cities.tsv`, 34 246 cities, 1.7 MB file / ~0.7 MB compressed,
+  CC BY 4.0, credit in `third_party/geonames/`). Places: the selected place is first; "Visiting" shows
+  only on the selected place. MainActivity window set to adjustResize on phones (the system was
+  panning the window when the field got focus). Checked on the Pixel 7. Upstream's SearchActivity
+  (and its sources panel) remains only for tablets.

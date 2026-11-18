@@ -24,6 +24,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -98,6 +99,7 @@ import org.breezyweather.ui.main.fragments.HomeFragment
 import org.breezyweather.ui.main.fragments.ManagementFragment
 import org.breezyweather.ui.main.fragments.PushedManagementFragment
 import org.breezyweather.ui.search.SearchActivity
+import org.breezyweather.ui.search.SearchViewModel
 import org.breezyweather.ui.theme.ThemeManager
 import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
 import javax.inject.Inject
@@ -130,6 +132,7 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         // place where it's day while it's night here), which would drop instance fields.
         private var pendingShellPage: Int? = null
         private var pendingShellMessage: String? = null
+        private var pendingShellAt = 0L
 
         const val ACTION_MAIN = "${BuildConfig.APPLICATION_ID}.Main"
         const val KEY_MAIN_ACTIVITY_LOCATION_FORMATTED_ID = "MAIN_ACTIVITY_LOCATION_FORMATTED_ID"
@@ -174,6 +177,7 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
                             // Applied in onResume, on the instance actually shown (this one may be
                             // replaced while the search screen is in front).
                             pendingShellPage = ShellController.FORECAST
+                            pendingShellAt = System.currentTimeMillis()
                             pendingShellMessage = getString(R.string.shell_visiting_hint, location.getPlace(this))
                         } else {
                             SnackbarHelper.showSnackbar(getString(R.string.location_message_added))
@@ -304,7 +308,9 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
     override fun onResume() {
         super.onResume()
         // Solstice: apply what happened while another screen (e.g. search) was in front.
-        if (pendingShellPage != null || pendingShellMessage != null) {
+        if ((pendingShellPage != null || pendingShellMessage != null) &&
+            System.currentTimeMillis() - pendingShellAt < 5_000L
+        ) {
             shellController.show(pendingShellPage, pendingShellMessage)
             pendingShellPage = null
             pendingShellMessage = null
@@ -904,17 +910,30 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
 
     private fun initShell() {
         val shell = binding.solsticeShell ?: return
+        // The shell places things above the keyboard itself (bottom search bar); don't let the
+        // system pan the whole window when a field gets focus.
+        @Suppress("DEPRECATION")
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         shell.setContent {
             BreezyWeatherTheme {
                 SolsticeShell(
                     viewModel = viewModel,
                     controller = shellController,
                     sourceManager = sourceManager,
+                    searchViewModel = ViewModelProvider(this@MainActivity)[SearchViewModel::class.java],
                     actions = object : ShellActions {
                         override fun openSearch() = onSearchBarClicked()
                         override fun openDetails() = showDetails(true)
                         override fun openSettings() = IntentHelper.startSettingsActivity(this@MainActivity)
                         override fun openLocationSettings() = onEditIconClicked()
+                        override fun afterPick(page: Int?, message: String?) {
+                            // Show it now; and if the theme flip recreates the activity, the new one
+                            // picks it up in onResume (within a few seconds).
+                            shellController.show(page, message)
+                            pendingShellPage = page
+                            pendingShellMessage = message
+                            pendingShellAt = System.currentTimeMillis()
+                        }
                     }
                 )
             }

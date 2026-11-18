@@ -26,4 +26,6 @@
     <string name="shell_use_current_location">Use my current location</string>
     <string name="shell_visiting">Visiting</string>
     <string name="shell_visiting_hint">Visiting %1$s. Star it to keep it.</string>
+    <string name="search_nearby">Cities nearby</string>
+    <string name="search_recent">Recent</string>
 </resources>

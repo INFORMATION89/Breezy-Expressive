@@ -17,6 +17,7 @@
 package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -64,11 +65,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -98,6 +101,8 @@ import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
+import org.breezyweather.ui.expressive.search.RecentSearches
+import org.breezyweather.ui.expressive.search.SearchOverlay
 import org.breezyweather.ui.expressive.sky.AnimatedSkyBackground
 import org.breezyweather.ui.expressive.sky.SkyPalette
 import org.breezyweather.ui.expressive.sky.SkyState
@@ -105,6 +110,7 @@ import org.breezyweather.ui.expressive.sky.SkySystemBars
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.skyAt
 import org.breezyweather.ui.main.MainActivityViewModel
+import org.breezyweather.ui.search.SearchViewModel
 import kotlin.math.abs
 
 /** What the shell asks its host (MainActivity) to do. */
@@ -113,6 +119,9 @@ interface ShellActions {
     fun openDetails()
     fun openSettings()
     fun openLocationSettings()
+
+    /** Show [page] and [message] now, and again on the next resume if the activity is recreated. */
+    fun afterPick(page: Int?, message: String?)
 }
 
 /** Lets the host move the shell between pages (e.g. show Places when there are no locations). */
@@ -157,6 +166,7 @@ fun SolsticeShell(
     actions: ShellActions,
     controller: ShellController,
     sourceManager: SourceManager,
+    searchViewModel: SearchViewModel,
 ) {
     val context = LocalContext.current
     val current by viewModel.currentLocation.collectAsState()
@@ -200,6 +210,46 @@ fun SolsticeShell(
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
     val glass = rememberGlassSource()
+    // Search grows out of the Places button (agreed motion); one spring drives open and close.
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var searchOrigin by remember { mutableStateOf<Rect?>(null) }
+    val searchProgress = remember { Animatable(0f) }
+    LaunchedEffect(searchOpen) {
+        searchProgress.animateTo(
+            if (searchOpen) 1f else 0f,
+            spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
+        )
+    }
+    // A picked place becomes a visit straight away: no weather-sources panel (that's in the place's
+    // settings as an advanced option).
+    val pickReady by searchViewModel.dialogLocationSourcesOpenState.collectAsState()
+    val picked by searchViewModel.selectedLocation.collectAsState()
+    LaunchedEffect(pickReady, picked) {
+        val place = picked ?: return@LaunchedEffect
+        if (!pickReady) return@LaunchedEffect
+        searchViewModel.closeDialogLocationSources()
+        val existing = locations.firstOrNull {
+            it.formattedId == place.formattedId ||
+                (it.city == place.city && it.countryCode == place.countryCode && it.city.isNotEmpty())
+        }
+        val id = existing?.formattedId ?: place.formattedId
+        if (existing == null) {
+            viewModel.addLocation(place, null, context)
+            Visits.mark(context, id)
+            controller.visitsChanged++
+        }
+        RecentSearches.add(context, place)
+        viewModel.setLocation(id)
+        searchOpen = false
+        actions.afterPick(
+            PAGE_FORECAST,
+            if (existing == null) context.getString(R.string.shell_visiting_hint, place.getPlace(context)) else null
+        )
+    }
+    fun pick(place: Location) = searchViewModel.setSelectedLocation(
+        place,
+        sourceManager.getLocationSearchSourceOrDefault(searchViewModel.locationSearchSource.value)
+    )
     // Title hand-off: while a page's big title is on screen its toolbar tab shows only the icon; as
     // the title scrolls away the label unfolds in the toolbar (never the same word twice).
     val daysList = rememberLazyListState()
@@ -232,7 +282,12 @@ fun SolsticeShell(
                         stiffness = Spring.StiffnessLow
                     )
                 ),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    // The page recedes a little while search is open.
+                    val k = 1f - 0.04f * searchProgress.value
+                    scaleX = k
+                    scaleY = k
+                }
             ) { index ->
                 when (index) {
                     PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
@@ -305,7 +360,9 @@ fun SolsticeShell(
                                 ?.takeIf { it >= 0 } ?: rest.size
                             if (from >= 0) viewModel.swapLocations(from, to)
                         },
-                        onSearch = actions::openSearch,
+                        onSearch = { searchOpen = true },
+                        onSearchBounds = { searchOrigin = it },
+                        searchButtonAlpha = { if (searchProgress.value > 0f) 0f else 1f },
                         onSettings = actions::openSettings,
                         listState = placesList
                     )
@@ -315,7 +372,11 @@ fun SolsticeShell(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
             androidx.compose.foundation.layout.Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.navigationBarsPadding().padding(bottom = 12.dp)
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp)
+                    // The toolbar steps aside while search is open.
+                    .graphicsLayer { alpha = 1f - searchProgress.value }
             ) {
                 SnackbarHost(snackbar)
                 ShellToolbar(
@@ -329,6 +390,21 @@ fun SolsticeShell(
             }
         }
         ChooseSourcesDialog(viewModel, sourceManager)
+        val nearPoint = (
+            locations.firstOrNull {
+                it.isCurrentPosition
+            } ?: location
+            )?.let { it.latitude to it.longitude }
+        SearchOverlay(
+            open = searchOpen,
+            progress = searchProgress.value,
+            origin = searchOrigin,
+            searchViewModel = searchViewModel,
+            near = nearPoint,
+            onPickLocation = { pick(it) },
+            onPickCity = { pick(it.toLocation()) },
+            onClose = { searchOpen = false }
+        )
     }
 }
 

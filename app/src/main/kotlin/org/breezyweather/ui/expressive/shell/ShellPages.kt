@@ -88,6 +88,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -96,6 +97,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -402,6 +405,8 @@ internal fun PlacesPage(
     onEdit: (Location) -> Unit,
     onMove: (id: String, beforeId: String?) -> Unit,
     onSearch: () -> Unit,
+    onSearchBounds: (Rect) -> Unit,
+    searchButtonAlpha: () -> Float,
     onSettings: () -> Unit,
     listState: LazyListState,
 ) {
@@ -410,15 +415,13 @@ internal fun PlacesPage(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val byId = locations.associateBy { it.formattedId }
-    // Visits first, then the current position; both stay pinned where they are.
+    // The selected place first, then the current position; both stay pinned where they are.
     val sortedIds = locations
         .sortedWith(
-            compareByDescending<Location> {
-                it.formattedId in visiting
-            }.thenByDescending { it.isCurrentPosition }
+            compareByDescending<Location> { it.formattedId == currentId }.thenByDescending { it.isCurrentPosition }
         )
         .map { it.formattedId }
-    fun isPinned(id: String) = id in visiting || byId[id]?.isCurrentPosition == true
+    fun isPinned(id: String) = id == currentId || byId[id]?.isCurrentPosition == true
 
     // Reorder state: while a card is carried we show our own copy of the order and save on drop.
     val order = remember { mutableStateListOf<String>() }
@@ -595,7 +598,15 @@ internal fun PlacesPage(
             }
         }
         item(key = "search") {
-            FilledTonalButton(onClick = onSearch, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            // The button the search grows out of; hidden while search is open (it *is* the search bar).
+            FilledTonalButton(
+                onClick = onSearch,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
+                    .onGloballyPositioned { onSearchBounds(it.boundsInRoot()) }
+                    .graphicsLayer { alpha = searchButtonAlpha() }
+            ) {
                 Icon(Icons.Filled.Search, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.shell_search_elsewhere))
@@ -788,7 +799,8 @@ private fun PlaceCard(
                     }
                 }
                 Text(
-                    placeSubtitle(context, location, visiting, now),
+                    // "Visiting" only shows on the selected place.
+                    placeSubtitle(context, location, visiting && selected, now),
                     color = text.copy(alpha = 0.72f),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1
