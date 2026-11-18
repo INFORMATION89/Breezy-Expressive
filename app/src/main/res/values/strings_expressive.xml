@@ -6,4 +6,21 @@
     <string name="action_move_down_expressive">Move down</string>
     <string name="action_remove_expressive">Remove</string>
     <string name="reorder_hidden_expressive">Hidden, tap to add</string>
+    <string name="shell_tab_days">Outlook</string>
+    <string name="shell_tab_forecast">Forecast</string>
+    <string name="shell_tab_places">Places</string>
+    <string name="shell_today">Today</string>
+    <string name="shell_now">Now</string>
+    <string name="shell_more_details">More details</string>
+    <string name="shell_search_elsewhere">Search somewhere else</string>
+    <string name="shell_no_location">Add a place to see its weather</string>
+    <string name="shell_feels_like">Feels like %1$s</string>
+    <string name="shell_sunrise">Sunrise</string>
+    <string name="shell_sunset">Sunset</string>
+    <string name="shell_star">Star</string>
+    <string name="shell_unstar">Remove star</string>
+    <string name="shell_starred">Starred</string>
+    <string name="shell_delete">Delete</string>
+    <string name="shell_place_removed">%1$s removed</string>
+    <string name="shell_undo">Undo</string>
 </resources>

@@ -13,6 +13,12 @@
         android:layout_height="match_parent"
         tools:ignore="UnusedAttribute" />
 
+    <!-- Solstice: the new main screen (Days, Forecast, Places) on phones. -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/solstice_shell"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/per_location_settings"
         android:layout_width="match_parent"

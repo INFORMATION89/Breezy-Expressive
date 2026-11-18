@@ -24,6 +24,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -88,6 +89,9 @@ import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.AlertDialogConfirmOnly
 import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.composables.LocationPreference
+import org.breezyweather.ui.expressive.shell.ShellActions
+import org.breezyweather.ui.expressive.shell.ShellController
+import org.breezyweather.ui.expressive.shell.SolsticeShell
 import org.breezyweather.ui.main.dialogs.LicenseComplianceDialog
 import org.breezyweather.ui.main.fragments.HomeFragment
 import org.breezyweather.ui.main.fragments.ManagementFragment
@@ -238,6 +242,7 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
 
         initModel(savedInstanceState == null)
         initView()
+        initShell() // Solstice
 
         if (viewModel.validLocationList.value.isEmpty()) {
             setManagementFragmentVisibility(true)
@@ -825,6 +830,11 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         get() = binding.drawerLayout?.isVisible ?: false
 
     fun setManagementFragmentVisibility(visible: Boolean) {
+        // Solstice: on phones, Places is a page of the shell.
+        if (binding.solsticeShell != null) {
+            shellController.showPlaces(visible)
+            return
+        }
         val drawerLayout = binding.drawerLayout
         if (drawerLayout != null) {
             drawerLayout.isUnfold = visible
@@ -856,6 +866,43 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         }
 
         transaction.commit()
+    }
+
+    // Solstice: the new main screen on phones. Upstream's Forecast (HomeFragment) stays underneath,
+    // hidden, and is shown as "More details" until the Compose Forecast covers everything.
+    private val shellController = ShellController()
+    private val closeDetailsOnBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = showDetails(false)
+    }
+
+    private fun initShell() {
+        val shell = binding.solsticeShell ?: return
+        shell.setContent {
+            BreezyWeatherTheme {
+                SolsticeShell(
+                    viewModel = viewModel,
+                    controller = shellController,
+                    actions = object : ShellActions {
+                        override fun openSearch() = onSearchBarClicked()
+                        override fun openDetails() = showDetails(true)
+                        override fun openSettings() = IntentHelper.startSettingsActivity(this@MainActivity)
+                    }
+                )
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, closeDetailsOnBack)
+        binding.root.post { showDetails(false) }
+    }
+
+    private fun showDetails(show: Boolean) {
+        val shell = binding.solsticeShell ?: return
+        shell.visibility = if (show) View.GONE else View.VISIBLE
+        closeDetailsOnBack.isEnabled = show
+        findHomeFragment()?.let {
+            supportFragmentManager.beginTransaction().apply {
+                if (show) show(it) else hide(it)
+            }.commitAllowingStateLoss()
+        }
     }
 
     private fun findHomeFragment(): HomeFragment? {

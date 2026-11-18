@@ -387,6 +387,24 @@ build on (the separate notification *widget* was removed).
   the real activity, not the alias. The app's own name elsewhere (About, notifications) stays
   "Solstice".
 
+### Icon search: softer and rounder (added 2026-11-18)
+The user wants icons that feel **softer and rounder** than today's (the toolbar and new screens
+currently use Compose's *Outlined* Material icons; upstream's own `ic_*` drawables are sharper).
+Compare options side by side on the real screens (toolbar, Places, settings rows, weather states)
+before choosing; check each license.
+- **Material Symbols Rounded** (Apache 2.0): same family as now but rounded corners and terminals;
+  variable fill (filled when selected), weight and grade; fits Material You. Cheapest switch: the
+  Compose `Icons.Rounded` set already in the app, or the variable font for finer control.
+- **Phosphor** (MIT): very soft, friendly, round line caps; six weights incl. Duotone and Fill;
+  has a good weather set.
+- **Lucide** (ISC): clean, rounded strokes, consistent 2 px line; wide coverage.
+- **Fluent UI System Icons** (MIT): rounded, soft, filled + regular pairs.
+- **Weather condition icons** to consider alongside: **Meteocons** (MIT, soft, also animated),
+  Phosphor weather, Material Symbols weather.
+- Decide with a comparison mockup; then apply everywhere (toolbar, shell, settings rows,
+  upstream `ic_*` drawables regenerated under the same names, see "New Material You Expressive
+  icons everywhere").
+
 ### New Material You Expressive icons everywhere
 - Replace upstream's UI icons (settings, toolbar, actions, rows) with Material Symbols in the
   Expressive style: Rounded, filled when selected, consistent weight/grade, matching the type.
@@ -472,6 +490,9 @@ build on (the separate notification *widget* was removed).
 - `ui/settings/preference/composables/Preference.kt`: leading icon → `IconBadge` (F2).
 - `ui/common/widgets/insets/FitSystemBarComposeWrappers.kt`: `LargeTopAppBar` →
   `LargeFlexibleTopAppBar` (F2).
+- `ui/main/MainActivity.kt` + `res/layout/activity_main.xml` (phone layout): host the Solstice shell in
+  a `solstice_shell` ComposeView, hide/show upstream's HomeFragment as "More details", route
+  `setManagementFragmentVisibility` to the Places page (F3).
 - `ui/common/widgets/Material3Widgets.kt`: `Material3ExpressiveCardListItem` morphs its inner corners
   while pressed (F2).
 - `ui/settings/preference/composables/MultiListPreference.kt`: `AlertDialogNoPadding` → `SheetDialog`;
@@ -653,3 +674,13 @@ build on (the separate notification *widget* was removed).
 - **2026-11-18:** Added (first version built with the toolbar): the Forecast tab adopts the current
   weather (condition icon, highlight colour from the sky) and morphs into the Material You colour
   as you swipe to Outlook or Places.
+- **2026-11-18:** Built and checked on the Pixel 7: Days page renamed **Outlook** (calendar icon) on a
+  plain white/black page with each day's card in its weather gradient; Places on the same plain page;
+  the plain page fades in/out with the swipe position (draw-phase only, follows the finger,
+  reverses); toolbar with icons (calendar, condition icon, map) whose titles fold into the icon and
+  unfold for the selected tab, highlight follows the swipe and takes the sky's colour on Forecast;
+  Places: two-stage right-to-left swipe (≥22 % star, ≥60 % delete, haptic tick per stage, spring
+  back, interruptible), delete with Undo snackbar, star stored in app prefs (`solstice_places`),
+  "Search somewhere else" button. Tested: star, delete, undo (place returns, still starred).
+- **2026-11-18:** Added: search for softer, rounder icon options (Material Symbols Rounded, Phosphor,
+  Lucide, Fluent; Meteocons for weather) and compare with a mockup before choosing.
