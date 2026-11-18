@@ -180,6 +180,16 @@ widgets, notifications, live wallpaper.
   **Left for F3:** swipe a card to edit/delete with undo, drag to reorder, current location pinned
   first + "add current location", pull-to-refresh/loading polish, transitions.
 - **Location cards:** swipe one way to Edit (location details), the other way to delete with undo.
+- **Swipe stages, animated (added 2026-11-18):** the change from the star stage to the delete stage
+  should itself animate (the revealed colour sweeps from amber to red, the star morphs into the bin
+  icon with a little scale/rotate, the card's corners round more as it nears delete), following the
+  finger and reversible. On delete, a **fun discard animation** instead of a plain slide: e.g. the
+  card shrinks and tumbles away with a slight spin and fade, or crumples like paper and drops,
+  then the list closes the gap with a spring. Undo plays it in reverse.
+- **Release ripple (added 2026-11-18, later refinement):** letting go of a swiped place sends a small
+  spring wave through the other places, like Android's notification shade: neighbours nudge in the
+  swipe direction and settle back, each a little later and softer the further away they are
+  (staggered springs). Same when a card is deleted and the gap closes.
 - **Location cards wear their own weather (added 2026-11-18):** each card's background is the
   same condition/time-of-day gradient that location's Forecast would show (gradient field + grain,
   see "Forecast background"), so the list reads at a glance: sunny afternoon here, night and rain
@@ -713,3 +723,11 @@ before choosing; check each license.
   at top/bottom edges, only the two bands blurred) on Outlook, now edge to edge. Pixel 7 debug build,
   scrolling Outlook: median 11 ms, GPU 6 ms, 99th 34 ms, 2.9 % janky. Re-check on release; apply edge
   blur to Places and Forecast once happy.
+- **2026-11-18:** Added: animated stage change and a playful discard animation for the Places swipe.
+- **2026-11-18:** Fixed: Places swipe could stay stuck where the finger was after hold-and-release
+  (queued drag coroutines cancelled the release animation); the drag now moves the card directly and
+  only the release animates. Added to plans: spring ripple through neighbouring places on release.
+- **2026-11-18:** Title hand-off built: on Outlook and Places the toolbar tab is icon-only while the
+  page's big title is on screen, and its label unfolds as the title scrolls away (driven by the list's
+  scroll, so it follows the finger both ways); Forecast keeps its label (its page title is the place
+  name). Checked on the Pixel 7, plus the stuck-swipe fix (hold 1.5 s then release: card springs back).

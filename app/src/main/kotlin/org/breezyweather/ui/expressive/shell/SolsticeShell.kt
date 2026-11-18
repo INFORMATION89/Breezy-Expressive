@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
@@ -56,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -72,6 +75,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -154,6 +158,16 @@ fun SolsticeShell(
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
     val glass = rememberGlassSource()
+    // Title hand-off: while a page's big title is on screen its toolbar tab shows only the icon; as
+    // the title scrolls away the label unfolds in the toolbar (never the same word twice).
+    val daysList = rememberLazyListState()
+    val placesList = rememberLazyListState()
+    val titleHeight = with(LocalDensity.current) { 72.dp.toPx() }
+    val labelShown by remember {
+        derivedStateOf {
+            listOf(1f - titleVisible(daysList, titleHeight), 1f, 1f - titleVisible(placesList, titleHeight))
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         // Everything the toolbar's glass shows, blurred, behind it.
         AnimatedSkyBackground(sky, Modifier.fillMaxSize().glassSource(glass)) {
@@ -179,7 +193,7 @@ fun SolsticeShell(
                 modifier = Modifier.fillMaxSize()
             ) { index ->
                 when (index) {
-                    PAGE_DAYS -> DaysPage(location, onPage, page)
+                    PAGE_DAYS -> DaysPage(location, onPage, page, daysList)
                     PAGE_FORECAST -> ForecastPage(
                         location = location,
                         sky = sky,
@@ -226,7 +240,8 @@ fun SolsticeShell(
                             }
                         },
                         onSearch = actions::openSearch,
-                        onSettings = actions::openSettings
+                        onSettings = actions::openSettings,
+                        listState = placesList
                     )
                 }
             }
@@ -242,12 +257,23 @@ fun SolsticeShell(
                     sky = sky,
                     weather = SkyWeather.of(location?.weather?.current?.weatherCode),
                     glass = glass,
+                    labelShown = labelShown,
                     onTab = { scope.launch { pager.animateScrollToPage(it) } }
                 )
             }
         }
     }
 }
+
+/** 1 while the list's big title (its first item) is fully on screen, 0 once it has scrolled away. */
+private fun titleVisible(state: LazyListState, titleHeight: Float): Float =
+    if (state.firstVisibleItemIndex >
+        0
+    ) {
+        0f
+    } else {
+        (1f - state.firstVisibleItemScrollOffset / titleHeight).coerceIn(0f, 1f)
+    }
 
 /** The sky for a location at [now], from its current weather and today's sunrise/sunset. */
 internal fun skyFor(location: Location, now: Long): SkyState {
@@ -304,6 +330,7 @@ private fun ShellToolbar(
     sky: SkyState,
     weather: SkyWeather,
     glass: GlassSource,
+    labelShown: List<Float>,
     onTab: (Int) -> Unit,
 ) {
     val tabs = listOf(
@@ -315,7 +342,10 @@ private fun ShellToolbar(
     val expanded = 132.dp
     val position = pager.currentPage + pager.currentPageOffsetFraction
     val open = tabs.indices.map { (1f - abs(position - it)).coerceIn(0f, 1f) }
-    val widths = open.map { collapsed + (expanded - collapsed) * it }
+    // How far each tab's title is unfolded: selected (follows the swipe) and not already shown as the
+    // page's own big title.
+    val shown = tabs.indices.map { open[it] * labelShown[it] }
+    val widths = shown.map { collapsed + (expanded - collapsed) * it }
     val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
     val highlightX = tabs.indices.fold(0.dp) { acc, i -> acc + starts[i] * open[i] }
     val highlightW = tabs.indices.fold(0.dp) { acc, i -> acc + widths[i] * open[i] }
@@ -355,14 +385,14 @@ private fun ShellToolbar(
                         .padding(start = 14.dp)
                 ) {
                     Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(8.dp * open[i]))
+                    Spacer(Modifier.width(8.dp * shown[i]))
                     Text(
                         text = label,
                         color = color,
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         softWrap = false,
-                        modifier = Modifier.graphicsLayer { alpha = open[i] }
+                        modifier = Modifier.graphicsLayer { alpha = shown[i] }
                     )
                 }
             }

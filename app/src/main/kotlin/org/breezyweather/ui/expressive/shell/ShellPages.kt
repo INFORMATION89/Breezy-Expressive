@@ -17,8 +17,8 @@
 package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,8 +68,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +96,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
@@ -293,13 +299,14 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
 
 /** Plain page (white/black); each day's card wears its own weather, as a daytime sky. */
 @Composable
-internal fun DaysPage(location: Location?, onPage: Color, page: Color) {
+internal fun DaysPage(location: Location?, onPage: Color, page: Color, listState: LazyListState) {
     val context = LocalContext.current
     val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(10)
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     // Edge to edge: the list scrolls under the status bar and the toolbar, with a progressive blur
     // at both edges (also a hint that there's more to scroll).
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 40.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp)
@@ -370,9 +377,11 @@ internal fun PlacesPage(
     onDelete: (Location) -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    listState: LazyListState,
 ) {
     val context = LocalContext.current
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -437,7 +446,10 @@ private fun SwipeablePlace(
 ) {
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val offset = remember { Animatable(0f) }
+    // The drag moves the card directly (no queued coroutines); only the release animates, and a
+    // new touch cancels that animation, so the card can never get stuck mid-way.
+    var x by remember { mutableFloatStateOf(0f) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
     val starLabel = stringResource(if (starred) R.string.shell_unstar else R.string.shell_star)
     val deleteLabel = stringResource(R.string.shell_delete)
     val settle = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
@@ -460,12 +472,13 @@ private fun SwipeablePlace(
         val width = constraints.maxWidth.toFloat()
         val starAt = width * 0.22f
         val deleteAt = width * 0.6f
-        val pulled = -offset.value
-        val stage = when {
+        fun stageOf(pulled: Float) = when {
             pulled >= deleteAt -> 2
             pulled >= starAt -> 1
             else -> 0
         }
+        val pulled = -x
+        val stage = stageOf(pulled)
         LaunchedEffect(stage) {
             if (stage > 0) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         }
@@ -500,25 +513,32 @@ private fun SwipeablePlace(
         }
         Box(
             Modifier
-                .offset { IntOffset(offset.value.roundToInt(), 0) }
+                .offset { IntOffset(x.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        scope.launch { offset.snapTo((offset.value + delta).coerceIn(-width, 0f)) }
-                    },
-                    onDragStarted = { offset.stop() },
+                    state = rememberDraggableState { delta -> x = (x + delta).coerceIn(-width, 0f) },
+                    onDragStarted = { settleJob?.cancel() },
                     onDragStopped = { velocity ->
-                        when (stage) {
-                            2 -> {
-                                offset.animateTo(-width, spring(stiffness = Spring.StiffnessMediumLow), velocity)
-                                onDelete()
-                                offset.snapTo(0f)
+                        // Decide from where the card is right now, not from the last recomposition.
+                        val released = stageOf(-x)
+                        settleJob = scope.launch {
+                            when (released) {
+                                2 -> {
+                                    animate(x, -width, velocity, spring(stiffness = Spring.StiffnessMediumLow)) {
+                                            v,
+                                            _,
+                                        ->
+                                        x = v
+                                    }
+                                    onDelete()
+                                    x = 0f
+                                }
+                                1 -> {
+                                    onStar()
+                                    animate(x, 0f, velocity, settle) { v, _ -> x = v }
+                                }
+                                else -> animate(x, 0f, velocity, settle) { v, _ -> x = v }
                             }
-                            1 -> {
-                                onStar()
-                                offset.animateTo(0f, settle, velocity)
-                            }
-                            else -> offset.animateTo(0f, settle, velocity)
                         }
                     }
                 )
