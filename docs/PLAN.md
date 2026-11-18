@@ -986,3 +986,14 @@ Things to try on the phone before calling any motion done (debug and release bui
   following the finger (predictive back, can be cancelled midway), and lands the card in its slot.
   Chosen over the flip because checking a forecast is the most frequent action: no reading delay,
   quick glance-and-back, and swiping between places inside the window later works like the pages.
+- **2026-11-18 (built, checked in the debug app on the Pixel):** Messages redesigned and fixed.
+  The shell's snackbars are replaced by `ShellMessageHost` (`shell/Messages.kt`): a glass pill with
+  an icon and short text above the toolbar, and no close button. "[compass] Visiting Tokyo" and
+  "[bin] Shinjuku City removed · Undo". It rises from behind the toolbar on a soft spring, and
+  **goes away on its own** (3 s, or 5 s with Undo) by sinking back. The old ones stayed forever
+  because Material 3 makes messages with an action Indefinite. Swipe it sideways to dismiss: it
+  follows the finger with a slight tilt and flies off past 35 % (or a fling), or springs back.
+  Holding it pauses the timer. A new message replaces the current one. Checked: the visit message
+  sinks by itself after ~3 s, and swiping dismisses the removed message. Undo itself wasn't tapped
+  in testing (same code as before). Upstream's View snackbars (source-settings dialog) are
+  unchanged.

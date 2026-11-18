@@ -49,6 +49,8 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Dehaze
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Thunderstorm
 import androidx.compose.material.icons.outlined.Umbrella
@@ -56,9 +58,6 @@ import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -209,7 +208,7 @@ fun SolsticeShell(
 
     val pager = rememberPagerState(initialPage = if (locations.isEmpty()) PAGE_PLACES else PAGE_FORECAST) { 3 }
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
+    val messages = remember { ShellMessages() }
     // One star: the main place (agreed 2026-11-18). The app opens on it and "back" returns to it;
     // any other place you look at is a visit.
     var starred by remember { mutableStateOf(loadStarred(context).take(1).toSet()) }
@@ -232,7 +231,7 @@ fun SolsticeShell(
     LaunchedEffect(controller.message) {
         controller.message?.let {
             controller.message = null
-            snackbar.showSnackbar(it, withDismissAction = true)
+            messages.show(ShellMessage(Icons.Outlined.Explore, it))
         }
     }
     LaunchedEffect(controller.request) {
@@ -389,19 +388,14 @@ fun SolsticeShell(
                             val index = locations.indexOfFirst { it.formattedId == place.formattedId }
                             if (index >= 0) {
                                 viewModel.deleteLocation(index)
-                                scope.launch {
-                                    val result = snackbar.showSnackbar(
-                                        message = context.getString(
-                                            R.string.shell_place_removed,
-                                            place.getPlace(context)
-                                        ),
-                                        actionLabel = context.getString(R.string.shell_undo),
-                                        withDismissAction = true
+                                messages.show(
+                                    ShellMessage(
+                                        icon = Icons.Outlined.Delete,
+                                        text = context.getString(R.string.shell_place_removed, place.getPlace(context)),
+                                        action = context.getString(R.string.shell_undo),
+                                        onAction = { viewModel.addLocation(place, index, context) }
                                     )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.addLocation(place, index, context)
-                                    }
-                                }
+                                )
                             }
                         },
                         onAddCurrent = {
@@ -437,7 +431,7 @@ fun SolsticeShell(
                     // The toolbar steps aside while search is open.
                     .graphicsLayer { alpha = 1f - searchProgress.value }
             ) {
-                SnackbarHost(snackbar)
+                ShellMessageHost(messages, glass)
                 ShellToolbar(
                     pager = pager,
                     sky = sky,
