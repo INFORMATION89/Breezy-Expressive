@@ -228,37 +228,7 @@ fun SearchOverlay(
                 modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside }
             )
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside }) {
-                Handle(
-                    onDelta = { delta ->
-                        settle?.cancel()
-                        if (delta > 0f) {
-                            // Down: shrink back to compact first, then pull the card down.
-                            val shrink = minOf(delta, extra)
-                            extra -= shrink
-                            pulled += delta - shrink
-                        } else {
-                            // Up: undo any pull first, then grow.
-                            val lift = minOf(-delta, pulled)
-                            pulled -= lift
-                            extra = (extra + (-delta - lift)).coerceAtMost(tall - compact)
-                        }
-                    },
-                    onRelease = { velocity ->
-                        val far = with(density) { 110.dp.toPx() }
-                        val some = with(density) { 24.dp.toPx() }
-                        if (pulled > far || (pulled > some && velocity > 900f)) {
-                            onClose()
-                        } else {
-                            val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
-                            val goTall = (extra > (tall - compact) / 2 && velocity < 900f) || velocity < -900f
-                            val to = if (goTall) tall - compact else 0f
-                            settle = scope.launch {
-                                launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
-                                launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
-                            }
-                        }
-                    }
-                )
+                Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     Results(
                         context = context,
@@ -278,18 +248,52 @@ fun SearchOverlay(
                     onSearch = { results.first.firstOrNull()?.let(onPickLocation) }
                 )
             }
+            // The handle's touch area is taller than it looks (it overlaps the top of the results).
+            Handle(
+                modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = inside },
+                onDelta = { delta ->
+                    settle?.cancel()
+                    if (delta > 0f) {
+                        // Down: shrink back to compact first, then pull the card down.
+                        val shrink = minOf(delta, extra)
+                        extra -= shrink
+                        pulled += delta - shrink
+                    } else {
+                        // Up: undo any pull first, then grow.
+                        val lift = minOf(-delta, pulled)
+                        pulled -= lift
+                        extra = (extra + (-delta - lift)).coerceAtMost(tall - compact)
+                    }
+                },
+                onRelease = { velocity ->
+                    val far = with(density) { 110.dp.toPx() }
+                    val some = with(density) { 24.dp.toPx() }
+                    if (pulled > far || (pulled > some && velocity > 900f)) {
+                        onClose()
+                    } else {
+                        val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+                        val goTall = (extra > (tall - compact) / 2 && velocity < 900f) || velocity < -900f
+                        val to = if (goTall) tall - compact else 0f
+                        settle = scope.launch {
+                            launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
+                            launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
+                        }
+                    }
+                }
+            )
         }
     }
 }
 
 /** The grab bar: drag up for more, down to dismiss. */
 @Composable
-private fun Handle(onDelta: (Float) -> Unit, onRelease: (Float) -> Unit) {
+private fun Handle(modifier: Modifier, onDelta: (Float) -> Unit, onRelease: (Float) -> Unit) {
+    // Looks like a 24 dp strip with the bar in the middle, but grabs 40 dp.
     Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
+        contentAlignment = Alignment.TopCenter,
+        modifier = modifier
             .fillMaxWidth()
-            .height(24.dp)
+            .height(40.dp)
             .draggable(
                 orientation = Orientation.Vertical,
                 state = rememberDraggableState(onDelta),
@@ -298,6 +302,7 @@ private fun Handle(onDelta: (Float) -> Unit, onRelease: (Float) -> Unit) {
     ) {
         Box(
             Modifier
+                .padding(top = 10.dp)
                 .width(36.dp)
                 .height(4.dp)
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)

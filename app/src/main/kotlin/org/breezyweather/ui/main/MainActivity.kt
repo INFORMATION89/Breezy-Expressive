@@ -904,6 +904,9 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
     // Solstice: the new main screen on phones. Upstream's Forecast (HomeFragment) stays underneath,
     // hidden, and is shown as "More details" until the Compose Forecast covers everything.
     private val shellController = ShellController()
+
+    /** True when the Solstice shell is the main screen (phones). */
+    val usesShell: Boolean get() = ::binding.isInitialized && binding.solsticeShell != null
     private val closeDetailsOnBack = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() = showDetails(false)
     }

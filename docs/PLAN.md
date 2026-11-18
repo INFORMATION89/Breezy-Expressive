@@ -860,3 +860,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   toolbar's Places pill (glass, gooey join) and settles **in line with the toolbar**, as a round
   glass button beside it on the same row (not floating above it), then merges back into the pill
   when you leave. Animation options still need to be proposed and agreed first (consult rule).
+- **2026-11-18 (refinements, checked on the Pixel):** Phones are locked to portrait (every
+  activity, when the smallest width is under 600 dp; tablets keep rotating). The shell no longer
+  switches the activity's day/night mode per place, which recreated the activity and flashed the
+  screen. The sky already follows the place; the app theme follows the system, and so does "More
+  details". The search handle grabs a 40 dp strip but looks unchanged (user note). Removed the
+  unused "Cities nearby" code and string.

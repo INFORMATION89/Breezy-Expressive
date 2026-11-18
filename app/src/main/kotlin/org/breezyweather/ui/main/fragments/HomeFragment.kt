@@ -335,6 +335,9 @@ class HomeFragment : MainModuleFragment() {
     }
 
     private fun updateDarkMode(location: Location?) {
+        // Solstice: the shell's sky already follows the place, so don't switch the activity's
+        // day/night mode per place: that recreates the activity and flashes the screen.
+        if ((activity as? MainActivity)?.usesShell == true) return
         val expectedLightTheme = ThemeManager.isLightTheme(requireContext(), location)
 
         (activity as BreezyActivity).updateLocalNightMode(expectedLightTheme)

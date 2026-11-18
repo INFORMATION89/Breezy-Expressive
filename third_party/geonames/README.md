@@ -10,4 +10,4 @@
 - Changes: trimmed to name, country code, latitude, longitude (rounded to 3 decimals), population
   and time zone; sorted by population.
 
-Used offline by Solstice's search for "Cities nearby".
+Used offline by Solstice's search for "Popular places".
