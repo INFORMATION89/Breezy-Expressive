@@ -18,6 +18,7 @@ package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -61,6 +62,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -159,6 +161,11 @@ class ShellController {
 
     internal var message by mutableStateOf<String?>(null)
 
+    internal var searchOpen by mutableStateOf(false)
+
+    /** Set by the host while upstream's details screen covers the shell (its back closes that). */
+    var detailsOpen by mutableStateOf(false)
+
     /** A place picked from search: mark it as a visit; the host then shows its Forecast. */
     fun visit(context: Context, id: String) {
         Visits.mark(context, id)
@@ -203,9 +210,12 @@ fun SolsticeShell(
     val pager = rememberPagerState(initialPage = if (locations.isEmpty()) PAGE_PLACES else PAGE_FORECAST) { 3 }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    var starred by remember { mutableStateOf(loadStarred(context)) }
+    // One star: the main place (agreed 2026-11-18). The app opens on it and "back" returns to it;
+    // any other place you look at is a visit.
+    var starred by remember { mutableStateOf(loadStarred(context).take(1).toSet()) }
+    val main = starred.firstOrNull()?.takeIf { id -> locations.any { it.formattedId == id } }
     val visiting = remember(controller.visitsChanged, locations) { Visits.all(context) }
-    // Visits left from the previous run go away unless they were starred.
+    // Visits left from the previous run go away unless they were starred; then open on the main place.
     val initCompleted by viewModel.initCompleted.collectAsState()
     LaunchedEffect(initCompleted) {
         if (!initCompleted) return@LaunchedEffect
@@ -214,6 +224,10 @@ fun SolsticeShell(
             if (index >= 0) viewModel.deleteLocation(index)
         }
         controller.visitsChanged++
+        val home = starred.firstOrNull()
+        if (home != null && viewModel.validLocationList.value.any { it.formattedId == home }) {
+            viewModel.setLocation(home)
+        }
     }
     LaunchedEffect(controller.message) {
         controller.message?.let {
@@ -233,11 +247,28 @@ fun SolsticeShell(
     // System bar icons follow whatever is behind them.
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
+    // Back from a visit returns to the main place; a place from search is then gone (it was only
+    // a visit). Search's own back, and upstream's details screen, come first.
+    BackHandler(
+        enabled = main != null && location?.formattedId != main && !controller.searchOpen &&
+            !controller.detailsOpen
+    ) {
+        val leaving = location?.formattedId
+        viewModel.setLocation(main!!)
+        if (leaving != null && leaving in visiting) {
+            val index = locations.indexOfFirst { it.formattedId == leaving }
+            if (index >= 0) viewModel.deleteLocation(index)
+            Visits.unmark(context, leaving)
+            controller.visitsChanged++
+        }
+    }
+
     val glass = rememberGlassSource()
     val searchBlur = rememberGraphicsLayer()
     val searchSharp = rememberGraphicsLayer()
     // Search grows out of the Places button (agreed motion); one spring drives open and close.
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    SideEffect { controller.searchOpen = searchOpen }
     var searchOrigin by remember { mutableStateOf<Rect?>(null) }
     val searchProgress = remember { Animatable(0f) }
     LaunchedEffect(searchOpen) {
@@ -343,15 +374,14 @@ fun SolsticeShell(
                         visiting = visiting,
                         now = now,
                         onPage = onPage,
-                        onSelect = {
-                            viewModel.setLocation(it.formattedId)
-                            scope.launch { pager.animateScrollToPage(PAGE_FORECAST) }
-                        },
+                        // Tapping a place selects it and stays on Places (no jump to Forecast).
+                        onSelect = { viewModel.setLocation(it.formattedId) },
                         onStar = {
                             val id = it.formattedId
-                            starred = if (id in starred) starred - id else starred + id
+                            // One star: starring moves it here; starring the main place again clears it.
+                            starred = if (id in starred) emptySet() else setOf(id)
                             saveStarred(context, starred)
-                            // Starring a visit keeps it.
+                            // The main place is kept, never a visit.
                             if (id in starred) Visits.unmark(context, id)
                             controller.visitsChanged++
                         },

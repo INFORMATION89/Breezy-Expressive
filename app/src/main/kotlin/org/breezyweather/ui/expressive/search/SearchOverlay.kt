@@ -17,11 +17,18 @@
 package org.breezyweather.ui.expressive.search
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -78,10 +85,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -376,7 +389,15 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
     }
 }
 
-/** Rows keep their place when results change: they slide on springs, new ones fade in, gone ones fade out. */
+private enum class ResultsMode { LOADING, NONE, FOUND, SUGGEST }
+
+/**
+ * The list inside the card (agreed 2026-11-18). It fades softly into the field and under the
+ * handle instead of being cut by a hard line. Rows rise in one after another when they first
+ * appear, starting next to the field. When results change, rows that stay slide to their new
+ * place, new ones rise in and gone ones fade out. Switching between loading, no results and a
+ * list crossfades.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun Results(
@@ -391,78 +412,130 @@ private fun Results(
 ) {
     val now = System.currentTimeMillis()
     val searching = query.trim().length >= 2
+    val mode = when {
+        searching && loading && results.isEmpty() -> ResultsMode.LOADING
+        searching && results.isEmpty() -> ResultsMode.NONE
+        searching -> ResultsMode.FOUND
+        else -> ResultsMode.SUGGEST
+    }
     val rowSpring =
         spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset(1, 1))
-    when {
-        searching && loading && results.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            LoadingIndicator()
-        }
-        searching && results.isEmpty() -> Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize().padding(24.dp)
-        ) {
-            Icon(
-                Icons.Outlined.SearchOff,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.search_no_results, query.trim()),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                stringResource(R.string.search_no_results_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-        searching -> LazyColumn(
-            reverseLayout = true, // the best result sits right above the field
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            itemsIndexed(results, key = { _, it -> it.formattedId }) { i, location ->
-                ResultRow(
-                    title = location.city.ifEmpty { location.customName ?: location.country },
-                    subtitle = listOfNotNull(location.admin1?.takeIf { it.isNotEmpty() }, location.country)
-                        .distinct()
-                        .joinToString(", "),
-                    zone = location.timeZone,
-                    now = now,
-                    context = context,
-                    highlighted = i == 0,
-                    first = i == results.lastIndex,
-                    last = i == 0,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = tween(180),
-                        placementSpec = rowSpring,
-                        fadeOutSpec = tween(120)
-                    ),
-                    onClick = { onPickLocation(location) }
+    AnimatedContent(
+        targetState = mode,
+        transitionSpec = { fadeIn(tween(180, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+        label = "results",
+        modifier = Modifier.fillMaxSize().softEdges()
+    ) { shown ->
+        when (shown) {
+            ResultsMode.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingIndicator()
+            }
+            ResultsMode.NONE -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize().padding(24.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.SearchOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.search_no_results, query.trim()),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    stringResource(R.string.search_no_results_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
-        }
-        else -> LazyColumn(
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (recents.isNotEmpty()) {
-                item(key = "recent") { SectionTitle(stringResource(R.string.search_recent), Icons.Outlined.History) }
-                itemsIndexed(recents, key = { _, c -> "r" + c.name + c.countryCode }) { i, city ->
-                    CityRow(city, now, context, first = i == 0, last = i == recents.lastIndex) { onPickCity(city) }
+            ResultsMode.FOUND -> {
+                // When this list appeared: rows composed soon after rise in; rows scrolled into view
+                // later just appear.
+                val shownAt = remember { SystemClock.uptimeMillis() }
+                LazyColumn(
+                    reverseLayout = true, // the best result sits right above the field
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    itemsIndexed(results, key = { _, it -> it.formattedId }) { i, location ->
+                        ResultRow(
+                            title = location.city.ifEmpty { location.customName ?: location.country },
+                            subtitle = listOfNotNull(location.admin1?.takeIf { it.isNotEmpty() }, location.country)
+                                .distinct()
+                                .joinToString(", "),
+                            zone = location.timeZone,
+                            now = now,
+                            context = context,
+                            highlighted = i == 0,
+                            first = i == results.lastIndex,
+                            last = i == 0,
+                            modifier = Modifier
+                                .animateItem(fadeInSpec = null, placementSpec = rowSpring, fadeOutSpec = tween(120))
+                                .riseIn(order = i, shownAt = shownAt),
+                            onClick = { onPickLocation(location) }
+                        )
+                    }
                 }
             }
-            if (suggestions.isNotEmpty()) {
-                item(key = "top") { SectionTitle(stringResource(R.string.search_top_places), Icons.Outlined.Public) }
-                itemsIndexed(suggestions, key = { _, c -> "t" + c.name + c.countryCode }) { i, city ->
-                    CityRow(city, now, context, first = i == 0, last = i == suggestions.lastIndex) {
-                        onPickCity(city)
+            ResultsMode.SUGGEST -> {
+                val shownAt = remember { SystemClock.uptimeMillis() }
+                // Top-down list: the rows nearest the field (about the fifth on screen) go first.
+                val rows = (if (recents.isEmpty()) 0 else recents.size + 1) + suggestions.size + 1
+                fun order(index: Int) = (minOf(rows, 6) - 1 - index).coerceAtLeast(0)
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    var at = 0
+                    if (recents.isNotEmpty()) {
+                        val o = order(at++)
+                        item(key = "recent") {
+                            SectionTitle(
+                                stringResource(R.string.search_recent),
+                                Icons.Outlined.History,
+                                Modifier.riseIn(o, shownAt)
+                            )
+                        }
+                        val base = at
+                        itemsIndexed(recents, key = { _, c -> "r" + c.name + c.countryCode }) { i, city ->
+                            CityRow(
+                                city,
+                                now,
+                                context,
+                                first = i == 0,
+                                last = i == recents.lastIndex,
+                                Modifier.riseIn(order(base + i), shownAt)
+                            ) { onPickCity(city) }
+                        }
+                        at += recents.size
+                    }
+                    if (suggestions.isNotEmpty()) {
+                        val o = order(at++)
+                        item(key = "top") {
+                            SectionTitle(
+                                stringResource(R.string.search_top_places),
+                                Icons.Outlined.Public,
+                                Modifier.riseIn(o, shownAt)
+                            )
+                        }
+                        val base = at
+                        itemsIndexed(suggestions, key = { _, c -> "t" + c.name + c.countryCode }) { i, city ->
+                            CityRow(
+                                city,
+                                now,
+                                context,
+                                first = i == 0,
+                                last = i == suggestions.lastIndex,
+                                Modifier.riseIn(order(base + i), shownAt)
+                            ) { onPickCity(city) }
+                        }
                     }
                 }
             }
@@ -470,8 +543,62 @@ private fun Results(
     }
 }
 
+/**
+ * A row's entrance: it rises a few dp and fades in, [order] x 25 ms after the others (capped), on
+ * a soft spring. Only for rows composed within a moment of [shownAt]; a row scrolled into view
+ * later (or one that stays when results change) is simply there.
+ */
 @Composable
-private fun CityRow(city: City, now: Long, context: Context, first: Boolean, last: Boolean, onClick: () -> Unit) =
+private fun Modifier.riseIn(order: Int, shownAt: Long): Modifier {
+    val fresh = remember { SystemClock.uptimeMillis() - shownAt < 350 }
+    val enter = remember { Animatable(if (fresh) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (enter.value < 1f) {
+            delay(order.coerceIn(0, 6) * 25L)
+            enter.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+        }
+    }
+    return graphicsLayer {
+        alpha = enter.value
+        translationY = (1f - enter.value) * 10.dp.toPx()
+    }
+}
+
+/** Fades the list out over a short band at the top (under the handle) and bottom (above the field). */
+private fun Modifier.softEdges(): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val top = 14.dp.toPx()
+        val bottom = 18.dp.toPx()
+        drawRect(
+            Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, endY = top),
+            size = Size(size.width, top),
+            blendMode = BlendMode.DstIn
+        )
+        drawRect(
+            Brush.verticalGradient(
+                0f to Color.Black,
+                1f to Color.Transparent,
+                startY = size.height - bottom,
+                endY = size.height
+            ),
+            topLeft = Offset(0f, size.height - bottom),
+            size = Size(size.width, bottom),
+            blendMode = BlendMode.DstIn
+        )
+    }
+
+@Composable
+private fun CityRow(
+    city: City,
+    now: Long,
+    context: Context,
+    first: Boolean,
+    last: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) =
     ResultRow(
         title = city.name,
         subtitle = city.country,
@@ -481,14 +608,15 @@ private fun CityRow(city: City, now: Long, context: Context, first: Boolean, las
         highlighted = false,
         first = first,
         last = last,
+        modifier = modifier,
         onClick = onClick
     )
 
 @Composable
-private fun SectionTitle(text: String, icon: ImageVector) {
+private fun SectionTitle(text: String, icon: ImageVector, modifier: Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 6.dp)
+        modifier = modifier.padding(start = 12.dp, top = 12.dp, bottom = 6.dp)
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
@@ -521,6 +649,12 @@ private fun ResultRow(
     val big = 20.dp
     val small = 4.dp
     val colors = MaterialTheme.colorScheme
+    // The best-match highlight eases on and off instead of jumping between rows.
+    val fill by animateColorAsState(
+        if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest.copy(alpha = 0.7f),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "row"
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -534,9 +668,7 @@ private fun ResultRow(
                     bottomEnd = if (last) big else small
                 )
             )
-            .background(
-                if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest.copy(alpha = 0.7f)
-            )
+            .background(fill)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {

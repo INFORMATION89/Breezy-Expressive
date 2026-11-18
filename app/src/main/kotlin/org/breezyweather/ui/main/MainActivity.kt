@@ -949,6 +949,7 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         val shell = binding.solsticeShell ?: return
         shell.visibility = if (show) View.GONE else View.VISIBLE
         closeDetailsOnBack.isEnabled = show
+        shellController.detailsOpen = show
         findHomeFragment()?.let {
             supportFragmentManager.beginTransaction().apply {
                 if (show) show(it) else hide(it)

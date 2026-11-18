@@ -918,3 +918,43 @@ Things to try on the phone before calling any motion done (debug and release bui
   - Fixed: the tucked-in search bubble swallowed taps on the Places tab.
   - The search card is now translucent like the toolbar (user note), and Popular places no
     longer repeats a city already under Recent.
+- **2026-11-18 (agreed with the user):** Search list polish:
+  - **Soft fade at the edges:** rows dissolve into a short fade above the field and under the
+    handle, never sliced by a hard line.
+  - **Results rise in, staggered:** when results first appear, rows rise a few dp and fade in one
+    after another, starting from the field and going up (about 25 ms apart, soft spring).
+  - **Changing results: settle + crossfade:** rows that stay slide to their new place, new rows
+    rise in, gone rows fade out, and the best-match highlight eases instead of jumping.
+  **Built 2026-11-18 (checked in a release build on the Pixel):** soft fades at the list's top and
+  bottom edges; rows rise in staggered from the field upward when the card opens and when a new
+  answer arrives; switching between suggestions, loading, no results and results crossfades;
+  rows that stay slide on springs, gone rows fade out; the best-match highlight eases.
+- **2026-11-18 (user note): stars stay, and visiting changes meaning.**
+  - **Keep stars.** Starring a place makes it **the main place**.
+  - **Visiting is temporary,** like opening a new window: when you go back, you return to the main
+    place. Future: an animation that conveys the "new window" feeling (to be proposed and agreed).
+  - **Remove the tap-to-Forecast jump:** tapping a place in Places no longer moves to Forecast.
+    This is independent of how visiting ends up working.
+  - Open questions are in the conversation (one main place or several starred; what a tap does;
+    what "back" returns to).
+- **2026-11-18 (user note): search should never look like it's loading.** Remove the loading
+  indicator and the fade out/in around it (too much). Instead, show matches from the bundled
+  city list instantly as you type (local prefix match, ranked by population). When the online
+  answer arrives, the rows settle into it without a blank state. Also keep the previous results
+  on screen while a new answer is on its way.
+- **2026-11-18 (user note): the keyboard key should say "select", not "search".** Results already
+  update as you type, so the keyboard's action key should show a select/confirm icon (e.g. the
+  check mark of `ImeAction.Done`) instead of the magnifier. The highlighted best match should
+  carry a hint that Enter picks it, e.g. "Example City · Select".
+- **2026-11-18 (agreed + built, checked in the debug app on the Pixel):** **One star = the main place.**
+  Starring a place moves the star there, and starring the main place again clears it. The app opens
+  on the main place. **Tapping a card** selects it and stays on Places. **Back from any other place**
+  returns to the main place; a place opened from search is then removed. Search's own back and the
+  details screen come first. Visit message: "Visiting X. Go back to return, or star it to make it
+  your main place." Still to propose: the "new window" animation for visits.
+- **2026-11-18 (user note): tapping a place should open a new interface** with that place's Forecast
+  and its This week page, like opening a window over Places (the "new window" visit idea). Back
+  closes it and returns to the main place. Until that's built, a tap just selects the place and
+  stays on Places. The screen layout and opening animation are still to be proposed.
+- **2026-11-18:** Started thinking about **skeuomorphism** (ideas proposed in the conversation; none
+  chosen yet).
