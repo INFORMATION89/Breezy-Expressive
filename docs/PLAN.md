@@ -997,3 +997,10 @@ Things to try on the phone before calling any motion done (debug and release bui
   sinks by itself after ~3 s, and swiping dismisses the removed message. Undo itself wasn't tapped
   in testing (same code as before). Upstream's View snackbars (source-settings dialog) are
   unchanged.
+- **2026-11-18 (fixed, checked in the debug app on the Pixel):** Message dismiss. A message wider
+  than the toolbar showed its ends beside and below the toolbar while sinking. It's now cut along
+  the toolbar's top edge, so it slips behind it (sideways swipes still fly off freely). **All
+  main-screen messages use the new pill:** upstream's `SnackbarHelper` hands its messages to the
+  shell while it's on screen (location added, updated or already there, refresh errors with their
+  action, "please wait"…), with an icon picked from the text. With "More details" open, or on
+  other screens, the old snackbar is still used.

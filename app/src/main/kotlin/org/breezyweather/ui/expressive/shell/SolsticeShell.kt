@@ -159,6 +159,12 @@ class ShellController {
     internal var visitsChanged by mutableStateOf(0)
 
     internal var message by mutableStateOf<String?>(null)
+    internal var pending by mutableStateOf<ShellMessage?>(null)
+
+    /** Show [message] in the shell's message pill. */
+    fun say(message: ShellMessage) {
+        pending = message
+    }
 
     internal var searchOpen by mutableStateOf(false)
 
@@ -232,6 +238,12 @@ fun SolsticeShell(
         controller.message?.let {
             controller.message = null
             messages.show(ShellMessage(Icons.Outlined.Explore, it))
+        }
+    }
+    LaunchedEffect(controller.pending) {
+        controller.pending?.let {
+            controller.pending = null
+            messages.show(it)
         }
     }
     LaunchedEffect(controller.request) {

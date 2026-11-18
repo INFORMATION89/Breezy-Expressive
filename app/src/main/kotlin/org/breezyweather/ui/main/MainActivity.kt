@@ -93,7 +93,9 @@ import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.composables.LocationPreference
 import org.breezyweather.ui.expressive.shell.ShellActions
 import org.breezyweather.ui.expressive.shell.ShellController
+import org.breezyweather.ui.expressive.shell.ShellMessage
 import org.breezyweather.ui.expressive.shell.SolsticeShell
+import org.breezyweather.ui.expressive.shell.messageIcon
 import org.breezyweather.ui.main.dialogs.LicenseComplianceDialog
 import org.breezyweather.ui.main.fragments.HomeFragment
 import org.breezyweather.ui.main.fragments.ManagementFragment
@@ -305,8 +307,26 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
         updateDayNightColors()
     }
 
+    override fun onPause() {
+        super.onPause()
+        SnackbarHelper.shell = null
+    }
+
     override fun onResume() {
         super.onResume()
+        // Solstice: messages shown while the shell is up use its message pill.
+        if (binding.solsticeShell != null) {
+            SnackbarHelper.shell = { content, action, onAction ->
+                if (shellController.detailsOpen) {
+                    false
+                } else {
+                    shellController.say(
+                        ShellMessage(messageIcon(this, content), content, action, onAction ?: {})
+                    )
+                    true
+                }
+            }
+        }
         // Solstice: apply what happened while another screen (e.g. search) was in front.
         if ((pendingShellPage != null || pendingShellMessage != null) &&
             System.currentTimeMillis() - pendingShellAt < 5_000L

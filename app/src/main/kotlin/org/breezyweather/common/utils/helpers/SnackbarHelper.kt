@@ -23,6 +23,12 @@ import org.breezyweather.common.snackbar.Snackbar
 
 object SnackbarHelper {
 
+    /**
+     * Solstice: set by the main screen while its shell is showing. Returns true when it took the
+     * message (shown in the new message pill); otherwise the old View snackbar is used.
+     */
+    var shell: ((content: String, action: String?, onAction: (() -> Unit)?) -> Boolean)? = null
+
     fun showSnackbar(
         content: String,
         action: String? = null,
@@ -31,6 +37,9 @@ object SnackbarHelper {
     ) {
         if (action != null && listener == null) {
             throw RuntimeException("Must send a non null listener as parameter.")
+        }
+        if (activity == null && shell?.invoke(content, action, listener?.let { { it.onClick(null) } }) == true) {
+            return
         }
         val container = (activity ?: BreezyWeather.instance.topActivity ?: return).provideSnackbarContainer()
         Snackbar.make(container.container, content, Snackbar.LENGTH_LONG, container.cardStyle)
