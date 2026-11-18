@@ -44,10 +44,20 @@ without a migration. It uses plain `MaterialTheme` and no Expressive API yet.
   corners, like Android 16 Settings), connected `ButtonGroup`s for small choices, `Switch` with
   icons, `LoadingIndicator`, Expressive `SearchBar`, `FloatingToolbar`/FAB menu for actions,
   shape morphing on press and selection.
-- **Navigation:** a floating pill toolbar (M3 Expressive `HorizontalFloatingToolbar`) at the bottom
-  with two tabs, **Forecast** and **Locations**. Switch by tapping or swiping sideways; the selection
-  indicator follows the finger and can reverse mid-swipe. Replaces upstream's pushed Locations page
-  (phones) and drawer (tablets).
+- **Navigation (updated 2026-11-18):** two pages side by side. **Forecast is the first screen**;
+  **Locations is to its right**: swipe with the finger moving left to reach it, right to come back.
+  The page follows the finger and can reverse mid-swipe. A floating pill toolbar (M3 Expressive
+  `HorizontalFloatingToolbar`) **stays at the bottom** with the two tabs for tapping. Replaces
+  upstream's pushed Locations page (phones) and drawer (tablets).
+  - Consequence: the sideways swipe on Forecast now moves between pages, so it no longer switches
+    between locations (upstream behaviour). You change location by tapping a card in Locations,
+    which slides back to Forecast showing it.
+- **Forecast screen top (2026-11-18):** **nothing at the top but the location's title.** No toolbar
+  buttons, no menu, **no "edit this location" button**. For the current (GPS) location the title is
+  the place's real name with a small current-location icon next to it, not "Current location".
+- **Editing a location (2026-11-18):** in the Locations list, swipe a location card sideways to
+  reveal **Edit** (location details: name, weather sources…); swipe the other way to delete with
+  undo. Edit opens upstream's location settings, restyled as in F2.
 - **Motion: fluid and interruptible, iOS-like refinement.** Priority whenever we animate:
   - Every animation can be interrupted and retargeted mid-flight, keeping its current velocity; no
     animation blocks input or has to finish first.
@@ -132,9 +142,13 @@ widgets, notifications, live wallpaper.
 - Add / search: Expressive `SearchBar` expanding to full screen, results as segmented list,
   `LoadingIndicator` while searching, clear empty and error states.
 - Location settings screen (`LocationSettingsScreen.kt`) follows F2.
-- **Tab toolbar:** floating pill with Forecast and Locations, tap or swipe to switch (see Design
-  direction). New shell in `ui.expressive` hosting both; `MainActivity` switches to it in one small
-  edit. Tapping a location in the Locations tab slides to Forecast showing it.
+- **Tab toolbar:** floating pill with Forecast and Locations at the bottom, tap or swipe to switch
+  (Forecast first, Locations to the right; see Design direction). New shell in `ui.expressive`
+  hosting both; `MainActivity` switches to it in one small edit. Tapping a location in the
+  Locations tab slides to Forecast showing it.
+- **Location cards:** swipe one way to Edit (location details), the other way to delete with undo.
+- **Forecast top:** only the location title (current location: real place name + location icon);
+  remove upstream's toolbar actions, including "edit this location", from the Forecast screen.
 
 ### F4: Polish and release
 - Motion pass (shared transitions between list and search, press/selection morphs).
@@ -187,9 +201,13 @@ widgets, notifications, live wallpaper.
   new file next to it, switch over in one small edit; merge upstream often.
 - **Reordering in Compose:** needs careful drag/scroll/haptics and TalkBack actions
   (move up/down) as an alternative.
-- **Swipe conflict:** upstream's Forecast already swipes sideways between locations. Options to
-  settle when designing F3: tab swipe only past the last location, from the screen edge, or move
-  location switching to the toolbar/Locations tab.
+- **Swipe conflict (settled 2026-11-18):** the sideways swipe on Forecast goes to Locations, so
+  upstream's swipe between locations is dropped; locations are switched from the Locations list.
+  Watch for conflicts with horizontally scrolling blocks on Forecast (hourly/daily charts): those
+  scroll first, the page swipe takes over only at their ends or from the screen edge.
+- **Current location title:** needs a reverse-geocoded place name. Upstream's Nominatim address
+  lookup currently fails in this fork ("Required API key missing"), so fix that first or use
+  another reverse-geocoding source; fall back to "Current location" + icon when no name exists.
 - **Tab shell vs `MainActivity`:** upstream's activity (910 lines) manages the pushed page and drawer;
   replacing that touches more upstream code than other phases. Keep the edit to one switch-over.
 - **Expressive APIs are experimental:** pin `material3`, expect API changes on updates.
@@ -282,3 +300,7 @@ widgets, notifications, live wallpaper.
   trends options first).
 - **2026-11-18:** Added to "Planned next": no fade-in of Forecast blocks, progressive blur at the
   top and bottom edges of the Forecast screen.
+- **2026-11-18:** Navigation and Forecast decisions: Forecast first, Locations to the right (finger
+  moves left), pill toolbar stays at the bottom; only the location title at the top of Forecast
+  (current location: place name + icon); no "edit this location" button; swipe a location card to
+  edit its details. Side effect noted: no more swiping between locations on Forecast.
