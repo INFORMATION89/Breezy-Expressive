@@ -86,6 +86,10 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.location.model.isDaylight
+import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.glass
+import org.breezyweather.ui.expressive.components.glassSource
+import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.AnimatedSkyBackground
 import org.breezyweather.ui.expressive.sky.SkyPalette
 import org.breezyweather.ui.expressive.sky.SkyState
@@ -149,71 +153,82 @@ fun SolsticeShell(
     // System bar icons follow whatever is behind them.
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
-    AnimatedSkyBackground(sky, Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .drawBehind {
-                    // Read in the draw phase only: the fade redraws with the swipe, no recomposition.
-                    val position = pager.currentPage + pager.currentPageOffsetFraction
-                    drawRect(page, alpha = abs(position - PAGE_FORECAST).coerceIn(0f, 1f))
-                }
-        )
-        HorizontalPager(
-            state = pager,
-            beyondViewportPageCount = 1,
-            flingBehavior = PagerDefaults.flingBehavior(
+    val glass = rememberGlassSource()
+    Box(Modifier.fillMaxSize()) {
+        // Everything the toolbar's glass shows, blurred, behind it.
+        AnimatedSkyBackground(sky, Modifier.fillMaxSize().glassSource(glass)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        // Read in the draw phase only: the fade redraws with the swipe, no recomposition.
+                        val position = pager.currentPage + pager.currentPageOffsetFraction
+                        drawRect(page, alpha = abs(position - PAGE_FORECAST).coerceIn(0f, 1f))
+                    }
+            )
+            HorizontalPager(
                 state = pager,
-                snapAnimationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-            ),
-            modifier = Modifier.fillMaxSize()
-        ) { index ->
-            when (index) {
-                PAGE_DAYS -> DaysPage(location, onPage)
-                PAGE_FORECAST -> ForecastPage(
-                    location = location,
-                    sky = sky,
-                    now = now,
-                    refreshing = loading,
-                    onRefresh = {
-                        viewModel.updateWithUpdatingChecking(triggeredByUser = true, checkPermissions = true)
-                    },
-                    onDetails = actions::openDetails,
-                    onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
-                )
-                else -> PlacesPage(
-                    locations = locations,
-                    currentId = location?.formattedId,
-                    starred = starred,
-                    now = now,
-                    onPage = onPage,
-                    onSelect = {
-                        viewModel.setLocation(it.formattedId)
-                        scope.launch { pager.animateScrollToPage(PAGE_FORECAST) }
-                    },
-                    onStar = {
-                        starred = if (it.formattedId in starred) starred - it.formattedId else starred + it.formattedId
-                        saveStarred(context, starred)
-                    },
-                    onDelete = { place ->
-                        val index = locations.indexOfFirst { it.formattedId == place.formattedId }
-                        if (index >= 0) {
-                            viewModel.deleteLocation(index)
-                            scope.launch {
-                                val result = snackbar.showSnackbar(
-                                    message = context.getString(R.string.shell_place_removed, place.getPlace(context)),
-                                    actionLabel = context.getString(R.string.shell_undo),
-                                    withDismissAction = true
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.addLocation(place, index, context)
+                beyondViewportPageCount = 1,
+                flingBehavior = PagerDefaults.flingBehavior(
+                    state = pager,
+                    snapAnimationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ),
+                modifier = Modifier.fillMaxSize()
+            ) { index ->
+                when (index) {
+                    PAGE_DAYS -> DaysPage(location, onPage, page)
+                    PAGE_FORECAST -> ForecastPage(
+                        location = location,
+                        sky = sky,
+                        now = now,
+                        refreshing = loading,
+                        onRefresh = {
+                            viewModel.updateWithUpdatingChecking(triggeredByUser = true, checkPermissions = true)
+                        },
+                        onDetails = actions::openDetails,
+                        onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
+                    )
+                    else -> PlacesPage(
+                        locations = locations,
+                        currentId = location?.formattedId,
+                        starred = starred,
+                        now = now,
+                        onPage = onPage,
+                        onSelect = {
+                            viewModel.setLocation(it.formattedId)
+                            scope.launch { pager.animateScrollToPage(PAGE_FORECAST) }
+                        },
+                        onStar = {
+                            val id = it.formattedId
+                            starred = if (id in starred) starred - id else starred + id
+                            saveStarred(context, starred)
+                        },
+                        onDelete = { place ->
+                            val index = locations.indexOfFirst { it.formattedId == place.formattedId }
+                            if (index >= 0) {
+                                viewModel.deleteLocation(index)
+                                scope.launch {
+                                    val result = snackbar.showSnackbar(
+                                        message = context.getString(
+                                            R.string.shell_place_removed,
+                                            place.getPlace(context)
+                                        ),
+                                        actionLabel = context.getString(R.string.shell_undo),
+                                        withDismissAction = true
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.addLocation(place, index, context)
+                                    }
                                 }
                             }
-                        }
-                    },
-                    onSearch = actions::openSearch,
-                    onSettings = actions::openSettings
-                )
+                        },
+                        onSearch = actions::openSearch,
+                        onSettings = actions::openSettings
+                    )
+                }
             }
         }
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
@@ -226,6 +241,7 @@ fun SolsticeShell(
                     pager = pager,
                     sky = sky,
                     weather = SkyWeather.of(location?.weather?.current?.weatherCode),
+                    glass = glass,
                     onTab = { scope.launch { pager.animateScrollToPage(it) } }
                 )
             }
@@ -283,7 +299,13 @@ private class Tab(val label: Int, val icon: ImageVector)
  * back if the swipe reverses.
  */
 @Composable
-private fun ShellToolbar(pager: PagerState, sky: SkyState, weather: SkyWeather, onTab: (Int) -> Unit) {
+private fun ShellToolbar(
+    pager: PagerState,
+    sky: SkyState,
+    weather: SkyWeather,
+    glass: GlassSource,
+    onTab: (Int) -> Unit,
+) {
     val tabs = listOf(
         Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
         Tab(R.string.shell_tab_forecast, conditionIcon(weather, night = sky.sunHeight < 0f)),
@@ -297,7 +319,8 @@ private fun ShellToolbar(pager: PagerState, sky: SkyState, weather: SkyWeather, 
     val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
     val highlightX = tabs.indices.fold(0.dp) { acc, i -> acc + starts[i] * open[i] }
     val highlightW = tabs.indices.fold(0.dp) { acc, i -> acc + widths[i] * open[i] }
-    val container = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f)
+    // Frosted glass: the page behind, blurred, under a light tint of the surface colour.
+    val tint = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f)
     // On Forecast the highlight wears the weather (a colour from the sky); swiping to Outlook or
     // Places morphs it into the Material You colour, in step with the swipe.
     val skyAccent = sky.palette.blobs[1]
@@ -306,7 +329,7 @@ private fun ShellToolbar(pager: PagerState, sky: SkyState, weather: SkyWeather, 
     val onPrimary = lerp(MaterialTheme.colorScheme.onPrimary, onSkyAccent, open[PAGE_FORECAST])
     val onSurface = MaterialTheme.colorScheme.onSurface
 
-    Box(Modifier.background(container, CircleShape).padding(4.dp)) {
+    Box(Modifier.glass(glass, CircleShape, tint).padding(4.dp)) {
         Box(
             Modifier
                 .offset(x = highlightX)

@@ -322,6 +322,26 @@ Forecast screen (top to bottom):
 - A setting chooses between the clean list and the tactile view. Exact metaphor to decide with
   mockups; same motion rules (follows the finger, interruptible springs, haptics).
 
+### Outlook as a real paper calendar (added 2026-11-18; extends the tactile view above)
+Make Outlook look like an actual paper calendar. Proposals to mock up and compare:
+1. **Tear-off day pad** ("page-a-day"): one page per day, big date numeral, weekday, the day's
+   weather drawn like a stamp/illustration and the high/low; pull a page up/away to tear to the next
+   day (page curl, torn perforation edge left behind, paper sound optional). Reference: classic
+   page-a-day desk pads, Japanese *himekuri* daily calendars.
+2. **Spiral desk flip calendar**: pages bound by metal rings at the top; flick a page over the rings
+   to the next day; slight paper shadow and thickness of the remaining stack shows how many days are
+   left. Reference: tent-style desk flip calendars.
+3. **Wall month/week sheet**: a printed week or month grid on textured paper, each day's box with a
+   small weather illustration and handwritten-style temperatures, today circled in pen. Reference:
+   printed wall calendars, planner pages.
+4. **Perpetual block calendar**: wooden/paper cubes or flip cards that roll to show day and weather.
+   Reference: perpetual desk calendars (cubes, flip-card date displays).
+- Shared details: paper texture (subtle grain, slight warmth), print-like typography (big numerals),
+  real shadows/thickness, weather as ink illustrations in the day's palette colour; every gesture
+  follows the finger and can be reversed mid-way (springs), haptic tick per page.
+- References are for the look and feel only (no copying of any product's artwork). Choose one with
+  mockups; the setting from "tactile view" switches between list and paper calendar.
+
 ### Places: visit vs pin, time difference (added 2026-11-18)
 - Places behave like a map of places you **visit**: search somewhere else, look at its weather, and
   it stays only for the session (a "visiting" card) unless you **pin** it, which saves it
@@ -684,3 +704,12 @@ before choosing; check each license.
   "Search somewhere else" button. Tested: star, delete, undo (place returns, still starred).
 - **2026-11-18:** Added: search for softer, rounder icon options (Material Symbols Rounded, Phosphor,
   Lucide, Fluent; Meteocons for weather) and compare with a mockup before choosing.
+- **2026-11-18:** Added: Outlook as a real paper calendar, four proposals (tear-off pad, spiral flip,
+  wall sheet, perpetual blocks) to mock up. Toolbar is now frosted glass (backdrop blur); Outlook is
+  edge to edge with progressive blur at the top and bottom edges.
+- **2026-11-18:** Built: `ui/expressive/components/Glass.kt` (frosted glass: content records itself into
+  a GraphicsLayer each frame, each glass element blurs only its own rectangle of it, + tint + hairline
+  edge; Android 12+, opaque tint below) used on the toolbar; `EdgeBlur.kt` (progressive blur + fade
+  at top/bottom edges, only the two bands blurred) on Outlook, now edge to edge. Pixel 7 debug build,
+  scrolling Outlook: median 11 ms, GPU 6 ms, 99th 34 ms, 2.9 % janky. Re-check on release; apply edge
+  blur to Places and Forecast once happy.

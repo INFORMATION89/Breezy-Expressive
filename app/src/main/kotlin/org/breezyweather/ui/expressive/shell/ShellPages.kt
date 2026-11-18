@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -92,6 +95,7 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsManager
+import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
@@ -289,13 +293,16 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
 
 /** Plain page (white/black); each day's card wears its own weather, as a daytime sky. */
 @Composable
-internal fun DaysPage(location: Location?, onPage: Color) {
+internal fun DaysPage(location: Location?, onPage: Color, page: Color) {
     val context = LocalContext.current
     val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(10)
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // Edge to edge: the list scrolls under the status bar and the toolbar, with a progressive blur
+    // at both edges (also a hint that there's more to scroll).
     LazyColumn(
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 132.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 40.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
+        modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp)
     ) {
         item {
             Text(
