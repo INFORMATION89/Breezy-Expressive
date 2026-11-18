@@ -24,6 +24,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -97,6 +100,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -138,6 +142,7 @@ import org.breezyweather.ui.expressive.sky.skyAt
 import org.breezyweather.ui.main.MainActivityViewModel
 import org.breezyweather.ui.search.SearchViewModel
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** What the shell asks its host (MainActivity) to do. */
 interface ShellActions {
@@ -519,6 +524,7 @@ fun SolsticeShell(
             onPickCity = { pick(it.toLocation()) },
             onClose = { searchOpen = false },
             onCardBounds = { searchCard = it },
+            glass = glass,
             handedOff = searchHandoff && windowReady
         )
         // Above search: a city picked there grows into its window right where the search card was.
@@ -534,6 +540,7 @@ fun SolsticeShell(
                 onClose = { closeWindow() },
                 pinned = windowPlace.formattedId !in visiting,
                 fadeOut = windowFade,
+                weather = SkyWeather.of(windowPlace.weather?.current?.weatherCode),
                 onPin = {
                     val id = windowPlace.formattedId
                     if (id in visiting) Visits.unmark(context, id) else Visits.mark(context, id)
@@ -635,7 +642,7 @@ private fun loadStarred(context: Context): Set<String> =
 private fun saveStarred(context: Context, starred: Set<String>) =
     context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet(KEY_STARRED, starred) }
 
-private class Tab(val label: Int, val icon: ImageVector)
+internal class Tab(val label: Int, val icon: ImageVector)
 
 /**
  * Floating toolbar. Each tab is an icon; the selected one unfolds to show its title. Widths, label
@@ -643,7 +650,7 @@ private class Tab(val label: Int, val icon: ImageVector)
  * back if the swipe reverses.
  */
 @Composable
-private fun ShellToolbar(
+internal fun ShellToolbar(
     pager: PagerState,
     sky: SkyState,
     weather: SkyWeather,
@@ -653,11 +660,16 @@ private fun ShellToolbar(
     searchEnabled: Boolean,
     onSearch: () -> Unit,
     onSearchBounds: (Rect) -> Unit,
+    // The same toolbar in a postcard window: no Places tab, and the bud (Pin) comes out of Forecast.
+    withPlaces: Boolean = true,
+    budIcon: ImageVector = Icons.Filled.Search,
+    budDescription: String = stringResource(R.string.shell_search_elsewhere),
+    budChecked: Boolean = false,
 ) {
-    val tabs = listOf(
+    val tabs = listOfNotNull(
         Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
         Tab(R.string.shell_tab_forecast, conditionIcon(weather, night = sky.sunHeight < 0f)),
-        Tab(R.string.shell_tab_places, Icons.Outlined.Map)
+        if (withPlaces) Tab(R.string.shell_tab_places, Icons.Outlined.Map) else null
     )
     val collapsed = 52.dp
     val expanded = 132.dp
@@ -684,7 +696,8 @@ private fun ShellToolbar(
     // the pill's right end, held by a stretchy glass neck, and snaps free into its slot beside the
     // toolbar. Pill, neck and bubble are one glass shape. The swipe drives it; only the neck's
     // snap (and its regrowth on the way back) is a spring.
-    val bud = open[PAGE_PLACES]
+    // The bud comes out of the last tab (Places at home, Forecast in a window).
+    val bud = open[tabs.lastIndex]
     val height = 52.dp
     val gap = 10.dp
     val pillWidth = starts.last() + 8.dp
@@ -715,9 +728,9 @@ private fun ShellToolbar(
                 .then(if (searchEnabled && bud > 0.9f) Modifier.clickable(onClick = onSearch) else Modifier)
         ) {
             Icon(
-                Icons.Filled.Search,
-                contentDescription = if (bud > 0.5f) stringResource(R.string.shell_search_elsewhere) else null,
-                tint = onSurface,
+                budIcon,
+                contentDescription = if (bud > 0.5f) budDescription else null,
+                tint = if (budChecked) MaterialTheme.colorScheme.primary else onSurface,
                 modifier = Modifier.graphicsLayer { alpha = iconAlpha }
             )
         }
@@ -740,7 +753,34 @@ private fun ToolbarTabs(
     pager: PagerState,
     onTab: (Int) -> Unit,
 ) {
-    Box(Modifier.width(pillWidth).padding(4.dp)) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    // Slide along the pill to switch pages (like iOS 26/27): the page follows the finger, one tab's
+    // width of finger per page, and settles on the nearest page when you let go.
+    Box(
+        Modifier
+            .width(pillWidth)
+            .pointerInput(pager) {
+                val tabPx = with(density) { 52.dp.toPx() }
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        val position = pager.currentPage + pager.currentPageOffsetFraction
+                        scope.launch { pager.animateScrollToPage(position.roundToInt().coerceIn(0, tabs.lastIndex)) }
+                    },
+                    onDragCancel = {
+                        scope.launch { pager.animateScrollToPage(pager.currentPage) }
+                    },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        val pagePx =
+                            pager.layoutInfo.pageSize.toFloat().takeIf { it > 0f }
+                                ?: return@detectHorizontalDragGestures
+                        pager.dispatchRawDelta(dx * pagePx / tabPx)
+                    }
+                )
+            }
+            .padding(4.dp)
+    ) {
         Box(
             Modifier
                 .offset(x = highlightX)
@@ -752,6 +792,16 @@ private fun ToolbarTabs(
             tabs.forEachIndexed { i, tab ->
                 val label = stringResource(tab.label)
                 val color = lerp(onSurface, onPrimary, open[i])
+                // No square ripple: the tab's content gives a little press (shrinks, springs back).
+                val press = remember { MutableInteractionSource() }
+                val pressed by press.collectIsPressedAsState()
+                val squeeze = remember { Animatable(1f) }
+                LaunchedEffect(pressed) {
+                    squeeze.animateTo(
+                        if (pressed) 0.86f else 1f,
+                        spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium)
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -762,7 +812,11 @@ private fun ToolbarTabs(
                             selected = pager.currentPage == i
                             contentDescription = label
                         }
-                        .clickable(role = Role.Tab) { onTab(i) }
+                        .clickable(interactionSource = press, indication = null, role = Role.Tab) { onTab(i) }
+                        .graphicsLayer {
+                            scaleX = squeeze.value
+                            scaleY = squeeze.value
+                        }
                         .padding(start = 14.dp)
                 ) {
                     Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))

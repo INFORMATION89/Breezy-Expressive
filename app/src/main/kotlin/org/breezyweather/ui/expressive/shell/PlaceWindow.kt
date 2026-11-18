@@ -68,7 +68,10 @@ import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.glassSource
+import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
+import org.breezyweather.ui.expressive.sky.SkyWeather
 import kotlin.math.abs
 
 /**
@@ -95,6 +98,7 @@ internal fun PlaceWindow(
     fadeOut: Boolean,
     onPin: () -> Unit,
     onDetails: () -> Unit,
+    weather: SkyWeather,
 ) {
     PredictiveBackHandler { events ->
         try {
@@ -167,147 +171,102 @@ internal fun PlaceWindow(
                 }
             }
     ) {
-        // The postcard's sky is what grows: laid out full screen and scaled down onto the card.
-        SkyBackground(
-            state = sky,
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                val p = progress().coerceIn(0f, 1f)
-                val from = origin ?: Rect(0f, 0f, size.width, size.height)
-                val left = from.left * (1f - p)
-                val top = from.top * (1f - p)
-                val right = from.right + (size.width - from.right) * p
-                val bottom = from.bottom + (size.height - from.bottom) * p
-                transformOrigin = TransformOrigin(0f, 0f)
-                scaleX = (right - left) / size.width
-                scaleY = (bottom - top) / size.height
-                translationX = left
-                translationY = top
-            }
-        ) {}
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
-                .drawBehind {
-                    // This week sits on the plain page, like Outlook.
-                    val position = pager.currentPage + pager.currentPageOffsetFraction
-                    drawRect(page, alpha = abs(position - 1f).coerceIn(0f, 1f))
+        // The window's own glass: its toolbar blurs the window's sky and pages, like the home toolbar.
+        val windowGlass = rememberGlassSource()
+        Box(Modifier.fillMaxSize().glassSource(windowGlass)) {
+            // The postcard's sky is what grows: laid out full screen and scaled down onto the card.
+            SkyBackground(
+                state = sky,
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    val p = progress().coerceIn(0f, 1f)
+                    val from = origin ?: Rect(0f, 0f, size.width, size.height)
+                    val left = from.left * (1f - p)
+                    val top = from.top * (1f - p)
+                    val right = from.right + (size.width - from.right) * p
+                    val bottom = from.bottom + (size.height - from.bottom) * p
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    scaleX = (right - left) / size.width
+                    scaleY = (bottom - top) / size.height
+                    translationX = left
+                    translationY = top
                 }
-        ) {
-            HorizontalPager(
-                state = pager,
-                beyondViewportPageCount = 1,
-                flingBehavior = PagerDefaults.flingBehavior(
-                    state = pager,
-                    snapAnimationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
-                ),
-                modifier = Modifier.fillMaxSize()
-            ) { index ->
-                if (index == 0) {
-                    DaysPage(location, onPage, page, days) {
-                        abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
+            ) {}
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
+                    .drawBehind {
+                        // This week sits on the plain page, like Outlook.
+                        val position = pager.currentPage + pager.currentPageOffsetFraction
+                        drawRect(page, alpha = abs(position - 1f).coerceIn(0f, 1f))
                     }
-                } else {
-                    ForecastPage(
-                        location = location,
-                        sky = sky,
-                        now = now,
-                        refreshing = false,
-                        onRefresh = {},
-                        onDetails = onDetails,
-                        onOpenPlaces = onClose
-                    )
-                }
-            }
-            // "Visiting" until you pin it.
-            if (!pinned) {
-                Text(
-                    stringResource(R.string.shell_visiting),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = sky.palette.text,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
-                        .padding(top = 6.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.28f))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            }
-            // The window's toolbar: This week and Forecast, with Pin in line (keeps it in Places;
-            // otherwise it's gone when you go back).
-            val scope = rememberCoroutineScope()
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f))
-                        .padding(4.dp)
-                ) {
-                    val onDays = pager.currentPage == 0
-                    KeepButton(
-                        checked = onDays,
-                        icon = Icons.Outlined.CalendarMonth,
-                        label = if (onDays) stringResource(R.string.shell_tab_days) else null,
-                        onClick = { scope.launch { pager.animateScrollToPage(0) } }
-                    )
-                    KeepButton(
-                        checked = !onDays,
-                        icon = Icons.Outlined.WbSunny,
-                        label = if (!onDays) stringResource(R.string.shell_tab_forecast) else null,
-                        onClick = { scope.launch { pager.animateScrollToPage(1) } }
-                    )
+                HorizontalPager(
+                    state = pager,
+                    beyondViewportPageCount = 1,
+                    flingBehavior = PagerDefaults.flingBehavior(
+                        state = pager,
+                        snapAnimationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
+                    ),
+                    modifier = Modifier.fillMaxSize()
+                ) { index ->
+                    if (index == 0) {
+                        DaysPage(location, onPage, page, days) {
+                            abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
+                        }
+                    } else {
+                        ForecastPage(
+                            location = location,
+                            sky = sky,
+                            now = now,
+                            refreshing = false,
+                            onRefresh = {},
+                            onDetails = onDetails,
+                            onOpenPlaces = onClose
+                        )
+                    }
                 }
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f))
-                        .padding(4.dp)
-                ) {
-                    KeepButton(
-                        checked = pinned,
-                        icon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                        label = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
-                        onClick = onPin
+                // "Visiting" until you pin it.
+                if (!pinned) {
+                    Text(
+                        stringResource(R.string.shell_visiting),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = sky.palette.text,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .padding(top = 6.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.28f))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun KeepButton(
-    checked: Boolean,
-    icon: ImageVector,
-    label: String?,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .height(44.dp)
-            .clip(CircleShape)
-            .background(if (checked) colors.primary else Color.Transparent)
-            .clickable(enabled = enabled, role = Role.Switch, onClick = onClick)
-            .padding(horizontal = 16.dp)
-    ) {
-        Icon(icon, contentDescription = label, tint = if (checked) colors.onPrimary else colors.onSurface)
-        if (label != null) {
-            Spacer(Modifier.width(8.dp))
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (checked) colors.onPrimary else colors.onSurface
+        // The home toolbar, as is: This week and Forecast, and Pin budding out of Forecast like search
+        // does out of Places (pin keeps the place; otherwise it's gone when you go back).
+        val scope = rememberCoroutineScope()
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp)
+                .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
+        ) {
+            ShellToolbar(
+                pager = pager,
+                sky = sky,
+                weather = weather,
+                glass = windowGlass,
+                labelShown = listOf(1f, 1f),
+                onTab = { scope.launch { pager.animateScrollToPage(it) } },
+                searchEnabled = true,
+                onSearch = onPin,
+                onSearchBounds = {},
+                withPlaces = false,
+                budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
+                budChecked = pinned
             )
         }
     }

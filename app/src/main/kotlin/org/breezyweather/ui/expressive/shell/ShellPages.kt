@@ -18,6 +18,7 @@ package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
@@ -41,6 +42,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,6 +57,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
@@ -95,7 +98,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -488,9 +494,9 @@ internal fun PlacesPage(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
+        contentPadding = PaddingValues(start = 34.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxSize().notebookPaper(onPage).statusBarsPadding()
     ) {
         item(key = "header") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
@@ -558,16 +564,20 @@ internal fun PlacesPage(
                             val k = 1f + 0.035f * glide.value
                             scaleX = k
                             scaleY = k
-                            shadowElevation = glide.value * 16.dp.toPx()
-                            shape = RoundedCornerShape(6.dp)
+                            shadowElevation = glide.value * 10.dp.toPx()
+                            ambientShadowColor = Color.Black.copy(alpha = 0.10f)
+                            spotShadowColor = Color.Black.copy(alpha = 0.16f)
+                            shape = RoundedCornerShape(4.dp)
                         }
                         if (isCarried) {
                             translationY = carryY
                             scaleX = lift.value
                             scaleY = lift.value
                             rotationZ = tilt
-                            shadowElevation = ((lift.value - 1f) / 0.03f).coerceIn(0f, 1f) * 18.dp.toPx()
-                            shape = RoundedCornerShape(24.dp)
+                            shadowElevation = ((lift.value - 1f) / 0.03f).coerceIn(0f, 1f) * 10.dp.toPx()
+                            ambientShadowColor = Color.Black.copy(alpha = 0.10f)
+                            spotShadowColor = Color.Black.copy(alpha = 0.16f)
+                            shape = RoundedCornerShape(4.dp)
                         } else {
                             translationY = nudge(id) + bump.value
                         }
@@ -645,15 +655,6 @@ internal fun PlacesPage(
                                     }
                                 )
                             }
-                        )
-                    }
-                    // The main place: a bigger postcard with a "Home" caption, a little apart from the rest.
-                    if (id in starred) {
-                        Text(
-                            stringResource(R.string.shell_home),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = onPage.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 10.dp)
                         )
                     }
                 }
@@ -786,10 +787,12 @@ private fun SwipeablePlace(
 }
 
 /**
- * A place as a postcard (agreed 2026-11-18, style B "framed photo"): its sky is the photo inside a
- * cream paper frame, a perforated stamp shows the local time, and
- * the temperature sits on the picture. The main place wears a star; a visit has a dashed frame.
- * The sky is baked and static, so scrolling stays cheap. Sinks a little while pressed.
+ * A place as a vintage travel postcard (agreed 2026-11-18, style A): a thin white border; the
+ * place's sky is the "photo" on the left two-thirds, with its weather and temperature; the address
+ * side on the right has the stamp (local time when it differs from yours), a postmark, and the
+ * name written on the address line in ink. The main place is held on the page by a strip of kraft
+ * tape and wears a star sticker on its stamp; a visit has a dashed border. Soft, low shadow. The
+ * sky is baked and static, so scrolling stays cheap. Sinks a little while pressed.
  */
 @Composable
 private fun PlaceCard(
@@ -812,130 +815,220 @@ private fun PlaceCard(
         sink.animateTo(if (pressed) 0.98f else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
     }
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
-    val ink = Color(0xFF3A3731)
-    val frame = RoundedCornerShape(6.dp)
-    // The main place is a bigger "hero" postcard; the height eases when the star moves.
-    val height by animateDpAsState(
-        if (starred) 184.dp else 132.dp,
-        spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow),
-        label = "postcard"
-    )
-    // Stamp thump (agreed 2026-11-18): when it gets the star, the star lands hard on the stamp with
-    // a little overshoot and an ink ring spreads, like a postmark. Waits for the glide to the top.
+    val card = if (dark) Color(0xFFEDE8DC) else Color(0xFFFFFDF8)
+    val ink = Color(0xFF34312B)
+    val frame = RoundedCornerShape(3.dp)
+    // Sticker peel (agreed 2026-11-18): when it gets the star, a gold star sticker drops onto the
+    // stamp slightly too big and tilted, presses down (squash, haptic), settles, and a shine sweeps
+    // across it as it flattens. Waits for the card's glide to the top.
     var hadStar by remember { mutableStateOf(starred) }
-    val thump = remember { Animatable(1f) }
-    val ring = remember { Animatable(1f) }
+    val peel = remember { Animatable(1f) }
+    val shine = remember { Animatable(1f) }
+    val tape = remember { Animatable(if (starred) 1f else 0f) }
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(starred) {
         if (starred && !hadStar) {
-            thump.snapTo(0f)
-            ring.snapTo(0f)
+            peel.snapTo(0f)
+            shine.snapTo(0f)
+            launch {
+                delay(380)
+                tape.animateTo(1f, tween(260))
+            }
             delay(520)
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            launch { ring.animateTo(1f, tween(480)) }
-            thump.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMedium))
+            launch {
+                delay(230)
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                shine.animateTo(1f, tween(420))
+            }
+            peel.animateTo(1f, tween(520, easing = LinearEasing))
+        } else if (!starred) {
+            tape.snapTo(0f)
         }
         hadStar = starred
     }
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(height)
-            .graphicsLayer {
-                scaleX = sink.value
-                scaleY = sink.value
-                // A visit is lighter until you keep it.
-                alpha = if (visiting) 0.9f else 1f
-            }
-            .shadow(if (selected) 6.dp else 2.dp, frame)
-            .clip(frame)
-            .background(paper)
-            .then(if (visiting) Modifier.dashedEdge(ink, 6.dp) else Modifier)
-            .clickable(interactionSource = press, indication = ripple(), onClick = onClick)
-            .padding(7.dp)
-    ) {
-        SkyBackground(state = sky, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp))) {
-            Box(Modifier.fillMaxSize().padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 8.dp)) {
-                // Top left: the weather (and local time when it differs), with the current-position icon.
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.align(Alignment.TopStart).padding(end = 56.dp)
-                ) {
-                    if (location.isCurrentPosition) {
-                        Icon(
-                            Icons.Filled.NearMe,
-                            contentDescription = stringResource(R.string.location_current),
-                            tint = text.copy(alpha = 0.8f),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        // "Visiting" only shows on the selected place. The stamp has the local time.
-                        placeSubtitle(context, location, visiting && selected, now, withTime = false),
-                        color = text.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+    Box(modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(128.dp)
+                .graphicsLayer {
+                    scaleX = sink.value
+                    scaleY = sink.value
+                    // A visit is lighter until you keep it.
+                    alpha = if (visiting) 0.92f else 1f
                 }
-                // Bottom left: the name; the city above it for a neighbourhood.
-                val (title, city) = placeName(context, location)
-                Column(Modifier.align(Alignment.BottomStart).padding(end = 84.dp)) {
-                    city?.let {
+                // A soft, low shadow, like card lying on paper.
+                .shadow(
+                    elevation = if (selected) 4.dp else 2.dp,
+                    shape = frame,
+                    ambientColor = Color.Black.copy(alpha = 0.06f),
+                    spotColor = Color.Black.copy(alpha = 0.10f)
+                )
+                .clip(frame)
+                .background(card)
+                .then(if (visiting) Modifier.dashedEdge(ink, 3.dp) else Modifier)
+                .clickable(interactionSource = press, indication = ripple(), onClick = onClick)
+                .padding(5.dp)
+        ) {
+            Row(Modifier.fillMaxSize()) {
+                // The photo: the place's sky, its weather and temperature.
+                SkyBackground(
+                    state = sky,
+                    modifier = Modifier.weight(0.62f).fillMaxHeight().clip(RoundedCornerShape(2.dp))
+                ) {
+                    Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 9.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            if (location.isCurrentPosition) {
+                                Icon(
+                                    Icons.Filled.NearMe,
+                                    contentDescription = stringResource(R.string.location_current),
+                                    tint = text.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(
+                                // "Visiting" only shows on the selected place. The stamp has the time.
+                                placeSubtitle(context, location, visiting && selected, now, withTime = false),
+                                color = text.copy(alpha = 0.85f),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Text(
-                            it,
-                            color = text.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                            color = text,
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.align(Alignment.BottomStart)
                         )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                }
+                // The address side: stamp and postmark top right, the name on the address line.
+                Box(
+                    Modifier
+                        .weight(0.38f)
+                        .fillMaxHeight()
+                        .drawBehind {
+                            // The dashed divider between photo and address side.
+                            drawLine(
+                                ink.copy(alpha = 0.25f),
+                                start = Offset(0f, 6.dp.toPx()),
+                                end = Offset(0f, size.height - 6.dp.toPx()),
+                                strokeWidth = 1.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))
+                            )
+                        }
+                        .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                ) {
+                    Postmark(
+                        country = location.countryCode,
+                        ink = ink,
+                        modifier = Modifier.align(Alignment.TopStart).padding(top = 10.dp)
+                    )
+                    val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
+                    Stamp(
+                        time = if (showTime) time(context, Date(now), location.timeZone) else null,
+                        starred = starred,
+                        peel = { peel.value },
+                        shine = { shine.value },
+                        paper = Color(0xFFF6EBD6),
+                        ink = ink,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                    val (title, city) = placeName(context, location)
+                    Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
                         Text(
                             title,
-                            color = text,
-                            style = MaterialTheme.typography.titleLargeEmphasized,
-                            autoSize = TextAutoSize.StepBased(
-                                16.sp,
-                                MaterialTheme.typography.titleLargeEmphasized.fontSize
-                            ),
+                            color = ink,
+                            style = MaterialTheme.typography.titleSmall,
+                            autoSize = TextAutoSize.StepBased(11.sp, MaterialTheme.typography.titleSmall.fontSize),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        // The address line.
+                        Box(Modifier.fillMaxWidth().padding(top = 2.dp).height(1.dp).background(ink.copy(alpha = 0.3f)))
+                        Text(
+                            city ?: location.country,
+                            color = ink.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
-                // Bottom right: the temperature, on the picture.
-                Text(
-                    current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
-                    color = text,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Light,
-                    modifier = Modifier.align(Alignment.BottomEnd)
-                )
             }
         }
-        // The stamp: the local time, perforated edge, overlapping the picture's corner.
-        // The time only when it differs from yours (never on the current position); the stamp
-        // stays for the star.
-        val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
-        if (showTime || starred) {
-            Stamp(
-                time = if (showTime) time(context, Date(now), location.timeZone) else null,
-                starred = starred,
-                thump = { thump.value },
-                ring = { ring.value },
-                paper = paper,
-                ink = ink,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp)
-            )
+        // Kraft tape holds the main place to the page.
+        if (starred || tape.value > 0f) {
+            KraftTape(Modifier.align(Alignment.TopCenter).offset(y = (-9).dp).graphicsLayer { alpha = tape.value })
         }
     }
 }
 
-/** A small postage stamp: paper with a dotted (perforated) edge and the local time; the main place's has a star. */
+/** A strip of brown kraft tape, a little crooked and see-through, with torn ends. */
+@Composable
+private fun KraftTape(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(width = 86.dp, height = 22.dp)
+            .graphicsLayer { rotationZ = -3.5f }
+            .clip(TornTape)
+            .background(Color(0xFFC49A6C).copy(alpha = 0.82f))
+            .drawBehind {
+                // A faint paper fibre texture: a few lighter streaks.
+                for (i in 0 until 5) {
+                    val y = size.height * (0.15f + 0.17f * i)
+                    drawLine(Color.White.copy(alpha = 0.08f), Offset(0f, y), Offset(size.width, y + 2f), 1.dp.toPx())
+                }
+            }
+    )
+}
+
+/** Tape with zig-zag torn ends. */
+private val TornTape = GenericShape { size, _ ->
+    val teeth = 5
+    val tooth = size.height / teeth
+    moveTo(size.width * 0.02f, 0f)
+    lineTo(size.width * 0.98f, 0f)
+    for (i in 0 until teeth) {
+        lineTo(size.width - if (i % 2 == 0) 3f else 0f, tooth * (i + 1))
+    }
+    lineTo(size.width * 0.02f, size.height)
+    for (i in teeth - 1 downTo 0) {
+        lineTo(if (i % 2 == 0) 3f else 0f, tooth * i)
+    }
+    close()
+}
+
+/** A faint round postmark with the country code, partly over the stamp. */
+@Composable
+private fun Postmark(country: String?, ink: Color, modifier: Modifier = Modifier) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(34.dp)
+            .graphicsLayer { rotationZ = -12f }
+            .drawBehind {
+                drawCircle(ink.copy(alpha = 0.32f), style = Stroke(1.2.dp.toPx()))
+                drawCircle(ink.copy(alpha = 0.22f), radius = size.minDimension * 0.36f, style = Stroke(0.8.dp.toPx()))
+            }
+    ) {
+        Text(
+            country.orEmpty().uppercase(),
+            color = ink.copy(alpha = 0.45f),
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1
+        )
+    }
+}
+
+/** A small postage stamp with a perforated edge: the local time (when it differs), or a star sticker. */
 @Composable
 private fun Stamp(
     time: String?,
@@ -943,18 +1036,18 @@ private fun Stamp(
     paper: Color,
     ink: Color,
     modifier: Modifier = Modifier,
-    thump: () -> Float = { 1f },
-    ring: () -> Float = { 1f },
+    peel: () -> Float = { 1f },
+    shine: () -> Float = { 1f },
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(width = 46.dp, height = 52.dp)
+            .size(width = 38.dp, height = 44.dp)
             .drawBehind {
                 drawRect(paper)
                 val dot = 2.dp.toPx()
                 drawRect(
-                    color = ink.copy(alpha = 0.35f),
+                    color = ink.copy(alpha = 0.3f),
                     topLeft = Offset(dot, dot),
                     size = Size(size.width - 2 * dot, size.height - 2 * dot),
                     style = Stroke(
@@ -964,36 +1057,48 @@ private fun Stamp(
                     )
                 )
             }
-            .padding(4.dp)
+            .padding(3.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (starred) {
-                val gold = Color(0xFFC9892B)
+                val gold = Color(0xFFD69A2E)
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = stringResource(R.string.shell_starred),
                     tint = gold,
                     modifier = Modifier
-                        .size(16.dp)
-                        .drawBehind {
-                            // The ink ring of the thump, spreading and fading.
-                            val t = ring()
-                            if (t < 1f) {
-                                drawCircle(
-                                    gold.copy(alpha = 0.55f * (1f - t)),
-                                    radius = (6.dp.toPx() + 18.dp.toPx() * t),
-                                    style = Stroke(width = 2.dp.toPx() * (1f - t) + 0.5f)
+                        .size(if (time != null) 14.dp else 22.dp)
+                        .graphicsLayer {
+                            // Drops in big and tilted, presses down (squash), springs to size.
+                            val t = peel()
+                            val sc = when {
+                                t < 0.45f -> 1.55f - 0.69f * (t / 0.45f)
+                                t < 0.7f -> 0.86f + 0.18f * ((t - 0.45f) / 0.25f)
+                                else -> 1.04f - 0.04f * ((t - 0.7f) / 0.3f)
+                            }
+                            scaleX = sc
+                            scaleY = sc * (if (t in 0.4f..0.55f) 0.94f else 1f)
+                            rotationZ = -14f * (1f - (t / 0.45f).coerceIn(0f, 1f))
+                            alpha = (t * 5f).coerceIn(0f, 1f)
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            // The shine sweeping across as the sticker flattens.
+                            val k = shine()
+                            if (k in 0.001f..0.999f) {
+                                val x = -size.width + 3f * size.width * k
+                                drawRect(
+                                    Brush.linearGradient(
+                                        0f to Color.Transparent,
+                                        0.5f to Color.White.copy(alpha = 0.85f),
+                                        1f to Color.Transparent,
+                                        start = Offset(x, 0f),
+                                        end = Offset(x + size.width * 0.7f, size.height)
+                                    ),
+                                    blendMode = BlendMode.SrcAtop
                                 )
                             }
-                        }
-                        .graphicsLayer {
-                            // Lands from big and tilted, overshoots, settles.
-                            val k = thump()
-                            val s = 1.9f - 0.9f * k
-                            scaleX = s
-                            scaleY = s
-                            rotationZ = -18f * (1f - k)
-                            alpha = (k * 3f).coerceIn(0f, 1f)
                         }
                 )
             }
@@ -1001,13 +1106,28 @@ private fun Stamp(
                 Text(
                     time,
                     color = ink,
-                    style = if (starred) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
                     maxLines = 2
                 )
             }
         }
     }
+}
+
+/** Lined notebook paper for the Places page: faint ruled lines and a soft red margin. */
+private fun Modifier.notebookPaper(onPage: Color): Modifier = drawBehind {
+    val light = onPage.luminance() < 0.5f
+    drawRect(if (light) Color(0xFFFBF8F1) else Color(0xFF1C1B18))
+    val rule = if (light) Color(0xFF9DB6DB).copy(alpha = 0.32f) else Color.White.copy(alpha = 0.06f)
+    val step = 28.dp.toPx()
+    var y = 120.dp.toPx()
+    while (y < size.height) {
+        drawLine(rule, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+        y += step
+    }
+    val margin = if (light) Color(0xFFE08C86).copy(alpha = 0.55f) else Color(0xFFE08C86).copy(alpha = 0.25f)
+    drawLine(margin, Offset(22.dp.toPx(), 0f), Offset(22.dp.toPx(), size.height), 1.dp.toPx())
 }
 
 /**

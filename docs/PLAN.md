@@ -1123,3 +1123,30 @@ Things to try on the phone before calling any motion done (debug and release bui
   placement spring while the others slide down, and sets it down. About 0.5 s later the star
   thumps onto its stamp: it lands big and tilted, overshoots, and settles, with a gold ink ring
   spreading and a haptic. Tested by starring Puebla and back again.
+- **2026-11-18 (user feedback + picks):**
+  - The search card gets the toolbar's glass material.
+  - Much softer shadows.
+  - Star animation: try "peel and press".
+  - No hero card: the starred place is held by a **kraft tape strip** instead.
+  - **Lined notebook** paper behind Places.
+  - **Postcards: style A, vintage travel card**: sky "photo" on the left two-thirds; an address side
+    on the right with the name in ink, a postmark and the stamp; a thin white border.
+  - The postcard window uses the home toolbar itself (same component and materials), with Pin
+    budding out of Forecast like search does out of Places.
+  - Toolbar: no square press highlight (a small press animation instead), and slide along the pill
+    to switch pages, with the page following the finger (like iOS 26/27).
+- **2026-11-18 (built, checked in the debug app on the Pixel):**
+  - **Postcard A.** A thin white card. The sky "photo" (62 %) shows the weather and temperature;
+    a dashed divider; the address side has a postmark (country), the stamp (local time when it
+    differs) and the name on an address line, with the city or country under it.
+  - **Kraft tape** across the top of the starred card; no hero size or "Home" caption.
+  - **Lined notebook** page behind Places: ruled lines and a red margin.
+  - **Softer shadows** (2–4 dp, low alpha; lifted cards 10 dp).
+  - **Sticker peel** for the star: it drops in big and tilted, presses (squash, haptic), and
+    settles with a shine sweep; the tape fades in. Built, but not yet watched on the phone (the
+    test swipe landed while search was still closing).
+  - **Search card on the toolbar's glass.**
+  - **Postcard window uses `ShellToolbar` itself** (`withPlaces = false`): This week and Forecast,
+    with Pin budding out of Forecast. It has the window's own glass source.
+  - **Toolbar:** no square ripple (a squeeze-press instead); slide along the pill to move between
+    pages, with the page following the finger and settling on release.

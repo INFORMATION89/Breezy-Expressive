@@ -123,6 +123,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.shell.timeDifference
 import org.breezyweather.ui.search.LoadableLocationStatus
 import org.breezyweather.ui.search.SearchViewModel
@@ -153,6 +155,7 @@ fun SearchOverlay(
     onClose: () -> Unit,
     // A pick hands the card over to the postcard window: it reports where it is and then vanishes.
     onCardBounds: (Rect) -> Unit = {},
+    glass: GlassSource? = null,
     handedOff: Boolean = false,
 ) {
     // Only this check reads the progress in composition, and it flips just twice per open/close.
@@ -346,10 +349,13 @@ fun SearchOverlay(
                 }
                 .onGloballyPositioned { onCardBounds(it.boundsInRoot()) }
                 .graphicsLayer { alpha = if (handedOff) 0f else 1f }
-                // Translucent material, like the toolbar: the blurred, darkened page shows through.
+                // The toolbar's glass: the page behind, blurred, under a light tint, with a fine edge.
+                .glass(
+                    glass,
+                    RoundedCornerShape(32.dp),
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+                )
                 .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-                .border(0.5.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(32.dp))
         ) {
             // While still small it's the bubble's search icon.
             Icon(

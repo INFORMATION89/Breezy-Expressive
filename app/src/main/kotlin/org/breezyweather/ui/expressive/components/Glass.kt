@@ -94,13 +94,13 @@ fun Modifier.glassSource(source: GlassSource): Modifier = this
 /** A frosted-glass background in [shape]: blurred backdrop + [tint] + a hairline light edge. */
 @Composable
 fun Modifier.glass(
-    source: GlassSource,
+    source: GlassSource?,
     shape: Shape,
     tint: Color,
     blur: Dp = 28.dp,
     edge: Color = Color.White.copy(alpha = 0.22f),
 ): Modifier {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+    if (source == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return this.clip(shape).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(0.5.dp, edge, shape)
     }
     val blurLayer = rememberGraphicsLayer()
