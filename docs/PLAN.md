@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **F0 done** (2026-11-18); next F1.  Upstream base: `5ec3b9b` (2026-11-17).
+Status: **F0 and F1 done** (2026-11-18); next F2. Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -86,6 +86,10 @@ widgets, notifications, live wallpaper.
 ### F1: Expressive theme
 - `Theme.kt` → `MaterialExpressiveTheme`, expressive motion, shapes, emphasized typography.
 - Check the whole app still looks right (it is all themed through this file).
+- Done: `ui/expressive/theme/` (`ExpressiveTheme`, `ExpressiveShapes`, `ExpressiveTypography`).
+  Only Compose screens use it; the View screens (main Forecast, Locations list) keep the XML
+  `Theme.Material3Expressive` theme. Upstream's settings rows hardcode their shapes, so the larger
+  corners show up only once F2 restyles them.
 
 ### F2: Settings
 - Restyle the shared building blocks first (`preference/composables/`): every settings screen
@@ -132,7 +136,12 @@ widgets, notifications, live wallpaper.
 3. Distribution: GitHub releases only, or also an F-Droid-style repo (e.g. Obtainium/IzzyOnDroid)?
 
 ## Upstream files touched
-_(none yet)_
+- `app/src/main/kotlin/org/breezyweather/ui/theme/compose/Theme.kt`: `BreezyWeatherTheme` delegates
+  to `ExpressiveTheme`; upstream's placeholder purple schemes removed (F1).
+- `app/src/res_fork/**`: launcher icon (F0; fork-only resources).
+- Added (no upstream equivalent): `.gitattributes` (LF, so Spotless passes on Windows),
+  `app/src/main/res/font/google_sans_flex.ttf`, `third_party/fonts/GoogleSansFlex-OFL.txt`,
+  `tools/make_icon.py`, `app/src/main/kotlin/org/breezyweather/ui/expressive/**`.
 
 ## Log
 - **2026-11-17:** Studied upstream (`5ec3b9b`); wrote this draft. Name: Breezy Expressive.
@@ -157,3 +166,12 @@ _(none yet)_
   (`python tools/make_icon.py app/src/res_fork <preview.png>`). **F0 done.**
 - Noticed: the build warns that `app.source_code_link` and `app.privacy_policy_link` are missing
   from `gradle.properties` (shown in About). Set them before release (F4).
+- **2026-11-18:** **F1 done.** `ExpressiveTheme`: `MaterialExpressiveTheme`, `MotionScheme.expressive()`,
+  larger corners, dynamic color with upstream's blue/amber `md_theme_*` palette as fallback (so
+  Compose matches the View theme). Google Sans Flex (OFL 1.1, from google/fonts) trimmed with
+  fontTools `varLib.instancer` to wght 300–900 + opsz 14–72 (3.9 MB → 424 KB); each type role
+  pins an optical size. Checked on the Pixel 7: Settings now in Google Sans Flex, no crash.
+  Added `.gitattributes` (LF): on Windows Spotless otherwise expected CRLF in every file.
+- Noticed: with a current location, the main screen shows "Nominatim (Address lookup): Required
+  API key missing". Forks must configure their own keys/contact for some sources; look at it
+  before release (F4).

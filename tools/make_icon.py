@@ -96,11 +96,11 @@ def vec(paths):
 
 
 (RES / "drawable-v24/ic_launcher_foreground.xml").write_text(
-    vec([(SUN, path_d(sun)), (WIND, path_d(wind))]), encoding="utf-8")
+    vec([(SUN, path_d(sun)), (WIND, path_d(wind))]), encoding="utf-8", newline="\n")
 (RES / "drawable/ic_launcher_monochrome.xml").write_text(
-    vec([("#FFFFFF", path_d(unary_union([sun, wind])))]), encoding="utf-8")
+    vec([("#FFFFFF", path_d(unary_union([sun, wind])))]), encoding="utf-8", newline="\n")
 (RES / "drawable/ic_launcher_background.xml").write_text(
-    vec([(BG, "M0,0h108v108h-108z")]), encoding="utf-8")
+    vec([(BG, "M0,0h108v108h-108z")]), encoding="utf-8", newline="\n")
 
 
 def render(px, mono=False, crop=18):
