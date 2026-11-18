@@ -98,7 +98,12 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -109,6 +114,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.Dispatchers
@@ -145,6 +151,9 @@ fun SearchOverlay(
     onPickLocation: (Location) -> Unit,
     onPickCity: (City) -> Unit,
     onClose: () -> Unit,
+    // A pick hands the card over to the postcard window: it reports where it is and then vanishes.
+    onCardBounds: (Rect) -> Unit = {},
+    handedOff: Boolean = false,
 ) {
     // Only this check reads the progress in composition, and it flips just twice per open/close.
     val visible by remember { derivedStateOf { progress() > 0f } }
@@ -219,6 +228,69 @@ fun SearchOverlay(
     // How far the inside is shown, from the open progress (read only in draw/layout lambdas).
     fun inside() = ((progress().coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
 
+    // The card's height and pull, from the handle or the list (deltas: + is the finger going down).
+    fun drag(delta: Float) {
+        settle?.cancel()
+        if (delta > 0f) {
+            // Down: shrink back to compact first, then pull the card down.
+            val shrink = minOf(delta, extra)
+            extra -= shrink
+            pulled += delta - shrink
+        } else {
+            // Up: undo any pull first, then grow.
+            val lift = minOf(-delta, pulled)
+            pulled -= lift
+            extra = (extra + (-delta - lift)).coerceAtMost(room[0])
+        }
+    }
+
+    // Let go: far enough down (or flung down) dismisses; otherwise it settles compact or tall.
+    fun release(velocity: Float) {
+        val far = with(density) { 110.dp.toPx() }
+        val some = with(density) { 24.dp.toPx() }
+        if (pulled > far || (pulled > some && velocity > 900f)) {
+            onClose()
+        } else {
+            val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+            val goTall = (extra > room[0] / 2 && velocity < 900f) || velocity < -900f
+            val to = if (goTall) room[0] else 0f
+            settle = scope.launch {
+                launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
+                launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
+            }
+        }
+    }
+
+    // The list drives the card like a bottom sheet: scrolling the results up grows the card first;
+    // with the list at its edge, pulling down shrinks it and then dismisses it. Flings settle it.
+    val sheet = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy >= 0f || source != NestedScrollSource.UserInput) return Offset.Zero
+                val space = pulled + (room[0] - extra).coerceAtLeast(0f)
+                val take = minOf(-dy, space)
+                if (take <= 0f) return Offset.Zero
+                drag(-take)
+                return Offset(0f, -take)
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy <= 0f || source != NestedScrollSource.UserInput) return Offset.Zero
+                drag(dy)
+                return Offset(0f, dy)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val between = pulled > 0f || (extra > 0.5f && extra < room[0] - 0.5f)
+                if (!between) return Velocity.Zero
+                release(available.y)
+                return available
+            }
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         // The page behind goes darker (the shell also blurs it). Pulling down lightens it, so
         // dismissing feels continuous.
@@ -229,7 +301,7 @@ fun SearchOverlay(
                     val pullFade = 1f - (pulled / 220.dp.toPx()).coerceIn(0f, 1f)
                     alpha = progress().coerceIn(0f, 1f) * pullFade
                 }
-                .background(Color.Black.copy(alpha = 0.6f))
+                .background(Color.Black.copy(alpha = 0.25f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -272,9 +344,11 @@ fun SearchOverlay(
                         placeable.place(left.roundToInt(), topEdge.roundToInt())
                     }
                 }
+                .onGloballyPositioned { onCardBounds(it.boundsInRoot()) }
+                .graphicsLayer { alpha = if (handedOff) 0f else 1f }
                 // Translucent material, like the toolbar: the blurred, darkened page shows through.
                 .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
                 .border(0.5.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(32.dp))
         ) {
             // While still small it's the bubble's search icon.
@@ -284,7 +358,7 @@ fun SearchOverlay(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
             )
-            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }.nestedScroll(sheet)) {
                 Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Built once the card is a third of the way open (it's invisible before that), so the
@@ -315,35 +389,8 @@ fun SearchOverlay(
             // The handle's touch area is taller than it looks (it overlaps the top of the results).
             Handle(
                 modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = inside() },
-                onDelta = { delta ->
-                    settle?.cancel()
-                    if (delta > 0f) {
-                        // Down: shrink back to compact first, then pull the card down.
-                        val shrink = minOf(delta, extra)
-                        extra -= shrink
-                        pulled += delta - shrink
-                    } else {
-                        // Up: undo any pull first, then grow.
-                        val lift = minOf(-delta, pulled)
-                        pulled -= lift
-                        extra = (extra + (-delta - lift)).coerceAtMost(room[0])
-                    }
-                },
-                onRelease = { velocity ->
-                    val far = with(density) { 110.dp.toPx() }
-                    val some = with(density) { 24.dp.toPx() }
-                    if (pulled > far || (pulled > some && velocity > 900f)) {
-                        onClose()
-                    } else {
-                        val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
-                        val goTall = (extra > room[0] / 2 && velocity < 900f) || velocity < -900f
-                        val to = if (goTall) room[0] else 0f
-                        settle = scope.launch {
-                            launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
-                            launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
-                        }
-                    }
-                }
+                onDelta = { drag(it) },
+                onRelease = { release(it) }
             )
         }
     }

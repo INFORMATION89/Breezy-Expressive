@@ -29,8 +29,11 @@ import breezyweather.domain.location.model.Location
 import com.google.maps.android.SphericalUtil
 import com.google.maps.android.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.breezyweather.BuildConfig
 import org.breezyweather.R
@@ -187,11 +190,11 @@ class MainActivityViewModel @Inject constructor(
         _dialogRefreshErrorDetails.value = visible
     }
 
-    private fun updateInnerData(newValid: List<Location>) {
+    private fun updateInnerData(newValid: List<Location>, selectNew: Boolean = true) {
         // get valid locations and current index.
         var index: Int? = null
         if (newValid.size != validLocationList.value.size) {
-            if (newValid.size > validLocationList.value.size) {
+            if (newValid.size > validLocationList.value.size && selectNew) {
                 // New location added case
                 index = newValid.size - 1
             } else {
@@ -461,6 +464,26 @@ class MainActivityViewModel @Inject constructor(
         updateInnerData(location, oldLocation)
     }
 
+    /** Solstice: fetch one place's weather without selecting it (a postcard window from search). */
+    fun refreshPlace(context: Context, place: Location) {
+        // Off the main thread (address lookup and fetching can block), and after a short pause so
+        // the postcard window can open smoothly first.
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(500)
+            getWeather(
+                context,
+                place,
+                object : WeatherRequestCallback {
+                    override fun onCompleted(location: Location, errors: List<RefreshError>) {
+                        // Replace exactly the place that was fetched (its id can change once its
+                        // address is looked up), never the selected one.
+                        viewModelScope.launch(Dispatchers.Main) { updateInnerData(location, oldLocation = place) }
+                    }
+                }
+            )
+        }
+    }
+
     // set location.
     fun setLocation(formattedId: String) {
         val oldFormattedId = currentLocation.value?.location?.formattedId ?: ""
@@ -517,6 +540,8 @@ class MainActivityViewModel @Inject constructor(
         location: Location,
         index: Int? = null,
         context: Context? = null, // Needed for timezone
+        // Solstice: false keeps the selected place (a postcard window opened from search).
+        select: Boolean = true,
     ): Boolean {
         // do not add an existing location.
         if (validLocationList.value.firstOrNull { it.formattedId == location.formattedId } != null) {
@@ -538,7 +563,7 @@ class MainActivityViewModel @Inject constructor(
         val valid = validLocationList.value.toMutableList()
         valid.add(index ?: valid.size, locationWithValidTimeZone)
 
-        updateInnerData(valid)
+        updateInnerData(valid, selectNew = select)
         writeLocationList(locationList = valid)
         postUpdate(valid, emptyArray())
 

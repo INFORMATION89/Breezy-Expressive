@@ -20,7 +20,9 @@ import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -111,7 +113,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,6 +122,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
@@ -431,13 +433,13 @@ internal fun PlacesPage(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val byId = locations.associateBy { it.formattedId }
-    // The selected place first, then the current position; both stay pinned where they are.
+    // The starred (main) place always first, then the current position; both stay where they are.
     val sortedIds = locations
         .sortedWith(
-            compareByDescending<Location> { it.formattedId == currentId }.thenByDescending { it.isCurrentPosition }
+            compareByDescending<Location> { it.formattedId in starred }.thenByDescending { it.isCurrentPosition }
         )
         .map { it.formattedId }
-    fun isPinned(id: String) = id == currentId || byId[id]?.isCurrentPosition == true
+    fun isPinned(id: String) = id in starred || byId[id]?.isCurrentPosition == true
 
     // Where each postcard is on screen, so a tapped one can grow into its window from there.
     val cardBounds = remember { HashMap<String, Rect>() }
@@ -522,11 +524,43 @@ internal fun PlacesPage(
                     bump.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
                 }
             }
+            // Starred just now: it lifts, glides to the top over the others, and sets down.
+            val starredNow = id in starred
+            var wasStarred by remember { mutableStateOf(starredNow) }
+            val glide = remember { Animatable(0f) }
+            LaunchedEffect(starredNow) {
+                if (starredNow && !wasStarred) {
+                    glide.animateTo(1f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium))
+                    delay(380)
+                    glide.animateTo(0f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow))
+                }
+                wasStarred = starredNow
+            }
+            val lifted = glide.value > 0.01f
             Box(
                 modifier = Modifier
-                    .zIndex(if (isCarried) 1f else 0f)
-                    .then(if (isCarried) Modifier else Modifier.animateItem())
+                    .zIndex(if (isCarried || lifted) 1f else 0f)
+                    .then(
+                        if (isCarried) {
+                            Modifier
+                        } else {
+                            Modifier.animateItem(
+                                placementSpec = spring(
+                                    dampingRatio = 0.9f,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    visibilityThreshold = IntOffset(1, 1)
+                                )
+                            )
+                        }
+                    )
                     .graphicsLayer {
+                        if (!isCarried && glide.value > 0f) {
+                            val k = 1f + 0.035f * glide.value
+                            scaleX = k
+                            scaleY = k
+                            shadowElevation = glide.value * 16.dp.toPx()
+                            shape = RoundedCornerShape(6.dp)
+                        }
                         if (isCarried) {
                             translationY = carryY
                             scaleX = lift.value
@@ -539,73 +573,89 @@ internal fun PlacesPage(
                         }
                     }
             ) {
-                SwipeablePlace(
-                    starred = id in starred,
-                    enabled = carried == null,
-                    onStar = { onStar(location) },
-                    onDelete = { onDelete(location) }
-                ) {
-                    PlaceCard(
-                        location = location,
-                        selected = id == currentId,
+                Column {
+                    SwipeablePlace(
                         starred = id in starred,
-                        visiting = id in visiting,
-                        now = now,
-                        context = context,
-                        onClick = { onSelect(location, cardBounds[id]) },
-                        // Long-press lifts the card; drag to move it, or release without moving to edit.
-                        modifier = Modifier.onGloballyPositioned {
-                            cardBounds[id] = it.boundsInRoot()
-                        }.pointerInput(id) {
-                            var moved = 0f
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = {
-                                    moved = 0f
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    order.clear()
-                                    order.addAll(sortedIds)
-                                    carryY = 0f
-                                    tilt = 0f
-                                    carried = id
-                                    scope.launch { lift.animateTo(1.03f, spring(stiffness = Spring.StiffnessMedium)) }
-                                },
-                                onDrag = { change, amount ->
-                                    change.consume()
-                                    moved += abs(amount.y) + abs(amount.x)
-                                    if (!pinned) {
-                                        carryY += amount.y
-                                        val target = (amount.y * 0.35f).coerceIn(-3f, 3f)
-                                        tilt += (target - tilt) * 0.3f
-                                        swapIfNeeded()
-                                    }
-                                },
-                                onDragEnd = {
-                                    val wasMoved = moved > viewConfiguration.touchSlop && !pinned
-                                    val index = order.indexOf(id)
-                                    val before = order.getOrNull(index + 1)
-                                    scope.launch {
-                                        // Soft, non-bouncy settle into the slot.
-                                        val soft =
-                                            spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
-                                        launch { lift.animateTo(1f, soft) }
-                                        launch { animate(tilt, 0f, animationSpec = soft) { v, _ -> tilt = v } }
-                                        if (wasMoved) landed = id to System.nanoTime()
-                                        animate(carryY, 0f, animationSpec = soft) { v, _ -> carryY = v }
-                                        carried = null
-                                        if (wasMoved) onMove(id, before) else onEdit(location)
-                                    }
-                                },
-                                onDragCancel = {
-                                    scope.launch {
-                                        lift.animateTo(1f)
+                        enabled = carried == null,
+                        onStar = { onStar(location) },
+                        onDelete = { onDelete(location) }
+                    ) {
+                        PlaceCard(
+                            location = location,
+                            selected = id == currentId,
+                            starred = id in starred,
+                            visiting = id in visiting,
+                            now = now,
+                            context = context,
+                            // The starred place is the main screen itself: it doesn't open as a postcard.
+                            onClick = { if (id !in starred) onSelect(location, cardBounds[id]) },
+                            // Long-press lifts the card; drag to move it, or release without moving to edit.
+                            modifier = Modifier.onGloballyPositioned {
+                                cardBounds[id] = it.boundsInRoot()
+                            }.pointerInput(id) {
+                                var moved = 0f
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        moved = 0f
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        order.clear()
+                                        order.addAll(sortedIds)
                                         carryY = 0f
                                         tilt = 0f
-                                        carried = null
+                                        carried = id
+                                        scope.launch {
+                                            lift.animateTo(1.03f, spring(stiffness = Spring.StiffnessMedium))
+                                        }
+                                    },
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        moved += abs(amount.y) + abs(amount.x)
+                                        if (!pinned) {
+                                            carryY += amount.y
+                                            val target = (amount.y * 0.35f).coerceIn(-3f, 3f)
+                                            tilt += (target - tilt) * 0.3f
+                                            swapIfNeeded()
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        val wasMoved = moved > viewConfiguration.touchSlop && !pinned
+                                        val index = order.indexOf(id)
+                                        val before = order.getOrNull(index + 1)
+                                        scope.launch {
+                                            // Soft, non-bouncy settle into the slot.
+                                            val soft =
+                                                spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
+                                            launch { lift.animateTo(1f, soft) }
+                                            launch { animate(tilt, 0f, animationSpec = soft) { v, _ -> tilt = v } }
+                                            if (wasMoved) landed = id to System.nanoTime()
+                                            animate(carryY, 0f, animationSpec = soft) { v, _ -> carryY = v }
+                                            carried = null
+                                            // (Release without moving used to open the place's settings;
+                                            // removed, it clashed with reordering. To revisit.)
+                                            if (wasMoved) onMove(id, before)
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        scope.launch {
+                                            lift.animateTo(1f)
+                                            carryY = 0f
+                                            tilt = 0f
+                                            carried = null
+                                        }
                                     }
-                                }
-                            )
-                        }
-                    )
+                                )
+                            }
+                        )
+                    }
+                    // The main place: a bigger postcard with a "Home" caption, a little apart from the rest.
+                    if (id in starred) {
+                        Text(
+                            stringResource(R.string.shell_home),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = onPage.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 10.dp)
+                        )
+                    }
                 }
             }
         }
@@ -737,7 +787,7 @@ private fun SwipeablePlace(
 
 /**
  * A place as a postcard (agreed 2026-11-18, style B "framed photo"): its sky is the photo inside a
- * cream paper frame, the name is written in script, a perforated stamp shows the local time, and
+ * cream paper frame, a perforated stamp shows the local time, and
  * the temperature sits on the picture. The main place wears a star; a visit has a dashed frame.
  * The sky is baked and static, so scrolling stays cheap. Sinks a little while pressed.
  */
@@ -765,10 +815,33 @@ private fun PlaceCard(
     val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
     val ink = Color(0xFF3A3731)
     val frame = RoundedCornerShape(6.dp)
+    // The main place is a bigger "hero" postcard; the height eases when the star moves.
+    val height by animateDpAsState(
+        if (starred) 184.dp else 132.dp,
+        spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow),
+        label = "postcard"
+    )
+    // Stamp thump (agreed 2026-11-18): when it gets the star, the star lands hard on the stamp with
+    // a little overshoot and an ink ring spreads, like a postmark. Waits for the glide to the top.
+    var hadStar by remember { mutableStateOf(starred) }
+    val thump = remember { Animatable(1f) }
+    val ring = remember { Animatable(1f) }
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(starred) {
+        if (starred && !hadStar) {
+            thump.snapTo(0f)
+            ring.snapTo(0f)
+            delay(520)
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            launch { ring.animateTo(1f, tween(480)) }
+            thump.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMedium))
+        }
+        hadStar = starred
+    }
     Box(
         modifier
             .fillMaxWidth()
-            .height(132.dp)
+            .height(height)
             .graphicsLayer {
                 scaleX = sink.value
                 scaleY = sink.value
@@ -807,7 +880,7 @@ private fun PlaceCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // Bottom left: the name, handwritten; the city under a neighbourhood.
+                // Bottom left: the name; the city above it for a neighbourhood.
                 val (title, city) = placeName(context, location)
                 Column(Modifier.align(Alignment.BottomStart).padding(end = 84.dp)) {
                     city?.let {
@@ -823,22 +896,15 @@ private fun PlaceCard(
                         Text(
                             title,
                             color = text,
-                            fontFamily = FontFamily.Cursive,
-                            fontSize = 30.sp,
-                            autoSize = TextAutoSize.StepBased(18.sp, 30.sp),
+                            style = MaterialTheme.typography.titleLargeEmphasized,
+                            autoSize = TextAutoSize.StepBased(
+                                16.sp,
+                                MaterialTheme.typography.titleLargeEmphasized.fontSize
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
-                        if (starred) {
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                Icons.Filled.Star,
-                                contentDescription = stringResource(R.string.shell_starred),
-                                tint = text,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
                     }
                 }
                 // Bottom right: the temperature, on the picture.
@@ -852,18 +918,34 @@ private fun PlaceCard(
             }
         }
         // The stamp: the local time, perforated edge, overlapping the picture's corner.
-        Stamp(
-            time = time(context, Date(now), location.timeZone),
-            paper = paper,
-            ink = ink,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp)
-        )
+        // The time only when it differs from yours (never on the current position); the stamp
+        // stays for the star.
+        val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
+        if (showTime || starred) {
+            Stamp(
+                time = if (showTime) time(context, Date(now), location.timeZone) else null,
+                starred = starred,
+                thump = { thump.value },
+                ring = { ring.value },
+                paper = paper,
+                ink = ink,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp)
+            )
+        }
     }
 }
 
-/** A small postage stamp: paper with a dotted (perforated) edge and the local time. */
+/** A small postage stamp: paper with a dotted (perforated) edge and the local time; the main place's has a star. */
 @Composable
-private fun Stamp(time: String, paper: Color, ink: Color, modifier: Modifier = Modifier) {
+private fun Stamp(
+    time: String?,
+    starred: Boolean,
+    paper: Color,
+    ink: Color,
+    modifier: Modifier = Modifier,
+    thump: () -> Float = { 1f },
+    ring: () -> Float = { 1f },
+) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -884,13 +966,47 @@ private fun Stamp(time: String, paper: Color, ink: Color, modifier: Modifier = M
             }
             .padding(4.dp)
     ) {
-        Text(
-            time,
-            color = ink,
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (starred) {
+                val gold = Color(0xFFC9892B)
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = stringResource(R.string.shell_starred),
+                    tint = gold,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .drawBehind {
+                            // The ink ring of the thump, spreading and fading.
+                            val t = ring()
+                            if (t < 1f) {
+                                drawCircle(
+                                    gold.copy(alpha = 0.55f * (1f - t)),
+                                    radius = (6.dp.toPx() + 18.dp.toPx() * t),
+                                    style = Stroke(width = 2.dp.toPx() * (1f - t) + 0.5f)
+                                )
+                            }
+                        }
+                        .graphicsLayer {
+                            // Lands from big and tilted, overshoots, settles.
+                            val k = thump()
+                            val s = 1.9f - 0.9f * k
+                            scaleX = s
+                            scaleY = s
+                            rotationZ = -18f * (1f - k)
+                            alpha = (k * 3f).coerceIn(0f, 1f)
+                        }
+                )
+            }
+            if (time != null) {
+                Text(
+                    time,
+                    color = ink,
+                    style = if (starred) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
+                )
+            }
+        }
     }
 }
 

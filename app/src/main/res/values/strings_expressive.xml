@@ -31,4 +31,7 @@
     <string name="search_no_results_hint">Check the spelling, or try a bigger city nearby.</string>
     <string name="search_recent">Recent</string>
     <string name="search_select">Select</string>
+    <string name="shell_pin">Pin</string>
+    <string name="shell_pinned">Pinned</string>
+    <string name="shell_home">Home</string>
 </resources>

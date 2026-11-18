@@ -1033,3 +1033,93 @@ Things to try on the phone before calling any motion done (debug and release bui
   row, with the sideways move leading so it clears the back arrow. It follows the scroll exactly,
   never shows twice, and the existing scroll behaviour settles it open or closed. The bar takes on
   the scrolled colour as it collapses. State is read in layout and draw only.
+- **2026-11-18 (user feedback): postcards and the star.**
+  - The starred place can't be opened as a postcard window.
+  - No Star button in the postcard window (Pin only).
+  - Starring an already starred place does nothing: there's always one starred place.
+  - The main screen shows the starred place (it was showing the top one).
+  - The starred place always stays on top of Places, reordering included.
+  - Remove the long-press-release-to-edit interaction (it conflicts with reordering; revisit later).
+  - The star could be a stamp placed on the postcard.
+  - The postcard opening animation can improve: propose options first.
+- **2026-11-18 (user feedback): search card follows list scrolling.** Scrolling the results upward
+  grows the card first (flings too). When it's expanded and the list is at its top, pulling down
+  shrinks the card and then dismisses it, like a bottom sheet.
+- **Later fixes (user notes 2026-11-18):**
+  - Toolbar: the pressed tab's touch shape is square and should match the pill. Make the selection
+    draggable across tabs (like iOS 26/27): drag your finger along the toolbar and the page follows.
+  - Don't show the time on the current location's postcard.
+  - Places search: remove the blur behind the card, keep only a little darkness, and make the card
+    material more translucent.
+- **2026-11-18 (built; partly checked):** Star and postcard feedback:
+  - There's always one starred place (the current position, else the first), and swiping the star
+    onto the starred place does nothing.
+  - The main screen always shows the starred place (checked on the Pixel).
+  - The starred place always sorts first and can't be displaced by reordering.
+  - Tapping the starred postcard does nothing, and the window has a Pin button only.
+  - The star is now a star on the postcard's stamp (no star by the name).
+  - Picking the starred place in search goes to Forecast instead of a window.
+  - Long-press-release-to-edit is removed (reordering stays).
+  - **Search card follows the list** (nested scroll, like a bottom sheet): scrolling the results up
+    grows the card first; with the list at its edge, pulling down shrinks it, then dismisses it;
+    a fling mid-way settles it.
+  - Not yet checked on the phone: the Places changes and the search sheet behaviour (the phone was
+    in use).
+- **2026-11-18 (agreed with the user): postcard opening v2, "card becomes the sky".** One continuous
+  move with no tilt. The paper frame stretches out to the screen edges and thins away while the
+  postcard's sky scales up into the window's sky (the sky itself is what grows); the forecast fades
+  in on top. From search, **the search card itself turns into the postcard**: it hands over its
+  bounds and vanishes as the window grows from the same spot.
+  **Built 2026-11-18 (compiles; not yet checked on the phone):** no tilt. The window's sky is laid
+  out full screen and scaled down onto the card, growing with the spring while the content stays
+  clipped to the growing card and fades in. The paper frame thins out over the whole move. On a
+  search pick, the search card reports its bounds and goes invisible, and the window grows from
+  there.
+- **2026-11-18 (checked in the debug app on the Pixel):**
+  - The starred place shows its star stamp, sits on top, and does nothing when tapped. The main
+    screen shows it.
+  - Search: scrolling the results up grows the card to full height before the list scrolls;
+    pulling down from the top shrinks and then dismisses it.
+  - A city picked in search now grows into its window from the search card. Three fixes made
+    this work:
+    - The window draws above search's darkened backdrop (it had been growing hidden underneath).
+    - The place is added without becoming the selected place (`addLocation(select = false)`).
+      Switching away and back made the old forecast screen redraw, freezing drawing for ~200 ms.
+    - Its weather is fetched off the main thread, 0.5 s later.
+  - The keyboard hides at the moment you pick.
+  - Still to polish: a ~2-frame gap between the search card vanishing and the postcard appearing,
+    and the weather shows "–" until it arrives.
+- **2026-11-18 (user feedback):**
+  - Polish the search-to-postcard hand-off.
+  - Bug: after deleting a place, picking it again in search shows it as pinned.
+  - Give the postcard window a toolbar and a "Visiting" label.
+  - Bug: going back from an unpinned postcard morphs it into the Places list, then it vanishes.
+  - A nicer star animation, like putting on a sticker, and a smoother automatic move to the top
+    (it's jerky): propose options first.
+  - No time on the current location's stamp, nor on places in the same time zone.
+  - Make the starred place more clearly special and pinned on top: propose options.
+  - Remove the blur when the search card opens.
+- **2026-11-18 (built, checked in the debug app on the Pixel):**
+  - The search-to-postcard gap is gone: the search card vanishes only once the window is there.
+  - Picking a place again after deleting it reads the live list, so it opens as a visit (not
+    "pinned").
+  - Search has no blur any more: a light 25 % dim and a more translucent card (60 %).
+  - The postcard window has a toolbar (This week, Forecast) with Pin in line, and a "Visiting"
+    chip at the top until you pin it.
+  - Back from an unpinned visit fades it away as it shrinks. While a visit is open, its postcard
+    isn't listed in Places.
+  - The stamp shows the time only where it differs from yours (never on the current position);
+    a place in your time zone has no stamp unless it's starred.
+- **2026-11-18 (agreed with the user):**
+  - **Starring: "stamp thump".** The star lands on the stamp hard, with a little overshoot and a
+    haptic, and an ink ring briefly spreads around it like a postmark.
+  - **Move to top: "lift and glide".** The card lifts (slightly bigger, deeper shadow), glides up
+    over the others on a soft spring while they slide down underneath, then sets down on top.
+  - **Main place: a bigger hero postcard.** About 1.4× taller, with a "Home" caption under it and
+    a small gap before the others.
+  **Built 2026-11-18 (checked in the debug app on the Pixel):** The main place is a 184 dp hero
+  postcard (others 132 dp; the height eases when the star moves) with a "Home" caption. Starring
+  another place lifts it (×1.035, deeper shadow, drawn above), glides it to the top on the list's
+  placement spring while the others slide down, and sets it down. About 0.5 s later the star
+  thumps onto its stamp: it lands big and tilted, overshoots, and settles, with a gold ink ring
+  spreading and a haptic. Tested by starring Puebla and back again.

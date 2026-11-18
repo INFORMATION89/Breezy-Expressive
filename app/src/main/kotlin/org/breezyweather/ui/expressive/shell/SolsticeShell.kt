@@ -101,6 +101,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -229,10 +230,21 @@ fun SolsticeShell(
             if (index >= 0) viewModel.deleteLocation(index)
         }
         controller.visitsChanged++
-        val home = starred.firstOrNull()
-        if (home != null && viewModel.validLocationList.value.any { it.formattedId == home }) {
-            viewModel.setLocation(home)
+    }
+    // There's always one starred place (the current position, else the first), and the main screen
+    // shows it.
+    LaunchedEffect(locations, starred) {
+        if (locations.isEmpty()) return@LaunchedEffect
+        if (starred.none { id -> locations.any { it.formattedId == id } }) {
+            val pick = (locations.firstOrNull { it.isCurrentPosition } ?: locations.first()).formattedId
+            starred = setOf(pick)
+            saveStarred(context, starred)
+            Visits.unmark(context, pick)
+            controller.visitsChanged++
         }
+    }
+    LaunchedEffect(main, location?.formattedId) {
+        if (main != null && location?.formattedId != main) viewModel.setLocation(main)
     }
     LaunchedEffect(controller.message) {
         controller.message?.let {
@@ -258,37 +270,6 @@ fun SolsticeShell(
     // System bar icons follow whatever is behind them.
     SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
 
-    // Back from a visit returns to the main place; a place from search is then gone (it was only
-    // a visit). Search's own back, and upstream's details screen, come first.
-    BackHandler(
-        enabled = main != null && location?.formattedId != main && !controller.searchOpen &&
-            !controller.detailsOpen
-    ) {
-        val leaving = location?.formattedId
-        viewModel.setLocation(main!!)
-        if (leaving != null && leaving in visiting) {
-            val index = locations.indexOfFirst { it.formattedId == leaving }
-            if (index >= 0) viewModel.deleteLocation(index)
-            Visits.unmark(context, leaving)
-            controller.visitsChanged++
-        }
-    }
-
-    // A postcard opened as a window (agreed 2026-11-18): one spring grows it from its card and back.
-    var windowId by rememberSaveable { mutableStateOf<String?>(null) }
-    var windowOrigin by remember { mutableStateOf<Rect?>(null) }
-    val windowProgress = remember { Animatable(0f) }
-    val windowSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
-    LaunchedEffect(windowId) {
-        if (windowId != null) windowProgress.animateTo(1f, windowSpring)
-    }
-    fun closeWindow() {
-        scope.launch {
-            windowProgress.animateTo(0f, windowSpring)
-            windowId = null
-        }
-    }
-
     val glass = rememberGlassSource()
     val searchBlur = rememberGraphicsLayer()
     val searchSharp = rememberGraphicsLayer()
@@ -296,6 +277,40 @@ fun SolsticeShell(
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     SideEffect { controller.searchOpen = searchOpen }
     var searchOrigin by remember { mutableStateOf<Rect?>(null) }
+    // Where the search card is, and whether it has just handed itself over to a postcard window.
+    var searchCard by remember { mutableStateOf<Rect?>(null) }
+    var searchHandoff by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // A postcard opened as a window (agreed 2026-11-18): one spring grows it from its card and back.
+    var windowId by rememberSaveable { mutableStateOf<String?>(null) }
+    var windowOrigin by remember { mutableStateOf<Rect?>(null) }
+    val windowProgress = remember { Animatable(0f) }
+    var windowFade by remember { mutableStateOf(false) }
+    val windowSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
+    // Grows once the place is in the list (a place just picked in search is added a moment later),
+    // so the window never pops in half-way.
+    val windowReady = windowId != null && locations.any { it.formattedId == windowId }
+    LaunchedEffect(windowId, windowReady) {
+        if (windowReady) windowProgress.animateTo(1f, windowSpring)
+    }
+    fun closeWindow() {
+        val leaving = windowId
+        // A visit that isn't kept fades away as it shrinks (it has no slot to land in).
+        windowFade = leaving != null && leaving in Visits.all(context) && leaving !in starred
+        scope.launch {
+            windowProgress.animateTo(0f, windowSpring)
+            val id = windowId
+            windowId = null
+            // A visit you didn't pin (or star) is gone once you go back.
+            if (id != null && id in Visits.all(context) && id !in starred) {
+                val index = viewModel.validLocationList.value.indexOfFirst { it.formattedId == id }
+                if (index >= 0) viewModel.deleteLocation(index)
+                Visits.unmark(context, id)
+                controller.visitsChanged++
+            }
+        }
+    }
+
     val searchProgress = remember { Animatable(0f) }
     LaunchedEffect(searchOpen) {
         searchProgress.animateTo(
@@ -311,23 +326,31 @@ fun SolsticeShell(
         val place = picked ?: return@LaunchedEffect
         if (!pickReady) return@LaunchedEffect
         searchViewModel.closeDialogLocationSources()
-        val existing = locations.firstOrNull {
+        val existing = viewModel.validLocationList.value.firstOrNull {
             it.formattedId == place.formattedId ||
                 (it.city == place.city && it.countryCode == place.countryCode && it.city.isNotEmpty())
         }
         val id = existing?.formattedId ?: place.formattedId
         if (existing == null) {
-            viewModel.addLocation(place, null, context)
+            // Added as a visit (gone when you go back, unless you pin it) and fetched in the
+            // background; your selected and main place stay as they are.
+            viewModel.addLocation(place, null, context, select = false)
             Visits.mark(context, id)
             controller.visitsChanged++
+            viewModel.refreshPlace(context, place)
         }
         RecentSearches.add(context, place)
-        viewModel.setLocation(id)
         searchOpen = false
-        actions.afterPick(
-            PAGE_FORECAST,
-            if (existing == null) context.getString(R.string.shell_visiting_hint, place.getPlace(context)) else null
-        )
+        if (id in starred) {
+            // The main place is the Forecast itself.
+            controller.request = PAGE_FORECAST
+        } else {
+            // The search card itself turns into the postcard and opens into the window.
+            keyboard?.hide()
+            windowOrigin = searchCard ?: searchOrigin
+            searchHandoff = true
+            windowId = id
+        }
     }
     fun pick(place: Location) = searchViewModel.setSelectedLocation(
         place,
@@ -375,7 +398,6 @@ fun SolsticeShell(
                         scaleX = k
                         scaleY = k
                     }
-                    .searchBlur(searchBlur, searchSharp) { searchProgress.value }
             ) { index ->
                 when (index) {
                     PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
@@ -394,7 +416,8 @@ fun SolsticeShell(
                         onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
                     )
                     else -> PlacesPage(
-                        locations = locations,
+                        // The visit open in a window isn't listed until you pin it.
+                        locations = locations.filterNot { it.formattedId == windowId && it.formattedId in visiting },
                         currentId = location?.formattedId,
                         starred = starred,
                         visiting = visiting,
@@ -407,8 +430,9 @@ fun SolsticeShell(
                         },
                         onStar = {
                             val id = it.formattedId
-                            // One star: starring moves it here; starring the main place again clears it.
-                            starred = if (id in starred) emptySet() else setOf(id)
+                            // One star: starring moves it here; the starred place stays starred.
+                            if (id in starred) return@PlacesPage
+                            starred = setOf(id)
                             saveStarred(context, starred)
                             // The main place is kept, never a visit.
                             if (id in starred) Visits.unmark(context, id)
@@ -470,7 +494,10 @@ fun SolsticeShell(
                     labelShown = labelShown,
                     onTab = { scope.launch { pager.animateScrollToPage(it) } },
                     searchEnabled = !searchOpen,
-                    onSearch = { searchOpen = true },
+                    onSearch = {
+                        searchHandoff = false
+                        searchOpen = true
+                    },
                     onSearchBounds = { searchOrigin = it }
                 )
             }
@@ -481,6 +508,20 @@ fun SolsticeShell(
                 it.isCurrentPosition
             } ?: location
             )?.let { it.latitude to it.longitude }
+        SearchOverlay(
+            open = searchOpen,
+            progress = { searchProgress.value },
+            origin = searchOrigin,
+            searchViewModel = searchViewModel,
+            near = nearPoint,
+            countryCode = (locations.firstOrNull { it.isCurrentPosition } ?: location)?.countryCode,
+            onPickLocation = { pick(it) },
+            onPickCity = { pick(it.toLocation()) },
+            onClose = { searchOpen = false },
+            onCardBounds = { searchCard = it },
+            handedOff = searchHandoff && windowReady
+        )
+        // Above search: a city picked there grows into its window right where the search card was.
         val windowPlace = locations.firstOrNull { it.formattedId == windowId }
         if (windowPlace != null) {
             PlaceWindow(
@@ -491,23 +532,19 @@ fun SolsticeShell(
                 onBackProgress = { e -> scope.launch { windowProgress.snapTo(1f - 0.5f * e) } },
                 onBackCancelled = { scope.launch { windowProgress.animateTo(1f, windowSpring) } },
                 onClose = { closeWindow() },
+                pinned = windowPlace.formattedId !in visiting,
+                fadeOut = windowFade,
+                onPin = {
+                    val id = windowPlace.formattedId
+                    if (id in visiting) Visits.unmark(context, id) else Visits.mark(context, id)
+                    controller.visitsChanged++
+                },
                 onDetails = {
                     viewModel.setLocation(windowPlace.formattedId)
                     actions.openDetails()
                 }
             )
         }
-        SearchOverlay(
-            open = searchOpen,
-            progress = { searchProgress.value },
-            origin = searchOrigin,
-            searchViewModel = searchViewModel,
-            near = nearPoint,
-            countryCode = (locations.firstOrNull { it.isCurrentPosition } ?: location)?.countryCode,
-            onPickLocation = { pick(it) },
-            onPickCity = { pick(it.toLocation()) },
-            onClose = { searchOpen = false }
-        )
     }
 }
 
