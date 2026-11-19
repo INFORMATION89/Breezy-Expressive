@@ -1189,3 +1189,51 @@ Things to try on the phone before calling any motion done (debug and release bui
   - Fixed (checked): once a postcard window is mostly open, it sets the system bar icons (the sky's
     text colour on Forecast, the page's on This week), so they're light on a dark night window.
     The shell sets them again once it closes.
+
+## Backlog (user notes, 2026-11-18)
+
+### Foundations
+- **Consolidate systems and components.** A change on the main screen today has to be repeated by
+  hand in the postcard window (and other copies). Shared building blocks instead: one toolbar, one
+  page scaffold, one card, one message, one sheet.
+- **Blur:** look at how Android 17 blurs (live, not baked, and apparently cheap) and move glass and
+  edge blur onto it where possible.
+- **Frameworks for everything:** a spacing scale, a type scale, motion tokens and component rules,
+  applied consistently and following UI/UX principles.
+- **Review the design against Apple's Human Interface Guidelines** (developer.apple.com/design) and
+  note what to improve.
+
+### Visual polish
+- Bolder text on titles.
+- Square star stamp.
+- A drop shadow on postcards.
+- A unique grain for every picture (seeded per place, or per place and condition), so condition
+  pictures don't repeat everywhere.
+- Make the skies animated, or more obviously animated: they don't seem to move.
+- Pinned icon: an outlined one that follows the Forecast colour.
+- Search: the "Search somewhere else" field gets the same translucent material as the results.
+- Search results: "Select" becomes **"Visit"**.
+- Postcard window: no background behind the "Visiting" text.
+- Sun path: no AM/PM on the sunrise and sunset times.
+
+### Behaviour and fixes
+- **Search naming:** searching "Puebla" adds "Heroica Puebla de Zaragoza, Centro…". Keep the name
+  that was searched (look at what the geocoder refresh overwrites).
+- **This week:** rename "Outlook" to "This week" everywhere.
+- **This week:** reset the scroll position (when leaving the page, or when coming back to it).
+- **Places:** add the same progressive edge blur that This week has.
+- **Places:** a left-to-right swipe should just go to the page on the left. Probably drop the
+  cards' own left-to-right swipe motion.
+- **Fix:** the progressive blur shows when a swipe starts from Forecast.
+- **Search card full width,** with no gap to the keyboard; test how it behaves.
+- **Show the local time** when visiting or opening any place whose time differs from yours.
+- **Long pages** (This week and others): the toolbar label and the page heading never show
+  together. Decide the hand-off rules.
+- **Sun and moon on the sun path:** the sun sometimes doesn't show; there's no moon. Design the
+  night version.
+
+### Motion (to propose and agree first)
+- Toolbar tab taps between This week and Places (and back): a refined transition.
+- The floating button budding out of the toolbar: refine it.
+- Pin and unpin: an icon animation.
+- Data loading for a place: a nice transition so values don't just pop in.
