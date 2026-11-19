@@ -61,6 +61,12 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   libraries first. First use: a visited place's loading state (see Postcard window).
 - [x] Motion tokens: `SolsticeMotion.kt` and `docs/MOTION.md` (2026-11-19), first used by the moon sheet.
 - [ ] Apply the motion system to search, the postcard window, Places drag and the toolbar.
+- [ ] 💬⭐ **Design tokens:** spacing (4 dp grid), sizes, shapes with continuous corners, palette file,
+  hero type styles, Solstice `MotionScheme`. See `docs/UI_SYSTEMS.md`.
+- [ ] 💬 **Haze prototype** for glass and edge blur, measured on the Pixel 7 against `Glass.kt`.
+- [ ] **Component catalog:** split `ShellPages.kt`; one Card / Sheet / Toolbar / Message / PageScaffold;
+  `PlaceWindow` reuses them.
+- [ ] Swap `ReorderList.kt` for the Reorderable library; pushed screens to Navigation 3.
 - [ ] 💬⭐ **Motion framework** (`:motion` module, reusable in other projects): one motion value per
   interaction, morphs from anchors instead of a seeked `SharedTransitionLayout`, iOS-style springs and
   release rules. Plan in PLAN.md, "Motion framework" (M0 to M5); M0 = agree it.

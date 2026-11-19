@@ -607,6 +607,19 @@ it can go into other projects as is. Rough API:
 
 Not in it: glass, blur, colours, layouts. Those stay in Solstice and only read the motion value.
 
+Added after the library research (2026-11-19, [UI_SYSTEMS.md](UI_SYSTEMS.md)):
+
+- A **Solstice `MotionScheme`** that returns these tokens, set in `ExpressiveTheme` instead of
+  `MotionScheme.expressive()`, so Material components (switches, buttons, Settings sheets) move like
+  the rest of the app.
+- **Snap swipes** (Places card star/delete, message swipe-away) use Compose's `AnchoredDraggable`
+  with our springs, not `MotionValue`. `MotionValue` is for morphs that scrub and overshoot.
+- **Back** is `PredictiveBackHandler` everywhere, feeding the same motion value as a pull, so the
+  back gesture scrubs sheets and windows.
+- **Pushed screens** (Settings, reorder, about) use Navigation 3 or Navigation 2 shared elements with
+  predictive back instead of `ScreenPush`. Compose's own shared elements fit those; our `Morph` is
+  only for overlays opened from a control.
+
 ### Steps
 
 1. **M0, agree:** this plan, the token list and values, and the module's name and license (Solstice
@@ -626,6 +639,21 @@ Not in it: glass, blur, colours, layouts. Those stay in Solstice and only read t
 
 Each step goes through the motion test checklist below on the Pixel 7 (release build for
 smoothness).
+
+## Design system foundations (proposed 2026-11-19, to agree)
+
+Audit of every UI system and the libraries checked: [UI_SYSTEMS.md](UI_SYSTEMS.md). In short:
+
+- **Tokens first:** spacing on a 4 dp grid, named sizes, shape tokens with continuous corners,
+  one palette file for the non-dynamic colours, named hero type styles, motion tokens. Today there
+  are 325 `.dp` literals (~30 values), 11 corner radii and 41 hex colours in `ui/expressive/`.
+- **Haze prototype** for glass and edge blur (replaces `Glass.kt` and `EdgeBlur.kt` if it's as fast on
+  the Pixel 7; supports every Android version).
+- **Component catalog:** split `ShellPages.kt` (2,231 lines); one Card, Sheet, Toolbar, Message and
+  PageScaffold; `PlaceWindow` reuses them instead of re-hosting the shell.
+- **Library swaps:** Reorderable for `ReorderList.kt`, Navigation 3 for pushed screens, Material 3
+  Expressive controls (buttons, toggles, loading).
+- Order: tokens, Haze prototype, motion M1 to M3, catalog, swaps, motion M4 and M5.
 
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
@@ -1766,3 +1794,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   `SharedTransitionLayout`, choreography as windows on that value, springs written as response +
   damping like iOS, UIKit's release rules (from Glasmio's notes), packaged as a standalone `:motion`
   module. Steps M0 to M5; M0 (agree the plan, tokens, name and license) is next.
+- **2026-11-19 (research, not built):** UI systems audit and library check, `docs/UI_SYSTEMS.md`.
+  Found: Glass/EdgeBlur re-implement Haze; ReorderList re-implements Reorderable; 3 transition
+  systems; 2 sheet systems; only 5 Material 3 component calls; no spacing/shape/colour tokens.
+  Custom morph code stays justified for scrubbed overlay morphs. Added "Design system foundations"
+  and four additions to "Motion framework" (Solstice `MotionScheme`, `AnchoredDraggable` for snap
+  swipes, predictive back everywhere, Navigation 3 for pushed screens).
