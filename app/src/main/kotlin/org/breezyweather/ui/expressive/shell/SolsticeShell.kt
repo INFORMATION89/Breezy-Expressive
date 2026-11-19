@@ -525,8 +525,8 @@ fun SolsticeShell(
                         }
                     }
                     .graphicsLayer {
-                        // The page recedes a little while search is open.
-                        val k = 1f - 0.04f * searchProgress.value
+                        // The page recedes a little while search or the moon card is open.
+                        val k = 1f - 0.04f * maxOf(searchProgress.value, MoonCardState.progress)
                         scaleX = k
                         scaleY = k
                         // The tab jump: the arriving page slides in from the tapped side (a quarter of

@@ -76,6 +76,12 @@
     <string name="week_warmest">%1$s is the warmest at</string>
     <string name="week_coldest_night">, and the coldest night is %1$s at</string>
     <string name="moon_title">Moon</string>
+    <string name="moon_lit_growing">The moon is %1$s lit and growing.</string>
+    <string name="moon_lit_shrinking">The moon is %1$s lit and shrinking.</string>
+    <string name="moon_rises_then_sets">It rises at %1$s and sets at %2$s.</string>
+    <string name="moon_sets_then_rises">It sets at %1$s and rises again at %2$s.</string>
+    <string name="moon_full_in">Full moon in %1$s, %2$s away.</string>
+    <string name="moon_full_today">Full moon today, %1$s away.</string>
     <string name="moon_illumination">Illumination</string>
     <string name="moon_rise">Moonrise</string>
     <string name="moon_set">Moonset</string>

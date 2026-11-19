@@ -134,16 +134,16 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [x] ⭐ **Realistic moon** from NASA's CGI Moon Kit colour map (done 2026-11-19: NASA map + AGSL shader),
   shader-lit by phase, with earthshine. One component for the button, the moon card and the sun
   path. Lunaria is a reference.
-- [ ] 💬 **Opening morph:** the moon button grows into the card.
-- [ ] Decide the moon card's size and position, or a full moon page instead (pros and cons).
+- [x] **Opening morph:** the moon button grows into the card (2026-11-19, like search).
+- [x] Size and position: a sheet docked at the bottom, one size (the card's full height), 2026-11-19.
 
 ### Refinement
 - [x] **Finer, lighter vibrations** on the dial's small steps (6-hour ticks), with the stronger
   tick per day.
 - [x] **Inertia on the dial** (a flick keeps it turning, then it settles).
 - [x] **An arrow towards today** when today is out of view on the dial.
-- [ ] Make the moon card match our design (it looks straight out of iOS); follow This week's
-  direction.
+- [x] Make the moon card match our design: big heading, details as a sentence (design A), the
+  search card's glass and handle (2026-11-19).
 - [x] Moon button: remove its small moon icon (redundant); use a proper moon-phase icon from the
   icon library on the Forecast page.
 - [ ] Day labels on the dial (Tue · Today · Thu).
@@ -165,6 +165,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [x] Starred place folds into a stamp-sized strip under the current location; current location in red; "YOU ARE HERE" when it's starred (2026-11-19).
 
 - [x] The current location always stays at the top (2026-11-19).
+
+- [x] The star sticker is red everywhere (2026-11-19).
 
 - [x] The current location is always a strip; stamp centred on the strip; Places scrolls under a transparent status bar (2026-11-19).
 

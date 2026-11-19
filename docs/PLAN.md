@@ -1568,4 +1568,14 @@ Things to try on the phone before calling any motion done (debug and release bui
   pill is 100 %, filled from the bottom with a softer violet-blue gradient, the percentage on top,
   hours centred under. The chart keeps one 80 dp height in both views and the caption is one line,
   so switching no longer resizes the card.
+- **2026-11-19 (checked in the debug app on the Pixel):**
+  - **Star sticker red everywhere** (not only on the current location).
+  - **Moon card redesigned (design A, agreed):** works like the search card. It's on the same glass,
+    grows out of the moon button and shrinks back into it (the button hides while it's open), and
+    has a handle on top. It's docked at the bottom with one size only: open is the card's full
+    height, measured from its content. To close it, pull it down anywhere on the card (past 110 dp,
+    or a flick), tap the dimmed page or go back. The page recedes like it does for search. Inside:
+    the phase as a big left heading with the date, the moon (stars only on dark glass), the dial,
+    and the details as a sentence with bold underlined values ("The moon is 70 % lit and growing.
+    It sets at 02:05 and rises again at 14:22. Full moon in 5 days, 386,643 km away.").
 

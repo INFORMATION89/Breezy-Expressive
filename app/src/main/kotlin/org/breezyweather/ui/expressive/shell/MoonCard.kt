@@ -17,6 +17,7 @@
 package org.breezyweather.ui.expressive.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -27,26 +28,36 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -55,20 +66,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.launch
@@ -144,66 +169,210 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
 internal fun MoonButton(location: Location, now: Long, text: Color) {
     val context = LocalContext.current
     val (angle, lit) = moonAt(Date(now))
+    var bounds by remember { androidx.compose.runtime.mutableStateOf<Rect?>(null) }
+    val label = listOfNotNull(
+        breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context),
+        "${(lit * 100).roundToInt()} %"
+    ).joinToString(" · ")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .onGloballyPositioned { bounds = it.boundsInRoot() }
+            // While its card is open, the button is the card (it grows out of here).
+            .graphicsLayer {
+                alpha = if (MoonCardState.request?.first?.formattedId == location.formattedId) {
+                    1f - MoonCardState.progress.coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+            }
             .clip(CircleShape)
             .border(1.dp, text.copy(alpha = 0.35f), CircleShape)
-            .clickable { MoonCardState.request = location to now }
+            .clickable { MoonCardState.show(location, now, bounds, label) }
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Text(
-            listOfNotNull(
-                breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context),
-                "${(lit * 100).roundToInt()} %"
-            ).joinToString(" · "),
-            color = text,
-            style = MaterialTheme.typography.labelLarge
-        )
+        Text(label, color = text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
 /** Which place's moon card is open (the shell draws it over everything, on its glass). */
 internal object MoonCardState {
     var request by androidx.compose.runtime.mutableStateOf<Pair<Location, Long>?>(null)
+    var open by androidx.compose.runtime.mutableStateOf(false)
+
+    /** The button the card grows out of (and shrinks back into), and its label. */
+    var origin: Rect? = null
+    var label: String = ""
+
+    /** 0 closed … 1 open; the shell reads it to recede the page, like search. */
+    var progress by mutableFloatStateOf(0f)
+
+    fun show(location: Location, now: Long, from: Rect?, text: String) {
+        origin = from
+        label = text
+        request = location to now
+        open = true
+    }
 }
 
 /**
- * The moon card over the shell, like the search card: the page is only darkened a little, and the
- * blur is only behind the card (the shell's glass). Size and position to review with the user.
+ * The moon card as a sheet, like the search card (agreed 2026-11-19): the same glass, grown out of
+ * the moon button and shrunk back into it, a handle on top, docked at the bottom. One size only:
+ * open is the card's full height. Pull it down (or fling it), tap outside or go back to close.
  */
 @Composable
 internal fun MoonCardOverlay(glass: GlassSource) {
-    val (location, now) = MoonCardState.request ?: return
-    BackHandler { MoonCardState.request = null }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    val request = MoonCardState.request ?: return
+    val (location, now) = request
+    val open = MoonCardState.open
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val progress = remember(request) { Animatable(0f) }
+    var pulled by remember(request) { mutableFloatStateOf(0f) }
+    // The card's own height, measured from its content (until then, a likely size).
+    var natural by remember { mutableFloatStateOf(with(density) { 640.dp.toPx() }) }
+    val status = WindowInsets.statusBars
+    LaunchedEffect(request, open) {
+        if (open) {
+            progress.animateTo(1f, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)) {
+                MoonCardState.progress = value
+            }
+        } else {
+            progress.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) {
+                MoonCardState.progress = value
+            }
+            MoonCardState.progress = 0f
+            MoonCardState.request = null
+        }
+    }
+    fun close() {
+        MoonCardState.open = false
+    }
+    BackHandler(enabled = open) { close() }
+    // Let go: far enough down (or flung down) closes; otherwise it springs back up.
+    fun release(velocity: Float) {
+        val far = with(density) { 110.dp.toPx() }
+        val some = with(density) { 24.dp.toPx() }
+        if (pulled > far || (pulled > some && velocity > 900f)) {
+            close()
+        } else {
+            scope.launch {
+                animate(pulled, 0f, velocity, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) {
+                        v,
+                        _,
+                    ->
+                    pulled = v
+                }
+            }
+        }
+    }
+    fun inside() = ((progress.value.coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
+    // Round as the button; docked, only the top corners stay round.
+    val cardShape = remember {
+        GenericShape { size, _ ->
+            val top = minOf(32.dp.value * density.density, size.minDimension / 2)
+            val bottom = top * (1f - progress.value.coerceIn(0f, 1f))
+            addRoundRect(
+                RoundRect(
+                    0f,
+                    0f,
+                    size.width,
+                    size.height,
+                    topLeftCornerRadius = CornerRadius(top),
+                    topRightCornerRadius = CornerRadius(top),
+                    bottomRightCornerRadius = CornerRadius(bottom),
+                    bottomLeftCornerRadius = CornerRadius(bottom)
+                )
+            )
+        }
+    }
+    val ink = MaterialTheme.colorScheme.onSurface
+    Box(Modifier.fillMaxSize()) {
+        // The page behind goes a little darker; pulling down lightens it.
         Box(
             Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val pullFade = 1f - (pulled / 220.dp.toPx()).coerceIn(0f, 1f)
+                    alpha = progress.value.coerceIn(0f, 1f) * pullFade
+                }
                 .background(Color.Black.copy(alpha = 0.25f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { MoonCardState.request = null }
+                    indication = null,
+                    enabled = open
+                ) { close() }
         )
         Box(
             Modifier
-                .padding(horizontal = 24.dp)
-                // Taps on the card stay on the card (they used to fall through and close it).
-                .pointerInput(Unit) { detectTapGestures { } }
+                .layout { measurable, constraints ->
+                    val width = constraints.maxWidth.toFloat()
+                    val height = constraints.maxHeight.toFloat()
+                    val room = height - status.getTop(this) - 12.dp.toPx()
+                    val tall = natural.coerceAtMost(room)
+                    val target = Rect(0f, height - tall + pulled, width, height + pulled)
+                    val start = MoonCardState.origin ?: target
+                    val p = progress.value.coerceIn(0f, 1f)
+                    val left = start.left + (target.left - start.left) * p
+                    val topEdge = start.top + (target.top - start.top) * p
+                    val w = (start.width + (target.width - start.width) * p).roundToInt().coerceAtLeast(0)
+                    val h = (start.height + (target.height - start.height) * p).roundToInt().coerceAtLeast(0)
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(left.roundToInt(), topEdge.roundToInt())
+                    }
+                }
+                // The search card's glass.
+                .glass(glass, cardShape, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
+                .clip(cardShape)
+                // Vertical drags anywhere on it pull it down (and, as the top pointer handler, taps on
+                // the card no longer reach the dimmed page behind).
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { d -> pulled = (pulled + d).coerceAtLeast(0f) },
+                    onDragStopped = { v -> release(v) }
+                )
         ) {
-            MoonCard(location, now, glass)
+            // While still small it's the button's label.
+            Text(
+                MoonCardState.label,
+                color = ink,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
+            )
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.Top, unbounded = true)
+                    .onSizeChanged { if (it.height > 0) natural = it.height.toFloat() }
+                    .graphicsLayer { alpha = inside() }
+            ) {
+                Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
+                MoonCard(location, now, ink)
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            }
+            // The handle, like search's.
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 10.dp)
+                    .graphicsLayer { alpha = inside() }
+                    .width(36.dp)
+                    .height(4.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+            )
         }
     }
 }
 
 /**
- * The moon card (user's references, 2026-11-18): a floating dark, starry card. A big moon in its
- * phase, the phase name and the date, a dial of days to scrub through phases (drag), then rows:
- * illumination, moonrise, moonset, next full moon, distance.
+ * The moon card's content (redesigned 2026-11-19, design A): the phase as a big heading with the
+ * date, the moon in its phase, the dial of days to scrub through phases (drag), and the details in
+ * a sentence (values bold and underlined, like This week).
  */
 @Composable
-private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
+private fun MoonCard(location: Location, now: Long, ink: Color) {
     val context = LocalContext.current
     // Scrubbing offset in days (fractional while dragging).
     var offset by remember { mutableFloatStateOf(0f) }
@@ -276,27 +445,35 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
         spring(dampingRatio = 1f, stiffness = 12f),
         label = "moonTilt"
     )
-    val ink = Color(0xFFEDEBF5)
     run {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                // Black glass, the same material as the search card's (darker tint).
-                .glass(glass, RoundedCornerShape(32.dp), Color(0xFF06060C).copy(alpha = 0.62f))
-                .clip(RoundedCornerShape(32.dp))
-                .padding(20.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
         ) {
-            Text(stringResource(R.string.moon_title), color = ink, style = MaterialTheme.typography.titleMedium)
-            // The moon on a starry night.
+            // A big heading, like This week: the phase, and the date under it.
+            Text(
+                breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context) ?: "",
+                color = ink,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold)
+            )
+            Text(
+                SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).apply { timeZone = zone }.format(at),
+                color = ink.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            // The moon (on a starry night when the glass is dark).
+            val dark = ink.luminance() > 0.5f
             Canvas(Modifier.fillMaxWidth().height(200.dp)) {
-                val rnd = Random(11)
-                repeat(70) {
-                    drawCircle(
-                        Color.White.copy(alpha = 0.25f + rnd.nextFloat() * 0.6f),
-                        radius = 0.6f + rnd.nextFloat() * 1.4f,
-                        center = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
-                    )
+                if (dark) {
+                    val rnd = Random(11)
+                    repeat(70) {
+                        drawCircle(
+                            Color.White.copy(alpha = 0.2f + rnd.nextFloat() * 0.5f),
+                            radius = 0.6f + rnd.nextFloat() * 1.4f,
+                            center = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
+                        )
+                    }
                 }
                 // A soft glow, then the real moon.
                 drawCircle(
@@ -318,17 +495,7 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                     parallactic = parallactic.toDouble()
                 )
             }
-            Text(
-                breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context) ?: "",
-                color = ink,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold)
-            )
-            Text(
-                SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).apply { timeZone = zone }.format(at),
-                color = ink.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
             // The dial: ticks every 6 hours, a longer one per day; drag to move through the days.
             Box(
                 Modifier
@@ -467,32 +634,54 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                     }.format(at)
                 },
                 color = ink.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(16.dp))
             fun hm(d: Date?) =
                 d?.let { SimpleDateFormat("HH:mm", Locale.getDefault()).apply { timeZone = zone }.format(it) } ?: "–"
-            MoonRow(stringResource(R.string.moon_illumination), "${(lit * 100).roundToInt()} %", ink)
-            MoonRow(stringResource(R.string.moon_rise), hm(times.rise), ink)
-            MoonRow(stringResource(R.string.moon_set), hm(times.set), ink)
-            MoonRow(
-                stringResource(R.string.moon_next_full),
-                context.getString(
-                    R.string.moon_days,
-                    ((full.time - at.time) / DAY.toDouble()).roundToInt().coerceAtLeast(0)
-                ),
-                ink
+            // The details in a sentence (design A), values bold and underlined like This week.
+            val days = ((full.time - at.time) / DAY.toDouble()).roundToInt().coerceAtLeast(0)
+            val km = "%,d km".format(distance.roundToInt())
+            val growing = angle < 180
+            val sentences = listOf(
+                stringResource(
+                    if (growing) R.string.moon_lit_growing else R.string.moon_lit_shrinking
+                ) to listOf("${(lit * 100).roundToInt()} %"),
+                if (times.rise != null && times.set != null && times.set!!.before(times.rise)) {
+                    stringResource(R.string.moon_sets_then_rises) to listOf(hm(times.set), hm(times.rise))
+                } else {
+                    stringResource(R.string.moon_rises_then_sets) to listOf(hm(times.rise), hm(times.set))
+                },
+                if (days == 0) {
+                    stringResource(R.string.moon_full_today) to listOf(km)
+                } else {
+                    stringResource(R.string.moon_full_in) to listOf(context.getString(R.string.moon_days, days), km)
+                }
             )
-            MoonRow(stringResource(R.string.moon_distance), "%,d km".format(distance.roundToInt()), ink, last = true)
+            val bold = SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
+            val body = buildAnnotatedString {
+                sentences.forEachIndexed { i, (template, args) ->
+                    if (i > 0) append(" ")
+                    var last = 0
+                    Regex("%(\\d)\\\$s").findAll(template).forEach { m ->
+                        append(template.substring(last, m.range.first))
+                        withStyle(bold) { append(args[m.groupValues[1].toInt() - 1]) }
+                        last = m.range.last + 1
+                    }
+                    append(template.substring(last))
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(ink.copy(alpha = 0.09f))
+                    .border(0.5.dp, ink.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
+                    .padding(18.dp)
+            ) {
+                Text(body, color = ink, style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
-}
-
-@Composable
-private fun MoonRow(label: String, value: String, ink: Color, last: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = ink, style = MaterialTheme.typography.bodyLarge)
-        Text(value, color = ink.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyLarge)
-    }
-    if (!last) HorizontalDivider(color = ink.copy(alpha = 0.12f))
 }

@@ -1811,8 +1811,6 @@ private fun PlaceCard(
                 starred = true,
                 paper = Color(0xFFF6EBD6),
                 ink = ink,
-                // Red on the current location, like its name.
-                starTint = if (location.isCurrentPosition) Color(0xFFE5483C) else null,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     // In the strip it sits centred at the end.
@@ -2016,7 +2014,8 @@ private fun Stamp(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (starred) {
-                val gold = starTint ?: Color(0xFFD69A2E)
+                // The star sticker is red everywhere (2026-11-19).
+                val gold = starTint ?: Color(0xFFE5483C)
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = stringResource(R.string.shell_starred),
