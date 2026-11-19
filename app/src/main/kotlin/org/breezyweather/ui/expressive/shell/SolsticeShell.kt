@@ -370,6 +370,14 @@ fun SolsticeShell(
     // Title hand-off: while a page's big title is on screen its toolbar tab shows only the icon; as
     // the title scrolls away the label unfolds in the toolbar (never the same word twice).
     val daysList = rememberLazyListState()
+    // This week starts at the top again whenever you come back to it.
+    LaunchedEffect(pager.settledPage) {
+        if (pager.settledPage != PAGE_DAYS &&
+            daysList.firstVisibleItemIndex + daysList.firstVisibleItemScrollOffset > 0
+        ) {
+            daysList.scrollToItem(0)
+        }
+    }
     val placesList = rememberLazyListState()
     val titleHeight = with(LocalDensity.current) { 72.dp.toPx() }
     val labelShown by remember {
@@ -412,8 +420,9 @@ fun SolsticeShell(
             ) { index ->
                 when (index) {
                     PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
-                        // The edge blur fades in with the plain page, not before it.
-                        abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_FORECAST).coerceIn(0f, 1f)
+                        // The edge blur only comes in once the plain page is mostly there (it showed
+                        // over the sky as soon as a swipe started).
+                        edgeFade(pager.currentPage + pager.currentPageOffsetFraction)
                     }
                     PAGE_FORECAST -> ForecastPage(
                         location = location,
@@ -481,7 +490,8 @@ fun SolsticeShell(
                             if (from >= 0) viewModel.swapLocations(from, to)
                         },
                         onSettings = actions::openSettings,
-                        listState = placesList
+                        listState = placesList,
+                        pageFade = { edgeFade(pager.currentPage + pager.currentPageOffsetFraction) }
                     )
                 }
             }
@@ -736,7 +746,7 @@ internal fun ShellToolbar(
             Icon(
                 budIcon,
                 contentDescription = if (bud > 0.5f) budDescription else null,
-                tint = if (budChecked) MaterialTheme.colorScheme.primary else onSurface,
+                tint = if (budChecked) primary else onSurface,
                 modifier = Modifier.graphicsLayer { alpha = iconAlpha }
             )
         }
@@ -950,3 +960,7 @@ private fun conditionIcon(weather: SkyWeather, night: Boolean): ImageVector = wh
     SkyWeather.SNOW -> Icons.Outlined.AcUnit
     SkyWeather.FOG -> Icons.Outlined.Dehaze
 }
+
+/** How strongly a plain page's edge blur shows: none until the page is ~40 % in, full when it's there. */
+internal fun edgeFade(position: Float): Float =
+    ((abs(position - PAGE_FORECAST) - 0.4f) / 0.6f).coerceIn(0f, 1f)

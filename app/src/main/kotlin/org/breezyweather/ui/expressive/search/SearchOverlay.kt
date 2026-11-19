@@ -56,6 +56,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -88,8 +89,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -225,6 +228,25 @@ fun SearchOverlay(
     val ime = WindowInsets.ime
     val navigation = WindowInsets.navigationBars
     val status = WindowInsets.statusBars
+    // Round as the bubble; docked, only the top corners stay round (the bottom sits on the keyboard).
+    val cardShape = remember {
+        GenericShape { size, _ ->
+            val top = minOf(32.dp.value * density.density, size.minDimension / 2)
+            val bottom = top * (1f - progress().coerceIn(0f, 1f))
+            addRoundRect(
+                RoundRect(
+                    0f,
+                    0f,
+                    size.width,
+                    size.height,
+                    topLeftCornerRadius = CornerRadius(top),
+                    topRightCornerRadius = CornerRadius(top),
+                    bottomRightCornerRadius = CornerRadius(bottom),
+                    bottomLeftCornerRadius = CornerRadius(bottom)
+                )
+            )
+        }
+    }
     // Written by the card's layout each frame; read by the handle's drag (how far it can grow).
     val room = remember { FloatArray(1) }
 
@@ -328,13 +350,14 @@ fun SearchOverlay(
                         navigation.getBottom(this)
                     }
                     val top = status.getTop(this) + 12.dp.toPx()
-                    val margin = 12.dp.toPx()
+                    // Full width, sitting right on the keyboard (no gaps).
+                    val margin = 0f
                     val chrome = (24.dp + 64.dp).toPx() // handle + field
                     val compact = 280.dp.toPx()
-                    val tall = (height - bottomInset - margin - top - chrome).coerceAtLeast(compact)
+                    val tall = (height - bottomInset - top - chrome).coerceAtLeast(compact)
                     room[0] = tall - compact
                     val content = (compact + extra).coerceIn(compact, tall)
-                    val bottom = height - bottomInset - margin + pulled
+                    val bottom = height - bottomInset + pulled
                     val target = Rect(margin, bottom - content - chrome, width - margin, bottom)
                     val start = origin ?: target
                     val p = progress().coerceIn(0f, 1f)
@@ -350,12 +373,8 @@ fun SearchOverlay(
                 .onGloballyPositioned { onCardBounds(it.boundsInRoot()) }
                 .graphicsLayer { alpha = if (handedOff) 0f else 1f }
                 // The toolbar's glass: the page behind, blurred, under a light tint, with a fine edge.
-                .glass(
-                    glass,
-                    RoundedCornerShape(32.dp),
-                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
-                )
-                .clip(RoundedCornerShape(32.dp))
+                .glass(glass, cardShape, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
+                .clip(cardShape)
         ) {
             // While still small it's the bubble's search icon.
             Icon(
@@ -436,7 +455,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
             .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             .height(56.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
             .padding(horizontal = 16.dp)
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -6,7 +6,7 @@
     <string name="action_move_down_expressive">Move down</string>
     <string name="action_remove_expressive">Remove</string>
     <string name="reorder_hidden_expressive">Hidden, tap to add</string>
-    <string name="shell_tab_days">Outlook</string>
+    <string name="shell_tab_days">This week</string>
     <string name="shell_tab_forecast">Forecast</string>
     <string name="shell_tab_places">Places</string>
     <string name="shell_today">Today</string>
@@ -30,7 +30,7 @@
     <string name="search_no_results">No places called “%1$s”</string>
     <string name="search_no_results_hint">Check the spelling, or try a bigger city nearby.</string>
     <string name="search_recent">Recent</string>
-    <string name="search_select">Select</string>
+    <string name="search_select">Visit</string>
     <string name="shell_pin">Pin</string>
     <string name="shell_pinned">Pinned</string>
     <string name="shell_home">Home</string>

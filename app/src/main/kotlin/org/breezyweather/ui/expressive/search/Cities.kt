@@ -46,8 +46,9 @@ data class City(
         country = country,
         countryCode = countryCode,
         city = name,
-        // Let the address lookup fill in the region on the first refresh.
-        needsGeocodeRefresh = true
+        // Keep the name that was searched (an address lookup renamed "Puebla" to "Heroica Puebla
+        // de Zaragoza, Centro…").
+        needsGeocodeRefresh = false
     )
 
     fun encode() = listOf(name, countryCode, latitude, longitude, timeZone).joinToString("\t")

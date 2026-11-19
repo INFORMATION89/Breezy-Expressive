@@ -28,8 +28,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -116,6 +120,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -201,7 +207,7 @@ internal fun ForecastPage(
                 Text(
                     title,
                     color = text,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                     autoSize = TextAutoSize.StepBased(16.sp, MaterialTheme.typography.titleLarge.fontSize),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -291,13 +297,18 @@ private fun SunPath(location: Location, now: Long, text: Color) {
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TimeLabel(
-                time(context, rise, location.timeZone),
+                time(context, rise, location.timeZone, noPeriod = true),
                 stringResource(R.string.shell_sunrise),
                 text,
                 Alignment.Start
             )
             Spacer(Modifier.weight(1f))
-            TimeLabel(time(context, set, location.timeZone), stringResource(R.string.shell_sunset), text, Alignment.End)
+            TimeLabel(
+                time(context, set, location.timeZone, noPeriod = true),
+                stringResource(R.string.shell_sunset),
+                text,
+                Alignment.End
+            )
         }
     }
 }
@@ -373,7 +384,7 @@ internal fun DaysPage(
             Text(
                 stringResource(R.string.shell_tab_days),
                 color = onPage,
-                style = MaterialTheme.typography.displaySmallEmphasized,
+                style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
                 modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
             )
         }
@@ -439,6 +450,7 @@ internal fun PlacesPage(
     onMove: (id: String, beforeId: String?) -> Unit,
     onSettings: () -> Unit,
     listState: LazyListState,
+    pageFade: () -> Float = { 1f },
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -502,13 +514,20 @@ internal fun PlacesPage(
         state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize().grainyPaper(onPage).statusBarsPadding()
+        modifier = Modifier.fillMaxSize().grainyPaper(onPage)
+            // The same progressive edge blur as This week.
+            .edgeBlur(
+                if (onPage.luminance() < 0.5f) Color(0xFFF7F3EA) else Color(0xFF1D1C19),
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 56.dp,
+                strength = pageFade
+            )
+            .statusBarsPadding()
     ) {
         item(key = "header") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 Text(
                     stringResource(R.string.shell_tab_places),
-                    style = MaterialTheme.typography.displaySmallEmphasized,
+                    style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
                     color = onPage,
                     modifier = Modifier.weight(1f).padding(start = 4.dp)
                 )
@@ -763,12 +782,30 @@ private fun SwipeablePlace(
         Box(
             Modifier
                 .offset { IntOffset(x.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    enabled = enabled,
-                    state = rememberDraggableState { delta -> x = (x + delta).coerceIn(-width, 0f) },
-                    onDragStarted = { settleJob?.cancel() },
-                    onDragStopped = { velocity ->
+                // Only a right-to-left swipe moves the card; a left-to-right one is left to the pager
+                // (it just goes to the page on the left).
+                .pointerInput(enabled, width) {
+                    if (!enabled) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var leftward = false
+                        val slop = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                            if (over < 0f || x < 0f) {
+                                leftward = true
+                                change.consume()
+                            }
+                        }
+                        if (slop == null || !leftward) return@awaitEachGesture
+                        settleJob?.cancel()
+                        val tracker = VelocityTracker()
+                        tracker.addPosition(slop.uptimeMillis, slop.position)
+                        horizontalDrag(slop.id) { change ->
+                            val delta = change.positionChange().x
+                            x = (x + delta).coerceIn(-width, 0f)
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            change.consume()
+                        }
+                        val velocity = tracker.calculateVelocity().x
                         // Decide from where the card is right now, not from the last recomposition.
                         val released = stageOf(-x)
                         val out = spring<Float>(stiffness = Spring.StiffnessMediumLow)
@@ -787,7 +824,7 @@ private fun SwipeablePlace(
                             }
                         }
                     }
-                )
+                }
         ) { content() }
     }
 }
@@ -865,10 +902,10 @@ private fun PlaceCard(
             .clickable(interactionSource = press, indication = null, onClick = onClick)
             // A soft, low shadow, like card lying on paper.
             .shadow(
-                elevation = if (selected) 4.dp else 2.dp,
+                elevation = if (selected) 8.dp else 6.dp,
                 shape = Deckled,
-                ambientColor = Color.Black.copy(alpha = 0.06f),
-                spotColor = Color.Black.copy(alpha = 0.12f)
+                ambientColor = Color.Black.copy(alpha = 0.10f),
+                spotColor = Color.Black.copy(alpha = 0.22f)
             )
             .clip(Deckled)
             .drawBehind {
@@ -1107,7 +1144,7 @@ private fun Stamp(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(width = 38.dp, height = 44.dp)
+            .size(40.dp)
             .drawBehind {
                 drawRect(paper)
                 val dot = 2.dp.toPx()
@@ -1289,12 +1326,19 @@ private fun feelsLikeLine(context: Context, location: Location): String? {
     return context.getString(R.string.shell_feels_like, degrees(context, feels))
 }
 
-private fun time(context: Context, date: Date, zone: TimeZone, hourOnly: Boolean = false): String {
+internal fun time(
+    context: Context,
+    date: Date,
+    zone: TimeZone,
+    hourOnly: Boolean = false,
+    noPeriod: Boolean = false,
+): String {
     val is24 = android.text.format.DateFormat.is24HourFormat(context)
     val pattern = when {
         hourOnly && is24 -> "HH"
         hourOnly -> "h a"
         is24 -> "HH:mm"
+        noPeriod -> "h:mm"
         else -> "h:mm a"
     }
     return SimpleDateFormat(pattern, Locale.getDefault()).apply { timeZone = zone }.format(date)

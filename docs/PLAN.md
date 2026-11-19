@@ -1237,3 +1237,22 @@ Things to try on the phone before calling any motion done (debug and release bui
 - The floating button budding out of the toolbar: refine it.
 - Pin and unpin: an icon animation.
 - Data loading for a place: a nice transition so values don't just pop in.
+- **2026-11-18 evening (backlog items built, checked in the debug app on the Pixel):**
+  - Renamed to **This week**.
+  - Search results say **"Visit"**.
+  - No AM/PM on the sun path.
+  - Bolder titles (SemiBold).
+  - A **square** star stamp.
+  - A stronger, soft **drop shadow on postcards**.
+  - **Search card full width**, sitting right on the keyboard: rounded as a bubble, and only the
+    top corners stay round once docked. The field is more translucent.
+  - **Keep the searched name:** cities from the bundled list no longer get renamed by the address
+    lookup (not yet re-tested with Puebla).
+  - Postcard window: the label has no background, and shows "Visiting" and/or the **local time and
+    difference** when it differs from yours. The Pin icon is outlined, in the Forecast colour when
+    pinned.
+  - **This week scrolls back to the top** when you leave it.
+  - **Edge blur** only comes in once the plain page is ~40 % in (it showed over the sky at the
+    start of a swipe). **Places has the same edge blur** now.
+  - **Places: a left-to-right swipe goes to the page on the left.** A card only moves when the
+    swipe goes right to left (star / delete).

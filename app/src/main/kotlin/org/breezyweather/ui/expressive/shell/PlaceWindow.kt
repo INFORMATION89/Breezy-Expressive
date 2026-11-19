@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -241,19 +242,23 @@ internal fun PlaceWindow(
                             )
                         }
                     }
-                    // "Visiting" until you pin it.
-                    if (!pinned) {
+                    // "Visiting" until you pin it, and its local time when it differs from yours.
+                    val context = LocalContext.current
+                    val label = listOfNotNull(
+                        if (!pinned) stringResource(R.string.shell_visiting) else null,
+                        timeDifference(location.timeZone, now)?.let { diff ->
+                            time(context, java.util.Date(now), location.timeZone) + ", " + diff
+                        }
+                    ).joinToString(" · ")
+                    if (label.isNotEmpty()) {
                         Text(
-                            stringResource(R.string.shell_visiting),
+                            label,
                             style = MaterialTheme.typography.labelLarge,
-                            color = sky.palette.text,
+                            color = sky.palette.text.copy(alpha = 0.85f),
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .statusBarsPadding()
-                                .padding(top = 6.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.28f))
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                                .padding(top = 8.dp)
                         )
                     }
                 }
@@ -279,7 +284,7 @@ internal fun PlaceWindow(
                     onSearch = onPin,
                     onSearchBounds = {},
                     withPlaces = false,
-                    budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                    budIcon = Icons.Outlined.PushPin,
                     budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
                     budChecked = pinned
                 )
