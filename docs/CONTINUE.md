@@ -49,9 +49,10 @@ The focus is still **iOS-level polish with shared systems**. The icon task is do
 the phone); next is M4. Background: [UI_SYSTEMS.md](UI_SYSTEMS.md), PLAN.md "Icons", "Motion framework" and
 "Design system foundations".
 
-### Icons: done 2026-11-19 (PR #1, merged), to check on the phone
+### Icons: done 2026-11-19 (`material-symbols`, merged into main), partly checked on the phone
 
-Material Symbols **Rounded** everywhere (rules in PLAN.md, "Icons"). What to look at on the Pixel 7:
+Material Symbols **Rounded** everywhere (rules in PLAN.md, "Icons"). Seen on the Pixel 7: the shell
+pages, toolbar (selected tab filled), postcards. Still to look at:
 
 - **Every screen:** shell pages, toolbar, search, postcard window, messages, Places swipe, reorder,
   Settings, details, Management. The shapes changed from sharp/old Material to Rounded, and upstream's

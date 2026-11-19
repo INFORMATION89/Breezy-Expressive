@@ -689,7 +689,8 @@ Rules, following Material 3's icon guidance (m3.material.io/styles/icons, "Apply
 - **Optical size follows the drawn size:** each catalog icon exists at optical size 24
   (`SolsticeIcons.X`) and 20 (`SolsticeIcons.Small.X`, for icons drawn at 20 dp or smaller); a
   component that takes an icon parameter calls `SolsticeIcons.forSize(icon, size)`.
-- **Fill** is a state, not decoration: `…Fill` variants exist only for star, pin and near me.
+- **Fill** is a state, not decoration: `…Fill` variants exist for star, pin and near me, and for the
+  toolbar tab icons (calendar, map and the condition glyphs, via `hourIcon(…, filled = true)`).
 - **Sizes** from `Sizes.IconSmall` (16), `Sizes.Icon` (20), `Sizes.IconLarge` (24) where possible.
 - **Adding an icon:** add its name to `tools/symbols.txt` (`fill` / `mirror` flags) and run
   `python3 tools/make_symbols.py`; for an XML drawable, copy the `_24px.svg` path into an `ic_*.xml`
@@ -705,7 +706,7 @@ Rules, following Material 3's icon guidance (m3.material.io/styles/icons, "Apply
    -25. The SVGs exist (`<name>_gradN25_24px.svg`, `_gradN25_20px.svg`); add a grade variant to
    `make_symbols.py` and pick it by the icon's background (or by dark theme where the background
    isn't known). Positive grade is M3's option for an emphasized active state: only if agreed.
-2. **Selected toolbar tab filled.** M3's own example is navigation with filled icons for the
+2. ~~**Selected toolbar tab filled.**~~ Done 2026-11-19 (see the log). M3's own example is navigation with filled icons for the
    selected tab; our rule says "current tab" but the tab icons (`CalendarMonth`, `Map`, the
    condition icons) have no `…Fill` variants yet. Add them and fill the selected tab (a swap, not an
    animation; animating fill is motion, agree first).
@@ -2017,3 +2018,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   gaps: grade -25 for light icons on dark backgrounds (an M3 default, not an extra), the selected
   toolbar tab filled, an audit of small icons' labels, touch targets (48 dp) and icon/text
   alignment, and optical size 40 for big icons.
+- **2026-11-19: selected toolbar tab filled** (M3 gap 2). `calendar_month`, `map` and the 9 condition
+  glyphs got `fill` in `tools/symbols.txt`; `hourIcon` takes `filled`; a toolbar `Tab` carries `icon`
+  and `iconOn`, swapped once the tab's title is half unfolded (a swap, no animation). Checked on the
+  Pixel 7: Days, Forecast and Places each show their icon filled when selected, the others outlined.
+  Also: this PC had built the same icon task a second way (Symbols library); it was reverted on main
+  in favour of the `material-symbols` branch, which is now merged into main.

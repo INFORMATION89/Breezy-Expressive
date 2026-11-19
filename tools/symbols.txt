@@ -5,38 +5,38 @@ add
 add_location_alt
 arrow_back mirror
 bug_report
-calendar_month
+calendar_month fill
 check
-clear_night
+clear_night fill
 close
-cloud
+cloud fill
 cloud_off
 delete
 explore
 flight_land
-foggy
+foggy fill
 help mirror
 history
 hourglass_empty
 info
 keyboard
-map
+map fill
 more_vert
 my_location
 near_me fill
-partly_cloudy_day
-partly_cloudy_night
+partly_cloudy_day fill
+partly_cloudy_night fill
 percent
 public
 push_pin fill
-rainy
+rainy fill
 schedule
 search
 search_off
 settings
 star fill
-sunny
-thunderstorm
+sunny fill
+thunderstorm fill
 tune
 water_drop
-weather_snowy
+weather_snowy fill

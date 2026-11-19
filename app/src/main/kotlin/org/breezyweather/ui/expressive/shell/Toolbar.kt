@@ -94,7 +94,8 @@ import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-internal class Tab(val label: Int, val icon: ImageVector)
+/** A toolbar tab: [iconOn] is the filled icon shown while it is the selected one. */
+internal class Tab(val label: Int, val icon: ImageVector, val iconOn: ImageVector)
 
 /**
  * Floating toolbar. Each tab is an icon; the selected one unfolds to show its title. Widths, label
@@ -122,9 +123,13 @@ internal fun ShellToolbar(
     onInterrupt: () -> Unit = {},
 ) {
     val tabs = listOfNotNull(
-        Tab(R.string.shell_tab_days, SolsticeIcons.CalendarMonth),
-        Tab(R.string.shell_tab_forecast, conditionIcon(weather, night = sky.sunHeight < 0f)),
-        if (withPlaces) Tab(R.string.shell_tab_places, SolsticeIcons.Map) else null
+        Tab(R.string.shell_tab_days, SolsticeIcons.CalendarMonth, SolsticeIcons.CalendarMonthFill),
+        Tab(
+            R.string.shell_tab_forecast,
+            hourIcon(weather, night = sky.sunHeight < 0f),
+            hourIcon(weather, night = sky.sunHeight < 0f, filled = true)
+        ),
+        if (withPlaces) Tab(R.string.shell_tab_places, SolsticeIcons.Map, SolsticeIcons.MapFill) else null
     )
     val collapsed = 52.dp
     val expanded = 132.dp
@@ -361,7 +366,13 @@ private fun ToolbarTabs(
                     // Icon and label centred in the tab, whatever the label's length.
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(Sizes.IconLarge))
+                    // Filled while selected (M3: navigation shows the current destination filled); a swap, not an animation.
+                    Icon(
+                        if (shown[i] > 0.5f) tab.iconOn else tab.icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(Sizes.IconLarge)
+                    )
                     Spacer(Modifier.width(Space.S2 * shown[i]))
                     Text(
                         text = label,
@@ -437,6 +448,3 @@ private class BudShape(
         return Outline.Generic(path)
     }
 }
-
-/** The Forecast tab's icon follows the current weather. */
-private fun conditionIcon(weather: SkyWeather, night: Boolean): ImageVector = hourIcon(weather, night)

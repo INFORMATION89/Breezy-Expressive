@@ -508,13 +508,24 @@ private fun hourlyHeadline(context: Context, hours: List<breezyweather.domain.we
     }
 }
 
-/** The icon for a weather condition, day or night. Used by the hours, the week, the postcard and the toolbar. */
-internal fun hourIcon(weather: SkyWeather, night: Boolean): ImageVector = when (weather) {
-    SkyWeather.CLEAR -> if (night) SolsticeIcons.ClearNight else SolsticeIcons.Sunny
-    SkyWeather.PARTLY_CLOUDY -> if (night) SolsticeIcons.PartlyCloudyNight else SolsticeIcons.PartlyCloudyDay
-    SkyWeather.OVERCAST -> SolsticeIcons.Cloud
-    SkyWeather.RAIN -> SolsticeIcons.Rainy
-    SkyWeather.THUNDERSTORM -> SolsticeIcons.Thunderstorm
-    SkyWeather.SNOW -> SolsticeIcons.WeatherSnowy
-    SkyWeather.FOG -> SolsticeIcons.Foggy
+/**
+ * The icon for a weather condition, day or night. Used by the hours, the week, the postcard and the
+ * toolbar; [filled] only for a selected state (the toolbar's current tab).
+ */
+internal fun hourIcon(weather: SkyWeather, night: Boolean, filled: Boolean = false): ImageVector = with(SolsticeIcons) {
+    when (weather) {
+        SkyWeather.CLEAR -> if (night) pick(filled, ClearNight, ClearNightFill) else pick(filled, Sunny, SunnyFill)
+        SkyWeather.PARTLY_CLOUDY -> if (night) {
+            pick(filled, PartlyCloudyNight, PartlyCloudyNightFill)
+        } else {
+            pick(filled, PartlyCloudyDay, PartlyCloudyDayFill)
+        }
+        SkyWeather.OVERCAST -> pick(filled, Cloud, CloudFill)
+        SkyWeather.RAIN -> pick(filled, Rainy, RainyFill)
+        SkyWeather.THUNDERSTORM -> pick(filled, Thunderstorm, ThunderstormFill)
+        SkyWeather.SNOW -> pick(filled, WeatherSnowy, WeatherSnowyFill)
+        SkyWeather.FOG -> pick(filled, Foggy, FoggyFill)
+    }
 }
+
+private fun pick(filled: Boolean, icon: ImageVector, fill: ImageVector) = if (filled) fill else icon
