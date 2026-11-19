@@ -742,7 +742,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   otherwise).
 - `gradle.properties`: fork links filled in (`app.report_issue`, source, releases, install, privacy,
   GitHub org/repo/prefix).
-- `ui/settings/compose/DebugSettingsScreen.kt`: "Glass: Haze (prototype)" switch (2026-11-19).
+- `ui/settings/compose/DebugSettingsScreen.kt`: "Glass: Haze (prototype)" switch, shown in every
+  build (2026-11-19).
+- `app/build.gradle.kts`: `profile` build type (release code, debug-signed, `.profile`) (2026-11-19).
 - `settings.gradle.kts`, `app/build.gradle.kts`, `gradle/libs.versions.toml`: `:motion` module and
   the Haze dependency (2026-11-19).
 - Added: `motion/` (Apache-2.0 module, 2026-11-19).
@@ -1380,6 +1382,25 @@ Things to try on the phone before calling any motion done (debug and release bui
   jumps back (`stop()` maps the shown value back to the finger position with
   `MotionPhysics.unresist`); `motionDrag` catches a moving surface at once (`startDragImmediately`
   while running). Added `MotionValue` tests with a step frame clock (22 tests in the module).
+
+- **2026-11-19, on the Pixel 7:**
+  - **Token pass checked** against a build of `9b143d5` (same data, Mexico City pinned): Forecast
+    content below the temperature ~9 dp higher, hourly card a touch tighter; This week and Places
+    cards ~2 dp more padding; Settings identical. Nothing broken or overlapping.
+  - **New `profile` build type** (`app/build.gradle.kts`): release code (R8), debug-signed,
+    `.profile` app ID next to the real app, for smoothness checks. The Haze switch now shows in
+    every build (upstream hides the rest of Debug outside debug builds).
+  - **Glass: own vs Haze** on the profile build, same gestures (2 × swipe to each page and back,
+    scroll down/up), frame stats from `dumpsys gfxinfo`:
+
+    | Glass | Rounds | Janky frames | Median | 90th | 99th |
+    |---|---|---|---|---|---|
+    | Own (`Glass.kt`) | 5 | 1.4–1.9 % | 13–17 ms | 20–24 ms | 32–38 ms |
+    | Haze 2.1.0 | 3 | 1.4–2.2 % | 12–14 ms | 21–23 ms | 32 ms |
+
+    A tie on speed, and the same look over the sky (screenshots). By the plan's rule (keep ours
+    only if Haze is slower) Haze can replace `Glass.kt`; before that: per-frame glass alpha (moon
+    card) and the edge blur on Haze's progressive blur.
 
 ## Backlog (user notes, 2026-11-18)
 

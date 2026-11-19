@@ -62,6 +62,15 @@ configure<ApplicationExtension> {
             isCrunchPngs = false // No need to do that, we already optimized them
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Solstice: release code (R8), signed with the debug key and installed next to the real app,
+        // for judging smoothness and measuring frame times on a phone.
+        create("profile") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".profile"
+            versionNameSuffix = "-profile"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     val localProperties = Properties()

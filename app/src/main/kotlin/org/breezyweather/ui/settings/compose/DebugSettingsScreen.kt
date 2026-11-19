@@ -106,6 +106,20 @@ fun DebugSettingsScreen(
                     }
                 }
             }
+            // Solstice: compare glass renderers (prototype, not saved). Shown in every build so it
+            // can be tried on a release-like (profile) build.
+            switchPreferenceItem(R.string.settings_debug_haze_glass) { id ->
+                SwitchPreferenceView(
+                    titleId = id,
+                    summaryOnId = R.string.settings_debug_haze_glass_on,
+                    summaryOffId = R.string.settings_debug_haze_glass_off,
+                    checked = GlassBackend.useHaze,
+                    isFirst = true,
+                    isLast = true,
+                    onValueChanged = { GlassBackend.useHaze = it }
+                )
+            }
+            largeSeparatorItem()
             clickablePreferenceItem(R.string.settings_debug_dump_crash_logs_title) { id ->
                 PreferenceViewWithCard(
                     titleId = id,
@@ -131,21 +145,6 @@ fun DebugSettingsScreen(
                     ) {
                         WeatherUpdateJob.startNow(context)
                     }
-                }
-
-                largeSeparatorItem()
-
-                // Solstice: compare glass renderers (prototype, not saved).
-                switchPreferenceItem(R.string.settings_debug_haze_glass) { id ->
-                    SwitchPreferenceView(
-                        titleId = id,
-                        summaryOnId = R.string.settings_debug_haze_glass_on,
-                        summaryOffId = R.string.settings_debug_haze_glass_off,
-                        checked = GlassBackend.useHaze,
-                        isFirst = true,
-                        isLast = true,
-                        onValueChanged = { GlassBackend.useHaze = it }
-                    )
                 }
 
                 largeSeparatorItem()

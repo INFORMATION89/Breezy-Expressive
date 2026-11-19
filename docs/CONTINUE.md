@@ -107,8 +107,11 @@ by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals 
 ### Next, in order
 
 1. ~~Fix the two `MotionValue` bugs + tests~~ (done 2026-11-19).
-2. On the Pixel 7 (release build): check the token pass, then compare glass with the Haze switch
-   (Settings › Debug › "Glass: Haze (prototype)") and decide.
+2. ~~On the Pixel 7: token pass and Haze comparison~~ (done 2026-11-19: tokens fine; Haze ties on
+   speed and looks the same, see the PLAN.md log). Smoothness checks: `./gradlew assembleBasicProfile`
+   installs as `io.github.information89.solstice.profile`. Debug builds from different computers
+   are signed with different keys: copy `~/.android/debug.keystore` between them to avoid
+   reinstalling.
 3. Decide the Solstice `MotionScheme` (PLAN.md, "Motion framework": switches get slower with only
    five tokens; accept or allow a `snappy` token).
 4. M3: the moon card on `Morph`/`MotionValue`, fixing its three open issues.
