@@ -32,6 +32,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -62,6 +63,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
@@ -117,6 +119,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -146,6 +149,7 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsManager
+import org.breezyweather.domain.weather.model.getDescription
 import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
@@ -286,44 +290,109 @@ private fun EmptyForecast(text: Color, onOpenPlaces: () -> Unit) {
 @Composable
 private fun SunPath(location: Location, now: Long, text: Color) {
     val context = LocalContext.current
-    val sun = location.weather?.today?.sun ?: return
+    val weather = location.weather ?: return
+    val sun = weather.today?.sun ?: return
     val rise = sun.riseDate ?: return
     val set = sun.setDate ?: return
-    val progress = ((now - rise.time).toFloat() / (set.time - rise.time)).coerceIn(0f, 1f)
-    val daytime = now in rise.time..set.time
+    val day = 24L * 60 * 60 * 1000
+    // Day: sunrise to sunset with the sun. Night (agreed 2026-11-18): sunset to sunrise with the
+    // moon in its phase; before dawn the night started at yesterday's sunset, after dusk it ends at
+    // tomorrow's sunrise.
+    val night = now !in rise.time..set.time
+    val (from, to) = when {
+        !night -> rise.time to set.time
+        now > set.time -> set.time to (weather.tomorrow?.sun?.riseDate?.time ?: (rise.time + day))
+        else -> (set.time - day) to rise.time
+    }
+    val progress = ((now - from).toFloat() / (to - from)).coerceIn(0f, 1f)
+    val phase = weather.today?.moonPhase?.takeIf { it.isValid }
+    val angle = phase?.angle ?: 180
+    // 0/360 = new, 180 = full; waxing below 180 (lit on the right).
+    val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
+    var showPhase by remember { mutableStateOf(false) }
+    val accent = if (night) Color(0xFFE8E4D8) else Color(0xFFE58A3C)
     Column(Modifier.fillMaxWidth()) {
-        Canvas(Modifier.fillMaxWidth().height(72.dp)) {
-            val w = size.width
-            val h = size.height
-            val base = h - 6.dp.toPx()
-            fun point(p: Float) = Offset(p * w, base - sin(PI * p).toFloat() * (base - 6.dp.toPx()))
-            val path = Path().apply {
-                moveTo(0f, base)
-                for (i in 1..48) point(i / 48f).let { lineTo(it.x, it.y) }
-            }
-            drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = 1.dp.toPx())
-            drawPath(path, text.copy(alpha = 0.55f), style = Stroke(1.5.dp.toPx()))
-            if (daytime) {
+        Box(Modifier.fillMaxWidth()) {
+            Canvas(
+                Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .pointerInput(night, progress) {
+                        if (!night) return@pointerInput
+                        detectTapGestures { tap ->
+                            val w = size.width
+                            val base = size.height - 6.dp.toPx()
+                            val x = progress * w
+                            val y = base - sin(PI * progress).toFloat() * (base - 6.dp.toPx())
+                            if (kotlin.math.hypot(tap.x - x, tap.y - y) < 36.dp.toPx()) showPhase = !showPhase
+                        }
+                    }
+            ) {
+                val w = size.width
+                val h = size.height
+                val base = h - 6.dp.toPx()
+                fun point(p: Float) = Offset(p * w, base - sin(PI * p).toFloat() * (base - 6.dp.toPx()))
+                val path = Path().apply {
+                    moveTo(0f, base)
+                    for (i in 1..48) point(i / 48f).let { lineTo(it.x, it.y) }
+                }
+                drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = 1.dp.toPx())
+                drawPath(path, text.copy(alpha = 0.55f), style = Stroke(1.5.dp.toPx()))
                 val done = Path().apply {
                     moveTo(0f, base)
                     val steps = (48 * progress).toInt().coerceAtLeast(1)
                     for (i in 1..steps) point(progress * i / steps).let { lineTo(it.x, it.y) }
                 }
-                drawPath(done, Color(0xFFE58A3C), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-                drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = point(progress))
+                drawPath(
+                    done,
+                    accent.copy(alpha = if (night) 0.8f else 1f),
+                    style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
+                )
+                val c = point(progress)
+                if (!night) {
+                    drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
+                } else {
+                    // The moon in its phase: a pale disc with the shadow sliding across it.
+                    val r = 8.dp.toPx()
+                    drawCircle(Color(0xFFF1EEE4), radius = r, center = c)
+                    val waxing = angle < 180
+                    val shift = 2f * r * lit * if (waxing) -1f else 1f
+                    clipPath(Path().apply { addOval(Rect(c, r)) }) {
+                        drawCircle(Color(0xFF2B2A3A).copy(alpha = 0.85f), radius = r, center = c + Offset(shift, 0f))
+                    }
+                    drawCircle(
+                        Color.White.copy(alpha = 0.18f),
+                        radius = r + 3.dp.toPx(),
+                        center = c,
+                        style = Stroke(1.dp.toPx())
+                    )
+                }
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TimeLabel(
-                time(context, rise, location.timeZone, noPeriod = true),
-                stringResource(R.string.shell_sunrise),
+                time(context, Date(from), location.timeZone, noPeriod = true),
+                stringResource(if (night) R.string.shell_sunset else R.string.shell_sunrise),
                 text,
                 Alignment.Start
             )
             Spacer(Modifier.weight(1f))
+            // Tap the moon: its phase, kept very simple for now (between the two times).
+            if (night && showPhase && phase != null) {
+                Text(
+                    listOfNotNull(phase.getDescription(context), "${(lit * 100).roundToInt()} %").joinToString(" · "),
+                    color = text,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(text.copy(alpha = 0.12f))
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                )
+                Spacer(Modifier.weight(1f))
+            }
             TimeLabel(
-                time(context, set, location.timeZone, noPeriod = true),
-                stringResource(R.string.shell_sunset),
+                time(context, Date(to), location.timeZone, noPeriod = true),
+                stringResource(if (night) R.string.shell_sunrise else R.string.shell_sunset),
                 text,
                 Alignment.End
             )

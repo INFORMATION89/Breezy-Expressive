@@ -1295,3 +1295,18 @@ Things to try on the phone before calling any motion done (debug and release bui
     truth for the current page and transitions (pager position, tab jump slide, toolbar glide,
     window, search) that any new input can interrupt cleanly. Today the jump's coroutine,
     `pager.scrollToPage`, the snapshot and the toolbar's own position can fight each other.
+- **2026-11-18 evening (agreed + built, checked in the debug app on the Pixel):** **Night sun path.**
+  At night the arc runs sunset to sunrise (yesterday's sunset before dawn; tomorrow's sunrise
+  after dusk). A **moon in its real phase** (from the daily moon phase angle: a pale disc with the
+  shadow offset by how lit it is) travels along it, and the travelled part is drawn in moonlight
+  cream. **Tap the moon** to show a small label between the two times: phase name and illumination
+  (e.g. "First quarter · 62 %"). Kept very simple for now.
+- **2026-11-18 evening (built, checked in the debug app on the Pixel): navigation rework.** One
+  navigator in the shell (`navigate(target)`) owns every page change: toolbar taps, host requests,
+  "open Places", and the toolbar slide's settle. It keeps a single job: a new navigation (or a
+  finger on the toolbar) cancels the one in progress, and a non-cancellable `finally` puts the
+  jump state back at rest (snapshot, fade, blur, toolbar glide) before anything else runs. The jump
+  slide only starts from a settled page, otherwise it scrolls normally. Checked: This week → Places →
+  quick Forecast, the reverse, and four rapid taps in a row all end cleanly on the right page; the
+  This week ⇄ Places slide still works. Next: the postcard window and search should use the same
+  pattern for their opening and closing springs.

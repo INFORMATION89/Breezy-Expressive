@@ -128,8 +128,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.breezyweather.R
 import org.breezyweather.common.utils.helpers.SnackbarHelper
 import org.breezyweather.domain.location.model.applyDefaultPreset
@@ -273,12 +277,6 @@ fun SolsticeShell(
             messages.show(it)
         }
     }
-    LaunchedEffect(controller.request) {
-        controller.request?.let {
-            pager.animateScrollToPage(it)
-            controller.request = null
-        }
-    }
 
     val page = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.Black else Color.White
     val onPage = if (page == Color.Black) Color.White else Color.Black
@@ -297,6 +295,67 @@ fun SolsticeShell(
     val haze = remember { Animatable(0f) }
     val toolbarPosition = remember { Animatable(-1f) }
     var jumpDir by remember { mutableFloatStateOf(1f) }
+
+    // Navigation (reworked 2026-11-18): one place decides how to get to a page. Every page change
+    // (toolbar taps, requests from the host, "open Places", the toolbar slide) goes through here; a
+    // new one, or a finger, cancels the transition in progress and resets its state first, so
+    // nothing is left half-way (a fast second tap used to fight the first).
+    var navJob by remember { mutableStateOf<Job?>(null) }
+    suspend fun restJump() {
+        fadeOut.snapTo(0f)
+        haze.snapTo(0f)
+        toolbarPosition.snapTo(-1f)
+        leavingImage = null
+        capture = false
+    }
+    fun interruptNavigation() {
+        navJob?.cancel()
+        navJob = null
+    }
+    fun navigate(target: Int) {
+        navJob?.cancel()
+        navJob = scope.launch {
+            try {
+                restJump()
+                val here = (pager.currentPage + pager.currentPageOffsetFraction).roundToInt()
+                if (abs(target - here) >= 2 && abs(pager.currentPageOffsetFraction) < 0.01f) {
+                    // This week <-> Places (agreed): a slide with a frozen image of the page being left.
+                    val from = here.toFloat()
+                    capture = true
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    leavingImage = runCatching { leaving.toImageBitmap() }.getOrNull()
+                    jumpDir = if (target > from) 1f else -1f
+                    fadeOut.snapTo(1f)
+                    haze.snapTo(1f)
+                    toolbarPosition.snapTo(from)
+                    pager.scrollToPage(target)
+                    coroutineScope {
+                        launch { haze.animateTo(0f, tween(220)) }
+                        launch {
+                            toolbarPosition.animateTo(
+                                target.toFloat(),
+                                spring(dampingRatio = 1f, stiffness = Spring.StiffnessVeryLow * 2.5f)
+                            )
+                        }
+                        fadeOut.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+                    }
+                } else {
+                    pager.animateScrollToPage(target)
+                }
+            } finally {
+                // Finished or interrupted: always back at rest (non-cancellable, so this runs even
+                // when a new navigation cancelled us).
+                withContext(NonCancellable) { restJump() }
+            }
+        }
+    }
+    LaunchedEffect(controller.request) {
+        controller.request?.let {
+            controller.request = null
+            navigate(it)
+        }
+    }
     val searchBlur = rememberGraphicsLayer()
     val searchSharp = rememberGraphicsLayer()
     // Search grows out of the Places button (agreed motion); one spring drives open and close.
@@ -512,7 +571,7 @@ fun SolsticeShell(
                                 )
                             },
                             onDetails = actions::openDetails,
-                            onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
+                            onOpenPlaces = { navigate(PAGE_PLACES) }
                         )
                         else -> PlacesPage(
                             // The visit open in a window isn't listed until you pin it.
@@ -598,37 +657,8 @@ fun SolsticeShell(
                     weather = SkyWeather.of(location?.weather?.current?.weatherCode),
                     glass = glass,
                     labelShown = labelShown,
-                    onTab = { target ->
-                        scope.launch {
-                            if (abs(target - pager.currentPage) >= 2) {
-                                // Crossfade (agreed 2026-11-18): snapshot the page being left, switch
-                                // underneath, fade the snapshot out over the new page; a little blur on
-                                // both clears quickly. The toolbar highlight glides to the tapped tab.
-                                val from = pager.currentPage.toFloat()
-                                capture = true
-                                withFrameNanos { }
-                                withFrameNanos { }
-                                leavingImage = runCatching { leaving.toImageBitmap() }.getOrNull()
-                                fadeOut.snapTo(1f)
-                                haze.snapTo(1f)
-                                toolbarPosition.snapTo(from)
-                                pager.scrollToPage(target)
-                                launch { haze.animateTo(0f, tween(220)) }
-                                launch {
-                                    toolbarPosition.animateTo(
-                                        target.toFloat(),
-                                        spring(dampingRatio = 1f, stiffness = Spring.StiffnessVeryLow * 2.5f)
-                                    )
-                                    toolbarPosition.snapTo(-1f)
-                                }
-                                jumpDir = if (target > from) 1f else -1f
-                                fadeOut.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
-                                leavingImage = null
-                            } else {
-                                pager.animateScrollToPage(target)
-                            }
-                        }
-                    },
+                    onTab = { navigate(it) },
+                    onInterrupt = { interruptNavigation() },
                     position = { toolbarPosition.value.takeIf { it >= 0f } },
                     searchEnabled = !searchOpen,
                     onSearch = {
@@ -798,6 +828,8 @@ internal fun ShellToolbar(
     budDescription: String = stringResource(R.string.shell_search_elsewhere),
     budChecked: Boolean = false,
     position: () -> Float? = { null },
+    // A finger on the toolbar (the slide) stops any page transition in progress.
+    onInterrupt: () -> Unit = {},
 ) {
     val tabs = listOfNotNull(
         Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
@@ -880,7 +912,7 @@ internal fun ShellToolbar(
     ) {
         ToolbarTabs(
             pillWidth, open, shown, widths, starts, highlightX, highlightW, primary, onPrimary, onSurface, tabs,
-            pager, onTab
+            pager, onTab, onInterrupt
         )
         // It swells inside the pill first (a little bigger as it comes out), then shows its icon.
         val iconAlpha = ((bud - 0.6f) / 0.4f).coerceIn(0f, 1f)
@@ -946,6 +978,7 @@ private fun ToolbarTabs(
     tabs: List<Tab>,
     pager: PagerState,
     onTab: (Int) -> Unit,
+    onInterrupt: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -960,19 +993,20 @@ private fun ToolbarTabs(
                 val collapsedPx = 52.dp.toPx()
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
+                        onInterrupt()
                         scope.launch {
                             pop.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
                         }
                     },
                     onDragEnd = {
                         val position = pager.currentPage + pager.currentPageOffsetFraction
-                        scope.launch { pager.animateScrollToPage(position.roundToInt().coerceIn(0, tabs.lastIndex)) }
+                        onTab(position.roundToInt().coerceIn(0, tabs.lastIndex))
                         scope.launch {
                             pop.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow))
                         }
                     },
                     onDragCancel = {
-                        scope.launch { pager.animateScrollToPage(pager.currentPage) }
+                        onTab(pager.currentPage)
                         scope.launch { pop.animateTo(0f) }
                     },
                     onDrag = { change, amount ->
