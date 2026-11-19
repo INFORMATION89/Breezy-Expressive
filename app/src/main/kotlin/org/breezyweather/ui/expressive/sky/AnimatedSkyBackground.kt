@@ -24,6 +24,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,6 +42,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.LocalPageGlass
+import org.breezyweather.ui.expressive.components.LocalSkyGlass
+import org.breezyweather.ui.expressive.components.glassSource
 
 /**
  * The sky with a calm drift: the colour fields wander slowly (loops of about 45–85 s,
@@ -54,10 +59,29 @@ import androidx.lifecycle.repeatOnLifecycle
 fun AnimatedSkyBackground(
     state: SkyState,
     modifier: Modifier = Modifier,
+    // When set, the sky alone is recorded here (and provided to the content as [LocalSkyGlass]),
+    // so cards on it can blur it.
+    skyGlass: GlassSource? = null,
+    // The glass the whole screen is recorded in, provided to the content as [LocalPageGlass].
+    pageGlass: GlassSource? = null,
     content: @Composable () -> Unit = {},
 ) {
+    val inner: @Composable () -> Unit = if (skyGlass == null) {
+        content
+    } else {
+        {
+            CompositionLocalProvider(LocalSkyGlass provides skyGlass, LocalPageGlass provides pageGlass) {
+                content()
+            }
+        }
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && rememberSkyMotionAllowed()) {
-        ShaderSky(state, modifier, content)
+        ShaderSky(state, modifier, skyGlass, inner)
+    } else if (skyGlass != null) {
+        Box(modifier) {
+            SkyBackground(state, Modifier.fillMaxSize().glassSource(skyGlass))
+            inner()
+        }
     } else {
         SkyBackground(state, modifier, content)
     }
@@ -75,7 +99,7 @@ private fun rememberSkyMotionAllowed(): Boolean {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-private fun ShaderSky(state: SkyState, modifier: Modifier, content: @Composable () -> Unit) {
+private fun ShaderSky(state: SkyState, modifier: Modifier, skyGlass: GlassSource?, content: @Composable () -> Unit) {
     val shader = remember { RuntimeShader(SKY_AGSL) }
     val brush = remember(shader) { ShaderBrush(shader) }
     // Seconds on a wall-clock base, so the drift continues where it was when coming back.
@@ -100,6 +124,7 @@ private fun ShaderSky(state: SkyState, modifier: Modifier, content: @Composable 
         Box(
             Modifier
                 .fillMaxSize()
+                .then(if (skyGlass != null) Modifier.glassSource(skyGlass) else Modifier)
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawBehind {
                     val p = state.palette

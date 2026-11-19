@@ -1578,4 +1578,13 @@ Things to try on the phone before calling any motion done (debug and release bui
     the phase as a big left heading with the date, the moon (stars only on dark glass), the dial,
     and the details as a sentence with bold underlined values ("The moon is 70 % lit and growing.
     It sets at 02:05 and rises again at 14:22. Full moon in 5 days, 386,643 km away.").
+- **2026-11-19 (checked in the debug app on the Pixel):**
+  - **Moon card material:** tinted with the forecast's sky (its base colour). It's darkened when
+    it's night at the place, so the card goes dark mode with light text and stars, and lightened by
+    day with the sky's text colour. It blurs the screen it was opened from, home or a postcard
+    window, not always the home page.
+  - **Real blur on the Forecast cards:** the sky alone is recorded in its own glass source (home
+    sky and each postcard window's sky, provided as `LocalSkyGlass`). The Forecast's glass cards
+    (hourly, rain) blur it under their tint, so the grain and glow soften behind them like
+    frosted glass. Without a sky source (older Android) they keep the plain tint.
 

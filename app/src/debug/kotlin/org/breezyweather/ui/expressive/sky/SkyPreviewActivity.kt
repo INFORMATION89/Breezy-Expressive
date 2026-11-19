@@ -89,11 +89,7 @@ class SkyPreviewActivity : ComponentActivity() {
                         }
                     }
                     if (animated) {
-                        AnimatedSkyBackground(
-                            sky,
-                            skyModifier,
-                            body
-                        )
+                        AnimatedSkyBackground(sky, skyModifier, content = body)
                     } else {
                         SkyBackground(sky, skyModifier, body)
                     }

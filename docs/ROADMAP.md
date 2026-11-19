@@ -64,6 +64,7 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   properly.
 
 ### Refinement
+- [x] Real blur behind the Forecast cards; moon card in the forecast's tint, dark at night (2026-11-19).
 - [ ] ⭐ **One blur system,** with the same materials everywhere. Blur behind all card backgrounds,
   including the moon button.
 - [ ] Look at how Android 17 blurs (live, cheap) and move glass and edge blur onto it.

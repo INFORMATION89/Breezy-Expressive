@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +80,15 @@ fun rememberGlassSource(): GlassSource {
     val layer = rememberGraphicsLayer()
     return remember(layer) { GlassSource(layer) }
 }
+
+/**
+ * The sky alone (no pages), for cards that sit on it: they blur the sky behind them, like real
+ * frosted glass. Provided by the sky that draws it (the home sky, or a postcard window's own).
+ */
+val LocalSkyGlass = compositionLocalOf<GlassSource?> { null }
+
+/** The whole screen a page is on (sky and pages), for sheets opened from it, like the moon card. */
+val LocalPageGlass = compositionLocalOf<GlassSource?> { null }
 
 /** Marks the content that glass elements should show, blurred, behind them. */
 fun Modifier.glassSource(source: GlassSource): Modifier = this

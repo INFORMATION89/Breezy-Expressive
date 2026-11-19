@@ -180,8 +180,10 @@ import org.breezyweather.common.extensions.formatMeasure
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.domain.weather.model.getDescription
+import org.breezyweather.ui.expressive.components.LocalSkyGlass
 import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.edgeBlur
+import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
@@ -319,7 +321,7 @@ internal fun ForecastPage(
                 Text(it, color = text.copy(alpha = 0.72f), style = MaterialTheme.typography.bodyLarge)
             }
             Spacer(Modifier.height(28.dp))
-            SunPath(location, now, text)
+            SunPath(location, now, text, sky.palette)
             Spacer(Modifier.height(20.dp))
             // The order follows what matters now: rain near moves its timeline right under the sun
             // path; otherwise a short "no rain" line sits after the hourly card.
@@ -360,7 +362,12 @@ private fun EmptyForecast(text: Color, onOpenPlaces: () -> Unit) {
 
 /** Sunrise left, sunset right, the sun's arc between with a dot where it is now. */
 @Composable
-private fun SunPath(location: Location, now: Long, text: Color) {
+private fun SunPath(
+    location: Location,
+    now: Long,
+    text: Color,
+    palette: org.breezyweather.ui.expressive.sky.SkyPalette,
+) {
     val context = LocalContext.current
     val weather = location.weather ?: return
     val sun = weather.today?.sun ?: return
@@ -495,7 +502,7 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             }
             if (night) {
                 // At night: the moon's phase, outlined so it reads as a button (opens the moon card).
-                MoonButton(location, now, text)
+                MoonButton(location, now, text, palette, night)
                 Spacer(Modifier.weight(1f))
             } else if (middle != null) {
                 Text(
@@ -2157,20 +2164,24 @@ private fun Modifier.dashedEdge(color: Color, corner: androidx.compose.ui.unit.D
 private fun GlassCard(text: Color, tint: Color? = null, content: @Composable () -> Unit) {
     val light = text.red + text.green + text.blue < 1.5f // dark text → light sky → white glass
     val glass = tint ?: Color.White
+    val alpha = when {
+        light -> 0.34f
+        tint != null -> 0.24f
+        else -> 0.10f
+    }
+    val fill = glass.copy(alpha = alpha)
+    val shape = RoundedCornerShape(24.dp)
+    // Real frosted glass: the sky behind it, blurred, under the tint (plain tint without a sky).
+    val sky = LocalSkyGlass.current
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                glass.copy(
-                    alpha = if (light) {
-                        0.34f
-                    } else if (tint != null) {
-                        0.24f
-                    } else {
-                        0.10f
-                    }
-                )
+            .then(
+                if (sky != null) {
+                    Modifier.glass(sky, shape, fill, edge = Color.White.copy(alpha = 0.14f))
+                } else {
+                    Modifier.clip(shape).background(fill)
+                }
             )
             .padding(16.dp)
     ) { Column { content() } }

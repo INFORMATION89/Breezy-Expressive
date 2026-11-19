@@ -49,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -76,6 +77,8 @@ import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.LocalPageGlass
+import org.breezyweather.ui.expressive.components.LocalSkyGlass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
@@ -192,11 +195,13 @@ internal fun PlaceWindow(
         ) {
             // The window's own glass: its toolbar blurs the window's sky and pages, like the home toolbar.
             val windowGlass = rememberGlassSource()
+            // The window's sky alone, for its Forecast cards' blur.
+            val windowSky = rememberGlassSource()
             Box(Modifier.fillMaxSize().glassSource(windowGlass)) {
                 // The postcard's sky is what grows: laid out full screen and scaled down onto the card.
                 SkyBackground(
                     state = sky,
-                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                    modifier = Modifier.fillMaxSize().glassSource(windowSky).graphicsLayer {
                         val p = progress().coerceIn(0f, 1f)
                         val from = origin ?: Rect(0f, 0f, size.width, size.height)
                         val left = from.left * (1f - p)
@@ -234,16 +239,21 @@ internal fun PlaceWindow(
                                 abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
                             }
                         } else {
-                            ForecastPage(
-                                location = location,
-                                sky = sky,
-                                now = now,
-                                refreshing = false,
-                                onRefresh = {},
-                                onDetails = onDetails,
-                                onOpenPlaces = onClose,
-                                showLocalTime = false
-                            )
+                            CompositionLocalProvider(
+                                LocalSkyGlass provides windowSky,
+                                LocalPageGlass provides windowGlass
+                            ) {
+                                ForecastPage(
+                                    location = location,
+                                    sky = sky,
+                                    now = now,
+                                    refreshing = false,
+                                    onRefresh = {},
+                                    onDetails = onDetails,
+                                    onOpenPlaces = onClose,
+                                    showLocalTime = false
+                                )
+                            }
                         }
                     }
                     // "Visiting" until you pin it, and its local time when it differs from yours.

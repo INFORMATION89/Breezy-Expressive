@@ -287,6 +287,8 @@ fun SolsticeShell(
     // System bar icons follow whatever is behind them.
 
     val glass = rememberGlassSource()
+    // The sky alone, for the Forecast cards' blur.
+    val skyGlass = rememberGlassSource()
     // Tab jump This week <-> Places: a real crossfade. The page being left is snapshotted and drawn on
     // top fading out, the new page is already underneath; both carry a little blur that clears
     // quickly. The toolbar's highlight glides across on its own.
@@ -472,7 +474,7 @@ fun SolsticeShell(
     }
     Box(Modifier.fillMaxSize()) {
         // Everything the toolbar's glass shows, blurred, behind it.
-        AnimatedSkyBackground(sky, Modifier.fillMaxSize().glassSource(glass)) {
+        AnimatedSkyBackground(sky, Modifier.fillMaxSize().glassSource(glass), skyGlass = skyGlass, pageGlass = glass) {
             Box(
                 Modifier
                     .fillMaxSize()

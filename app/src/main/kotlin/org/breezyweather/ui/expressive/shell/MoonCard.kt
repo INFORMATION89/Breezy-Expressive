@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -166,10 +167,18 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
 
 /** The moon phase button under the sun path: always visible, outlined so it reads as a button. */
 @Composable
-internal fun MoonButton(location: Location, now: Long, text: Color) {
+internal fun MoonButton(
+    location: Location,
+    now: Long,
+    text: Color,
+    palette: org.breezyweather.ui.expressive.sky.SkyPalette,
+    night: Boolean,
+) {
     val context = LocalContext.current
     val (angle, lit) = moonAt(Date(now))
     var bounds by remember { androidx.compose.runtime.mutableStateOf<Rect?>(null) }
+    // The screen it's on (home, or a postcard window): the card blurs that.
+    val pageGlass = org.breezyweather.ui.expressive.components.LocalPageGlass.current
     val label = listOfNotNull(
         breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context),
         "${(lit * 100).roundToInt()} %"
@@ -188,7 +197,10 @@ internal fun MoonButton(location: Location, now: Long, text: Color) {
             }
             .clip(CircleShape)
             .border(1.dp, text.copy(alpha = 0.35f), CircleShape)
-            .clickable { MoonCardState.show(location, now, bounds, label) }
+            .clickable {
+                MoonCardState.glass = pageGlass
+                MoonCardState.show(location, now, bounds, label, palette, night)
+            }
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(label, color = text, style = MaterialTheme.typography.labelLarge)
@@ -204,12 +216,28 @@ internal object MoonCardState {
     var origin: Rect? = null
     var label: String = ""
 
+    /** The forecast's sky the card is tinted with, and whether it's night at the place (dark card). */
+    var palette: org.breezyweather.ui.expressive.sky.SkyPalette? = null
+    var night: Boolean = true
+
+    /** The glass of the screen the card was opened from (null: the shell's). */
+    var glass: GlassSource? = null
+
     /** 0 closed … 1 open; the shell reads it to recede the page, like search. */
     var progress by mutableFloatStateOf(0f)
 
-    fun show(location: Location, now: Long, from: Rect?, text: String) {
+    fun show(
+        location: Location,
+        now: Long,
+        from: Rect?,
+        text: String,
+        sky: org.breezyweather.ui.expressive.sky.SkyPalette,
+        isNight: Boolean,
+    ) {
         origin = from
         label = text
+        palette = sky
+        night = isNight
         request = location to now
         open = true
     }
@@ -286,7 +314,20 @@ internal fun MoonCardOverlay(glass: GlassSource) {
             )
         }
     }
-    val ink = MaterialTheme.colorScheme.onSurface
+    // The card takes the forecast's tint: the sky's base colour, darkened at night (the card goes
+    // dark mode when it's night at the place) and lightened by day.
+    val sky = MoonCardState.palette
+    val night = MoonCardState.night
+    val tint = when {
+        sky == null -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+        night -> lerp(sky.base, Color(0xFF05050A), 0.55f).copy(alpha = 0.62f)
+        else -> lerp(sky.base, Color.White, 0.55f).copy(alpha = 0.55f)
+    }
+    val ink = when {
+        sky == null -> MaterialTheme.colorScheme.onSurface
+        night -> Color(0xFFEDEBF5)
+        else -> sky.text
+    }
     Box(Modifier.fillMaxSize()) {
         // The page behind goes a little darker; pulling down lightens it.
         Box(
@@ -322,8 +363,8 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                         placeable.place(left.roundToInt(), topEdge.roundToInt())
                     }
                 }
-                // The search card's glass.
-                .glass(glass, cardShape, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
+                // The search card's glass, in the forecast's tint.
+                .glass(MoonCardState.glass ?: glass, cardShape, tint)
                 .clip(cardShape)
                 // Vertical drags anywhere on it pull it down (and, as the top pointer handler, taps on
                 // the card no longer reach the dimmed page behind).
@@ -360,7 +401,7 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                     .graphicsLayer { alpha = inside() }
                     .width(36.dp)
                     .height(4.dp)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                    .background(ink.copy(alpha = 0.4f), CircleShape)
             )
         }
     }
