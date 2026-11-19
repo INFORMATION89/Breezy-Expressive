@@ -39,7 +39,6 @@ import org.breezyweather.ui.common.composables.AnimatedVisibilitySlideVertically
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
 import org.breezyweather.ui.common.widgets.insets.FitStatusBarTopAppBar
-import org.breezyweather.ui.expressive.components.GlassBackend
 import org.breezyweather.ui.main.utils.RefreshErrorType
 import org.breezyweather.ui.settings.activities.SettingsActivity
 import org.breezyweather.ui.settings.preference.bottomInsetItem
@@ -106,20 +105,6 @@ fun DebugSettingsScreen(
                     }
                 }
             }
-            // Solstice: compare glass renderers (prototype, not saved). Shown in every build so it
-            // can be tried on a release-like (profile) build.
-            switchPreferenceItem(R.string.settings_debug_haze_glass) { id ->
-                SwitchPreferenceView(
-                    titleId = id,
-                    summaryOnId = R.string.settings_debug_haze_glass_on,
-                    summaryOffId = R.string.settings_debug_haze_glass_off,
-                    checked = GlassBackend.useHaze,
-                    isFirst = true,
-                    isLast = true,
-                    onValueChanged = { GlassBackend.useHaze = it }
-                )
-            }
-            largeSeparatorItem()
             clickablePreferenceItem(R.string.settings_debug_dump_crash_logs_title) { id ->
                 PreferenceViewWithCard(
                     titleId = id,

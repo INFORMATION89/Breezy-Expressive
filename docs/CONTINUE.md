@@ -112,8 +112,8 @@ by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals 
    installs as `io.github.information89.solstice.profile`. Debug builds from different computers
    are signed with different keys: copy `~/.android/debug.keystore` between them to avoid
    reinstalling.
-3. Decide the Solstice `MotionScheme` (PLAN.md, "Motion framework": switches get slower with only
-   five tokens; accept or allow a `snappy` token).
+3. ~~Decide the Solstice `MotionScheme`~~ (done 2026-11-19: built, with a sixth token `snappy`).
+   Glass is now Haze for good; edge blur stays ours (Haze measured slower there). See the PLAN.md log.
 4. M3: the moon card on `Morph`/`MotionValue`, fixing its three open issues.
 5. Finish the tokens (remaining literals) alongside M4.
 

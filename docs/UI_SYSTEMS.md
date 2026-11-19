@@ -58,6 +58,9 @@ The suspicion is partly right.
 | **Reorderable** (Calvin-LL) | Drag to reorder in lazy lists and grids | 3.1.0 (Apr 2026), Apache-2.0, actively maintained | Replace `ReorderList.kt` |
 | **Continuous corners** (Kyant0 Capsule / Shapes) | iOS-style squircle corners | Apache-2.0; used by Glasmio | Try for cards and sheets as part of the shape tokens |
 
+**Haze, decided 2026-11-19:** Haze draws the glass (same speed and look as ours on the Pixel 7);
+the edge blur stays ours (Haze's progressive content blur measured slower). Numbers in the PLAN.md log.
+
 ## Proposed order (to agree)
 
 1. **Tokens first (cheap, no visual risk):** spacing, sizes, shapes, palette, type names, and the

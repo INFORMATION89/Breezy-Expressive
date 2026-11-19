@@ -742,11 +742,10 @@ Things to try on the phone before calling any motion done (debug and release bui
   otherwise).
 - `gradle.properties`: fork links filled in (`app.report_issue`, source, releases, install, privacy,
   GitHub org/repo/prefix).
-- `ui/settings/compose/DebugSettingsScreen.kt`: "Glass: Haze (prototype)" switch, shown in every
-  build (2026-11-19).
 - `app/build.gradle.kts`: `profile` build type (release code, debug-signed, `.profile`) (2026-11-19).
 - `settings.gradle.kts`, `app/build.gradle.kts`, `gradle/libs.versions.toml`: `:motion` module and
-  the Haze dependency (2026-11-19).
+  the Haze dependency (2026-11-19). (`DebugSettingsScreen.kt` had a Haze test switch; removed again,
+  so it matches upstream.)
 - Added: `motion/` (Apache-2.0 module, 2026-11-19).
 - Added: `res/values/strings_expressive.xml` (new strings kept out of upstream's `strings.xml`;
   English only so far).
@@ -1401,6 +1400,22 @@ Things to try on the phone before calling any motion done (debug and release bui
     A tie on speed, and the same look over the sky (screenshots). By the plan's rule (keep ours
     only if Haze is slower) Haze can replace `Glass.kt`; before that: per-frame glass alpha (moon
     card) and the edge blur on Haze's progressive blur.
+
+- **2026-11-19, decided with the user:**
+  - **Solstice `MotionScheme` built** with a sixth token `snappy` (0.2 s / 0.9) for Material's fast
+    springs (`5c71638`).
+  - **Glass on Haze for good:** `Glass.kt` is Haze only (same API, 5 call sites unchanged); our
+    backdrop recorder and the debug switch are gone. The glass fade (`alpha`) now fades the
+    element's layer every frame (fine for the moon card: its content appears after the glass).
+  - **Edge blur stays ours:** Haze's progressive content blur was measured too (profile build, same
+    gestures) and was slower, since it blurs the whole page through a mask instead of two bands:
+
+    | Profile build | Janky | Median | 90th | 99th |
+    |---|---|---|---|---|
+    | Haze glass + Haze edge blur | 1.2–1.6 % | 16–18 ms | 29–31 ms | 42–53 ms |
+    | Haze glass + our edge blur | 1.8–3.2 % | 13–15 ms | 22–24 ms | 31–36 ms |
+
+    So `EdgeBlur.kt` keeps our band blur (the plan's rule: keep ours where Haze is slower).
 
 ## Backlog (user notes, 2026-11-18)
 
