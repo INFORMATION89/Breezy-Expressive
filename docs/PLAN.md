@@ -515,6 +515,118 @@ before choosing; check each license.
 - Same glass look as the toolbar, sitting just above it. Motion (appear, swipe away) to propose to
   the user before building.
 
+## Motion framework (proposed 2026-11-19, to agree before building)
+
+Goal: get every animation to iOS-level refinement with **one small system** that the whole app (and
+other projects) uses, instead of building each morph by hand. The rules stay the ones in
+[MOTION.md](MOTION.md); this is how to build them once.
+
+### Why the current moon-card approach doesn't scale
+
+- **It fights Compose's shared bounds.** The morph seeks a `SharedTransitionLayout` from an
+  `Animatable`, so every shared part needs linear 1000 ms "fake" tweens (`MOON_SPAN`), the seek is
+  clamped to 0.0001…0.9999 and wrapped in `runCatching`, and it must stay one endless seek towards
+  "open" or the button and sheet get rebuilt mid-motion and drop frames. Each new morph would repeat
+  all of that.
+- **Only the moon card uses the tokens.** Elsewhere (shell, pages, search, reorder) there are 28
+  hand-written springs, 12 tweens and 13 `animate*AsState`, with ~15 different damping/stiffness
+  pairs. That's the main reason motion doesn't feel like one app.
+- **Timings are written per part** (label 15 %, material 30 %, content 35–70 %, pill back at 90 %)
+  as tween fractions, so choreography lives in several places.
+
+### The idea: one number per interaction, everything else derived
+
+iOS sheets and menus work in three layers (Glasmio's UIKit notes, `ios-sheet-motion.md`,
+`dropdown-motion.md`): **layout** (where things rest), **interaction** (finger, projection,
+resistance, picking a target), **presentation** (springs that keep their velocity when retargeted).
+We copy that split:
+
+1. **One `MotionValue` per interaction** (an `Animatable` wrapper). 0 = closed, 1 = open; it can go
+   past both ends (overshoot, rubber-band). The finger moves it directly; letting go hands the
+   finger's velocity to the spring; a new touch catches it mid-flight. Open, close, drag and back
+   gesture all just move this one value.
+2. **Geometry is computed, not shared.** Source and target register as **anchors** (their bounds,
+   corner radii, colours). The morphing surface is drawn in an overlay with
+   `lerp(source, target, p)` for position, size, corners and colour. No `SharedTransitionLayout`, no
+   seek, no fake tweens. Overshoot comes for free (lerp past 1), and the source and target stay
+   composed and hidden, so nothing is rebuilt during the motion.
+3. **Choreography is a list of windows on that number.** For example `label = 0…0.15`,
+   `material = 0…0.30`, `content = 0.35…0.70`. A part reads its window (`p.window(0.35f, 0.70f)`)
+   and maps it to alpha / scale / offset with ready-made `reveal()` / `handOff()` modifiers.
+   Closing plays the same windows backwards, so content leaves first without extra code;
+   different closing windows are allowed when needed.
+4. **Read the value only in layout and draw** (`graphicsLayer {}`, `Modifier.layout`, `drawBehind`),
+   never in composition, so a morph doesn't recompose 120 times a second. Content is laid out once
+   at its final size (already learned on the moon sheet).
+
+Text morphs (button label into heading) are one more anchor pair: the heading is drawn at its final
+size and scaled/translated from the label's bounds, with the label and heading handing over early,
+as now.
+
+### Springs written the iOS way
+
+Tokens are written as **response (s) + damping ratio**, like UIKit and SwiftUI, and converted with
+`stiffness = (2π / response)²`. Today's values are already close to iOS:
+
+| Token | Now (damping / stiffness) | As response / damping | iOS reference |
+|---|---|---|---|
+| `container` | 0.78 / 380 | 0.32 s / 0.78 | menu morph 0.30 s / 0.80 |
+| `dismiss` | 1 / 260 | 0.39 s / 1 | sheet 0.344 s / 1 |
+| `control` | 1 / 400 | 0.31 s / 1 | |
+| `content` | 0.85 / 400 | 0.31 s / 0.85 | |
+| `settle` | 1 / 400 | 0.31 s / 1 | |
+
+Possible additions, to agree: `snappy` for small toggles and icons, `gentle` for big page moves, and
+`press` for press morphs. No other springs in the app; anything new becomes a token first.
+
+### Release rules taken from UIKit (Glasmio's notes)
+
+- **Projection:** where the value would rest after a fling, `deceleration 0.99` for sheets (as now).
+- **Ignore slow flicks:** release speeds under ~250 dp/s count as zero, so a slow lift doesn't bounce.
+- **Fast flick moves one step:** above ~1000 dp/s, if projection would land on the same resting
+  point, go to the next one in the flick's direction.
+- **Rubber-band** with coefficient 0.55 and a limit per edge from the layout (iOS: up to 100 pt past
+  the top, 25 % of the height up to 200 pt past the bottom), not one global range.
+- **Velocity past a limit is scaled down** by the same rubber-band fraction, so a release from an
+  over-pull doesn't shoot off.
+- **Interrupting keeps the current position and velocity.**
+
+### What the framework is
+
+A standalone Gradle module, `:motion`, that only depends on Compose (no Breezy or Solstice code), so
+it can go into other projects as is. Rough API:
+
+- `Motion` tokens (`Motion.container`, …) and `Motion.spring(response, damping)`.
+- `rememberMotionValue()` with `animateTo`, `drag(delta)`, `release(velocity)`, rest points and
+  per-edge rubber-band limits.
+- `Modifier.motionDrag(value, orientation, range)` for a gesture that drives a value.
+- `MorphHost` + `Modifier.morphAnchor(key)` + `Morph(key, value) { … }` for container transforms.
+- `p.window(from, to)`, `Modifier.reveal(...)`, `Modifier.handOff(...)` for choreography.
+- `Motion.reduced`: with "Remove animations" on, morphs become a short fade (no scaling or travel).
+- `Modifier.pressMorph()` on the same tokens (replaces `PressMorph.kt`'s `animateDpAsState`).
+
+Not in it: glass, blur, colours, layouts. Those stay in Solstice and only read the motion value.
+
+### Steps
+
+1. **M0, agree:** this plan, the token list and values, and the module's name and license (Solstice
+   is LGPL-3.0; the module is our own code, so it could be Apache-2.0 for easier reuse).
+2. **M1, core:** tokens, `MotionValue`, drag/release with the rules above, unit tests for the
+   maths (spring conversion, projection, rubber-band, target choice).
+3. **M2, morph:** anchors, overlay, geometry and text morph, choreography windows, reduced motion.
+4. **M3, moon card on it:** remove `MoonSharedLayout`, the seek and the fake tweens; it must look the
+   same or better, with the three open moon issues fixed (dark frame at the start, "· 71 %" drift,
+   hitch after closing). Measure janky frames on a release build against today's ~10 %.
+5. **M4, move everything over:** search sheet, postcard window, floating button budding from the
+   toolbar, Places card drag, tab jumps, screen push, reorder, press morphs. Replace every hand-written
+   spring and tween; `grep "spring(\|tween("` outside `:motion` should end up empty.
+6. **M5, a motion lab:** a debug-only screen with each pattern, a slow-motion switch and a frame
+   counter, to compare against iOS recordings side by side. Then write the module's README so it can
+   be used in another project.
+
+Each step goes through the motion test checklist below on the Pixel 7 (release build for
+smoothness).
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -1649,3 +1761,8 @@ Things to try on the phone before calling any motion done (debug and release bui
     - A slight drift of "· 71 %" at the end of the close.
     - A hitch after the close has finished, while the card is taken down.
 
+- **2026-11-19 (proposed, not built):** **Motion framework** plan added (section "Motion framework"):
+  one motion value per interaction, geometry computed from anchors instead of a seeked
+  `SharedTransitionLayout`, choreography as windows on that value, springs written as response +
+  damping like iOS, UIKit's release rules (from Glasmio's notes), packaged as a standalone `:motion`
+  module. Steps M0 to M5; M0 (agree the plan, tokens, name and license) is next.
