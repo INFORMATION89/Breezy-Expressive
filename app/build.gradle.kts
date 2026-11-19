@@ -490,7 +490,6 @@ dependencies {
     implementation(libs.compose.ui.util)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons)
     implementation(libs.navigation.compose)
     lintChecks(libs.compose.lint.checks)
 

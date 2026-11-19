@@ -35,8 +35,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -94,6 +92,7 @@ import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.AlertDialogConfirmOnly
 import org.breezyweather.ui.common.composables.AlertDialogNoPadding
 import org.breezyweather.ui.common.composables.LocationPreference
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.shell.ShellActions
 import org.breezyweather.ui.expressive.shell.ShellController
 import org.breezyweather.ui.expressive.shell.ShellMessage
@@ -720,7 +719,7 @@ class MainActivity : BreezyActivity(), HomeFragment.Callback, ManagementFragment
                                 trailingContent = {
                                     it.error.showDialogAction?.let {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                            imageVector = SolsticeIcons.Help,
                                             contentDescription = stringResource(R.string.action_help)
                                         )
                                     }

@@ -1,10 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols Rounded "wb_twilight" (weight 400, grade 0, optical size 24, fill 0). Apache-2.0, google/material-design-icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M734,404L678,346L764,262L820,318L734,404ZM80,800L80,720L880,720L880,800L80,800ZM440,280L440,160L520,160L520,280L440,280ZM226,402L142,316L198,260L284,346L226,402ZM297,560L663,560Q640,506 591,473Q542,440 480,440Q418,440 369,473Q320,506 297,560ZM200,640Q200,523 281.5,441.5Q363,360 480,360Q597,360 678.5,441.5Q760,523 760,640L200,640ZM480,560Q480,560 480,560Q480,560 480,560Q480,560 480,560Q480,560 480,560Z" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M792-670q11 11 11 28t-11 28l-29 29q-12 12-28.5 12T706-585q-12-12-11.5-28.5T707-642l29-29q12-11 28.5-10.5T792-670ZM120-160q-17 0-28.5-11.5T80-200q0-17 11.5-28.5T120-240h720q17 0 28.5 11.5T880-200q0 17-11.5 28.5T840-160H120Zm360-640q17 0 28.5 11.5T520-760v40q0 17-11.5 28.5T480-680q-17 0-28.5-11.5T440-720v-40q0-17 11.5-28.5T480-800ZM170-672q11-11 28-11t28 11l29 29q12 12 12 28.5T255-586q-12 11-29 11t-28-12l-29-29q-11-12-10.5-28.5T170-672Zm127 272h366q-23-54-72-87t-111-33q-62 0-111 33t-72 87Zm-97 80q0-117 81.5-198.5T480-600q117 0 198.5 81.5T760-320H200Zm280-80Z" />
+    </group>
 </vector>

@@ -41,10 +41,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -111,6 +107,7 @@ import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
 import org.breezyweather.ui.common.widgets.insets.BWCenterAlignedTopAppBar
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.main.MainActivity
 import org.breezyweather.ui.main.MainActivityViewModel
 import org.breezyweather.ui.main.adapters.location.LocationAdapter
@@ -227,7 +224,7 @@ open class ManagementFragment : MainModuleFragment(), TouchReactor {
                                 }
                             ) {
                                 Icon(
-                                    Icons.Outlined.BugReport,
+                                    SolsticeIcons.BugReport,
                                     stringResource(R.string.action_add_debug_location)
                                 )
                             }
@@ -244,7 +241,7 @@ open class ManagementFragment : MainModuleFragment(), TouchReactor {
                                 }
                             ) {
                                 Icon(
-                                    Icons.Outlined.MyLocation,
+                                    SolsticeIcons.MyLocation,
                                     stringResource(R.string.action_add_current_location)
                                 )
                             }
@@ -257,7 +254,7 @@ open class ManagementFragment : MainModuleFragment(), TouchReactor {
                             }
                         ) {
                             Icon(
-                                Icons.Outlined.Add,
+                                SolsticeIcons.Add,
                                 stringResource(R.string.action_add_new_location)
                             )
                         }
@@ -410,7 +407,7 @@ open class ManagementFragment : MainModuleFragment(), TouchReactor {
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.MyLocation,
+                                imageVector = SolsticeIcons.Small.MyLocation,
                                 contentDescription = stringResource(R.string.location_current),
                                 modifier = Modifier.size(ButtonDefaults.IconSize)
                             )
@@ -429,7 +426,7 @@ open class ManagementFragment : MainModuleFragment(), TouchReactor {
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.BugReport,
+                                    imageVector = SolsticeIcons.Small.BugReport,
                                     contentDescription = stringResource(R.string.settings_debug),
                                     modifier = Modifier.size(ButtonDefaults.IconSize)
                                 )

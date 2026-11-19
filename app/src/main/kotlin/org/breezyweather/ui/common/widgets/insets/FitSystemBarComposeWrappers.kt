@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
@@ -45,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.CollapsingTopBar
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import kotlin.math.ln
 
 private val topAppBarElevation = 6.dp
@@ -98,7 +97,7 @@ fun FitStatusBarTopAppBar(
     navigationIcon = {
         IconButton(onClick = onBackPressed) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = SolsticeIcons.ArrowBack,
                 contentDescription = stringResource(R.string.action_back),
                 tint = MaterialTheme.colorScheme.onSurface
             )
@@ -122,7 +121,7 @@ fun BWCenterAlignedTopAppBar(
         {
             IconButton(onClick = onBackPressed) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = SolsticeIcons.ArrowBack,
                     contentDescription = stringResource(R.string.action_back),
                     tint = MaterialTheme.colorScheme.onSurface
                 )

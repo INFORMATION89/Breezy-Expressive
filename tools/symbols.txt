@@ -1,0 +1,42 @@
+# Material Symbols (Rounded) in SolsticeIcons.kt. One per line: name [fill] [mirror].
+# `fill` adds a <Name>Fill variant (fill 1, for on/selected); `mirror` flips it in right-to-left.
+# Regenerate: python3 tools/make_symbols.py
+add
+add_location_alt
+arrow_back mirror
+bug_report
+calendar_month
+check
+clear_night
+close
+cloud
+cloud_off
+delete
+explore
+flight_land
+foggy
+help mirror
+history
+hourglass_empty
+info
+keyboard
+map
+more_vert
+my_location
+near_me fill
+partly_cloudy_day
+partly_cloudy_night
+percent
+public
+push_pin fill
+rainy
+schedule
+search
+search_off
+settings
+star fill
+sunny
+thunderstorm
+tune
+water_drop
+weather_snowy

@@ -1,10 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols Rounded "factory" (weight 400, grade 0, optical size 24, fill 0). Apache-2.0, google/material-design-icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M80,880L80,399L360,280L360,360L560,280L560,400L880,400L880,880L80,880ZM160,800L800,800L800,480L480,480L480,398L280,478L280,400L160,453L160,800ZM440,720L520,720L520,560L440,560L440,720ZM280,720L360,720L360,560L280,560L280,720ZM600,720L680,720L680,560L600,560L600,720ZM880,400L680,400L720,80L840,80L880,400ZM160,800L160,800L280,800L280,800L480,800L480,800L800,800L800,800L160,800Z" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M160-80q-33 0-56.5-23.5T80-160v-348q0-24 13-44t36-30l175-74q20-8 38 3t18 33v20l145-58q20-8 37.5 4t17.5 33v61h320v400q0 33-23.5 56.5T800-80H160Zm0-80h640v-320H480v-82l-200 80v-78l-120 53v347Zm280-80h80v-160h-80v160Zm-160 0h80v-160h-80v160Zm320 0h80v-160h-80v160Zm280-320H680l36-285q2-15 13-25t26-10h50q15 0 26 10t13 25l36 285ZM160-160h640-640Z" />
+    </group>
 </vector>

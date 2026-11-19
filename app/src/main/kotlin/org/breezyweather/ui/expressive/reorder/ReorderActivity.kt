@@ -31,9 +31,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +55,7 @@ import org.breezyweather.domain.settings.SettingsChangedMessage
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
 import org.breezyweather.ui.common.widgets.insets.FitStatusBarTopAppBar
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
 
@@ -179,7 +177,7 @@ private fun <T : BaseEnum> ReorderScreen(spec: Spec<T>, onBack: () -> Unit) {
             trailing = { item ->
                 spec.configure(item)?.let { configure ->
                     IconButton(onClick = { (context as? Activity)?.let(configure) }) {
-                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
+                        Icon(SolsticeIcons.Settings, contentDescription = stringResource(R.string.action_settings))
                     }
                 }
             },
@@ -213,7 +211,7 @@ private fun <T : BaseEnum> ReorderScreen(spec: Spec<T>, onBack: () -> Unit) {
                                 AssistChip(
                                     onClick = { spec.shown.add(item) },
                                     label = { Text(item.getName(context)) },
-                                    leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) }
+                                    leadingIcon = { Icon(SolsticeIcons.Add, contentDescription = null) }
                                 )
                             }
                         }

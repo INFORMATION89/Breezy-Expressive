@@ -36,8 +36,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
@@ -76,6 +74,7 @@ import org.breezyweather.R
 import org.breezyweather.common.extensions.pxToDp
 import org.breezyweather.common.extensions.spToPx
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import kotlin.math.roundToInt
 
 @Composable
@@ -113,7 +112,7 @@ fun DetailsItem(
                 )
                 if (withHelp) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                        imageVector = SolsticeIcons.Help,
                         // TooltipBox already takes care of adding the info that there is a tooltip
                         contentDescription = null,
                         modifier = Modifier
@@ -214,7 +213,7 @@ fun NighttimeLabelWithInfo(
                 maxLines = 1
             )
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                imageVector = SolsticeIcons.Help,
                 contentDescription = null, // TooltipBox already takes care of adding the info that there is a tooltip
                 modifier = Modifier
                     .fillMaxHeight()

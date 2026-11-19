@@ -35,16 +35,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NearMe
-import androidx.compose.material.icons.outlined.AcUnit
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Dehaze
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Thunderstorm
-import androidx.compose.material.icons.outlined.WbCloudy
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -150,7 +140,7 @@ internal fun ForecastPage(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (location.isCurrentPosition) {
                     Icon(
-                        Icons.Filled.NearMe,
+                        SolsticeIcons.Small.NearMeFill,
                         contentDescription = stringResource(R.string.location_current),
                         tint = text,
                         modifier = Modifier.size(18.dp)
@@ -182,7 +172,7 @@ internal fun ForecastPage(
                 timeDifference(location.timeZone, now)?.let { diff ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = Space.Half)) {
                         Icon(
-                            Icons.Outlined.Schedule,
+                            SolsticeIcons.Small.Schedule,
                             contentDescription = null,
                             tint = text.copy(alpha = 0.72f),
                             modifier = Modifier.size(Sizes.IconSmall)
@@ -518,13 +508,13 @@ private fun hourlyHeadline(context: Context, hours: List<breezyweather.domain.we
     }
 }
 
-/** A small icon for an hour (icon design direction to revisit). */
+/** The icon for a weather condition, day or night. Used by the hours, the week, the postcard and the toolbar. */
 internal fun hourIcon(weather: SkyWeather, night: Boolean): ImageVector = when (weather) {
-    SkyWeather.CLEAR -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbSunny
-    SkyWeather.PARTLY_CLOUDY -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbCloudy
-    SkyWeather.OVERCAST -> Icons.Outlined.Cloud
-    SkyWeather.RAIN -> SolsticeIcons.RainCloud
-    SkyWeather.THUNDERSTORM -> Icons.Outlined.Thunderstorm
-    SkyWeather.SNOW -> Icons.Outlined.AcUnit
-    SkyWeather.FOG -> Icons.Outlined.Dehaze
+    SkyWeather.CLEAR -> if (night) SolsticeIcons.ClearNight else SolsticeIcons.Sunny
+    SkyWeather.PARTLY_CLOUDY -> if (night) SolsticeIcons.PartlyCloudyNight else SolsticeIcons.PartlyCloudyDay
+    SkyWeather.OVERCAST -> SolsticeIcons.Cloud
+    SkyWeather.RAIN -> SolsticeIcons.Rainy
+    SkyWeather.THUNDERSTORM -> SolsticeIcons.Thunderstorm
+    SkyWeather.SNOW -> SolsticeIcons.WeatherSnowy
+    SkyWeather.FOG -> SolsticeIcons.Foggy
 }

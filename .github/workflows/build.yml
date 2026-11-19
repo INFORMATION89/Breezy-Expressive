@@ -24,6 +24,10 @@ jobs:
       - name: Lint (spotless)
         run: ./gradlew spotlessCheck
 
+      # Icons come from SolsticeIcons / ic_*.xml (Material Symbols); the old Material Icons are gone.
+      - name: No old Material Icons
+        run: "! grep -rn 'androidx.compose.material.icons' --include=*.kt --include=*.kts --include=*.toml ."
+
       - name: Unit tests (:motion)
         run: ./gradlew :motion:test
 

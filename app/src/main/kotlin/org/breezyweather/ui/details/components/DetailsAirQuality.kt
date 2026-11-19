@@ -31,9 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -101,6 +98,7 @@ import org.breezyweather.ui.common.charts.compose.BreezyLineChart
 import org.breezyweather.ui.common.charts.compose.SpecificVerticalAxisItemPlacer
 import org.breezyweather.ui.common.charts.compose.TimeTopAxisItemPlacer
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.unit.formatting.UnitWidth
 import org.breezyweather.unit.formatting.format
 import java.util.Date
@@ -581,7 +579,7 @@ private fun AirQualitySwitcher(
                 shapes = ButtonGroupDefaults.connectedTrailingButtonShapes()
             ) {
                 Icon(
-                    imageVector = Icons.Filled.MoreVert,
+                    imageVector = SolsticeIcons.MoreVert,
                     contentDescription = stringResource(R.string.action_more)
                 )
             }
@@ -596,7 +594,7 @@ private fun AirQualitySwitcher(
                 ) {
                     if (selectedPollutant == null) {
                         Icon(
-                            Icons.Filled.Check,
+                            SolsticeIcons.Check,
                             contentDescription = stringResource(R.string.settings_enabled)
                         )
                         Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
@@ -612,7 +610,7 @@ private fun AirQualitySwitcher(
                     leadingIcon = if (selectedPollutant == null) {
                         {
                             Icon(
-                                Icons.Filled.Check,
+                                SolsticeIcons.Check,
                                 contentDescription = stringResource(R.string.settings_enabled)
                             )
                         }
@@ -637,7 +635,7 @@ private fun AirQualitySwitcher(
                     ) {
                         if (selectedPollutant == pollutant) {
                             Icon(
-                                Icons.Filled.Check,
+                                SolsticeIcons.Check,
                                 contentDescription = stringResource(R.string.settings_enabled)
                             )
                             Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
@@ -652,7 +650,7 @@ private fun AirQualitySwitcher(
                         leadingIcon = if (selectedPollutant == pollutant) {
                             {
                                 Icon(
-                                    Icons.Filled.Check,
+                                    SolsticeIcons.Check,
                                     contentDescription = stringResource(R.string.settings_enabled)
                                 )
                             }
