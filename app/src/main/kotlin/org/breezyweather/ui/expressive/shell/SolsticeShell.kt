@@ -363,7 +363,12 @@ fun SolsticeShell(
     val searchSheet = rememberSolsticeSheetState()
     LaunchedEffect(searchOpen) {
         if (searchOpen) {
-            if (searchSheet.presence.value < 0.5f) searchSheet.showTall() else searchSheet.presence.animateTo(1f)
+            // From the button: tall. Caught while closing and thrown back up: from where it is.
+            if (searchSheet.presence.value <= 0f && !searchSheet.presence.isRunning) {
+                searchSheet.showTall()
+            } else {
+                searchSheet.reopen()
+            }
         } else {
             searchSheet.dismiss()
         }

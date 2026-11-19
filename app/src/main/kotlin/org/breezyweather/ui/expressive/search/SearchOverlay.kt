@@ -179,6 +179,8 @@ fun SearchOverlay(
     val openNow = rememberUpdatedState(open)
     val onCloseNow = rememberUpdatedState(onClose)
     val onReopenNow = rememberUpdatedState(onReopen)
+    // The keyboard's height while open (the card's bottom), held while closing.
+    val heldInset = remember { IntArray(1) }
     // The query last sent, so "no results" only shows once that search has answered.
     var requested by remember { mutableStateOf("") }
 
@@ -347,7 +349,11 @@ fun SearchOverlay(
                     val keyboard = ime.getBottom(this)
                     // On the keyboard; with the keyboard hidden, down to the screen's edge (behind the
                     // navigation bar; the field keeps clear of it with padding).
-                    val bottomInset = if (keyboard > 0) (keyboard - shrunk).coerceAtLeast(0) else 0
+                    val liveInset = if (keyboard > 0) (keyboard - shrunk).coerceAtLeast(0) else 0
+                    // Closing hides the keyboard: keep the card where it was (not falling with the
+                    // keyboard), so it folds into the button from there and can still be caught.
+                    if (openNow.value) heldInset[0] = liveInset
+                    val bottomInset = if (openNow.value) liveInset else heldInset[0]
                     val top = status.getTop(this) + 12.dp.toPx()
                     // Full width, sitting right on the keyboard (no gaps).
                     val margin = 0f
@@ -425,6 +431,32 @@ fun SearchOverlay(
                 onDelta = { drag(it) },
                 onRelease = { release(it) }
             )
+            // While it's opening, closing or settling, the whole card catches a touch at once (not just
+            // the handle and list, whose content is faded out then), like an iOS sheet. Kept for the
+            // whole drag even if the card becomes fully open under the finger.
+            var holding by remember { mutableStateOf(false) }
+            val catchable by remember {
+                derivedStateOf { sheet.unsettled || sheet.presence.isRunning || sheet.detent.isRunning }
+            }
+            if (catchable || holding) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .draggable(
+                            orientation = Orientation.Vertical,
+                            state = rememberDraggableState { drag(it) },
+                            startDragImmediately = true,
+                            onDragStarted = {
+                                holding = true
+                                sheet.catch()
+                            },
+                            onDragStopped = { velocity ->
+                                holding = false
+                                release(velocity)
+                            }
+                        )
+                )
+            }
         }
     }
 }

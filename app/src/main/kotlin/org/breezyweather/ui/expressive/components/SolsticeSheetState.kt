@@ -33,8 +33,8 @@ import io.github.information89.motion.rememberMotionValue
  *   closes on `dismiss` (no bounce). A touch catches it mid-open or mid-close and the finger drives it.
  * - [detent]: how the open card is sized, in px: 0 = compact, [room] = tall, below 0 = pulled down;
  *   rest points `-dismissDistance`, 0 and [room], with the UIKit release rule and iOS rubber-banding
- *   past tall. Coming to rest at `-dismissDistance` means "dismiss", and the fling's speed carries
- *   into [presence] closing ([dismiss]), so the card keeps moving with the finger.
+ *   past tall. A release heading for `-dismissDistance` means "dismiss": the card holds where it was
+ *   let go and the fling's speed carries into [presence] closing ([dismiss]).
  *
  * Search is the first user; the moon card moves onto it later (M4).
  */
@@ -90,6 +90,12 @@ class SolsticeSheetState internal constructor(
         presence.animateTo(1f)
     }
 
+    /** Back to open from part way (caught while closing): from a pull, back to compact. */
+    fun reopen() {
+        presence.animateTo(1f)
+        if (detent.value < 0f) detent.animateTo(0f)
+    }
+
     /** Folds back into the source, carrying [velocityDown] (px/s, + = down) from a drag. */
     fun dismiss(velocityDown: Float = Float.NaN) {
         if (velocityDown.isNaN()) {
@@ -130,11 +136,14 @@ class SolsticeSheetState internal constructor(
     fun release(velocityDown: Float): Boolean = if (unsettled) {
         presence.release(-velocityDown / travel.coerceAtLeast(1f)) < 0.5f
     } else {
-        val to = detent.release(-velocityDown)
-        if (to <= -dismissDistance + 0.5f) {
+        if (detent.targetFor(-velocityDown) <= -dismissDistance + 0.5f) {
+            // Dismissing: the card stays where it was let go and folds into its source from there,
+            // carrying the fling, so it stays on screen (and can be caught) all the way.
+            detent.stop()
             dismiss(velocityDown)
             true
         } else {
+            detent.release(-velocityDown)
             false
         }
     }

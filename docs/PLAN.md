@@ -2034,5 +2034,11 @@ Things to try on the phone before calling any motion done (debug and release bui
   now tokens (`content`, `snappy`, `settle`, `control`). `:motion`: `MotionValue.restPoints` can change
   (and `rememberMotionValue` applies changed ones), `release` returns the chosen rest point. Checked
   on the Pixel 7 (profile build): opens tall, a slow short drag springs back, a fast flick from tall
-  settles compact (one step, like iOS), a flick from compact dismisses into the button. **Not yet
-  checked:** catching it mid-close (the phone kept disconnecting); try it by hand.
+  settles compact (one step, like iOS), a flick from compact dismisses into the button.
+- **2026-11-19: search can be caught mid-close** (the user couldn't before). While the sheet moves, a
+  layer over the whole card catches a touch at once (the handle and list alone were faded out);
+  a dismiss holds the card where it was let go (no further slide to the dismiss point) and holds the
+  keyboard's height, so it doesn't fall with the keyboard; thrown back up it reopens from where it is
+  (`reopen()`). `MotionValue.targetFor` picks a rest point without moving. Checked by the user: it can
+  be caught now. Open: the keyboard, still sliding away, takes touches at the bottom; idea (to agree):
+  start hiding it once the card is pulled below compact.
