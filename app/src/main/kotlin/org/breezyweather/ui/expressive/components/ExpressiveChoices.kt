@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ButtonGroupDefaults
@@ -59,7 +60,7 @@ import org.breezyweather.ui.expressive.theme.Space
 @Composable
 fun SwitchThumbIcon(checked: Boolean) {
     Icon(
-        imageVector = if (checked) SolsticeIcons.Check else SolsticeIcons.Close,
+        imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
         contentDescription = null,
         modifier = Modifier.size(SwitchDefaults.IconSize)
     )
@@ -235,7 +236,7 @@ fun ChoiceSheet(
                                 )
                                 if (isSelected) {
                                     Icon(
-                                        imageVector = SolsticeIcons.Check,
+                                        imageVector = Icons.Filled.Check,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer
                                     )

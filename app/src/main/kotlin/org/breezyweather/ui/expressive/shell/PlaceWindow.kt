@@ -38,6 +38,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.FlightLand
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,7 +79,6 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.LocalPageGlass
 import org.breezyweather.ui.expressive.components.LocalSkyGlass
-import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
@@ -265,7 +271,7 @@ internal fun PlaceWindow(
                             .padding(top = Space.S2)
                     ) {
                         Icon(
-                            SolsticeIcons.Arrival,
+                            Icons.Outlined.FlightLand,
                             contentDescription = null,
                             tint = ink,
                             modifier = Modifier.size(Sizes.IconSmall)
@@ -279,7 +285,7 @@ internal fun PlaceWindow(
                         if (localTime != null) {
                             Text(" · ", style = MaterialTheme.typography.labelLarge, color = ink)
                             Icon(
-                                SolsticeIcons.Time,
+                                Icons.Outlined.Schedule,
                                 contentDescription = null,
                                 tint = ink,
                                 modifier = Modifier.size(Sizes.IconSmall)
@@ -306,7 +312,7 @@ internal fun PlaceWindow(
                     onSearchBounds = {},
                     withPlaces = false,
                     // Outline when it's a visit; filled once pinned.
-                    budIcon = if (pinned) SolsticeIcons.PinOn else SolsticeIcons.Pin,
+                    budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                     budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
                     budChecked = pinned
                 )

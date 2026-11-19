@@ -46,10 +46,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -93,7 +95,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
-import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.theme.CornerShapes
 import org.breezyweather.ui.expressive.theme.Space
@@ -212,7 +213,7 @@ internal fun PlacesPage(
                 )
                 IconButton(onClick = onSettings) {
                     Icon(
-                        SolsticeIcons.Settings,
+                        Icons.Outlined.Settings,
                         contentDescription = stringResource(R.string.action_settings),
                         tint = onPage.copy(alpha = 0.7f)
                     )
@@ -375,7 +376,7 @@ internal fun PlacesPage(
         if (locations.none { it.isCurrentPosition }) {
             item(key = "current") {
                 OutlinedButton(onClick = onAddCurrent, modifier = Modifier.fillMaxWidth().padding(top = Space.S2)) {
-                    Icon(SolsticeIcons.MyLocation, contentDescription = null)
+                    Icon(Icons.Outlined.MyLocation, contentDescription = null)
                     Spacer(Modifier.width(Space.S2))
                     Text(stringResource(R.string.shell_use_current_location))
                 }
@@ -451,9 +452,9 @@ private fun SwipeablePlace(
             MaterialTheme.colorScheme.onTertiaryContainer
         }
         val icon = when {
-            stage == 2 -> SolsticeIcons.Delete
-            starred -> SolsticeIcons.StarOn
-            else -> SolsticeIcons.Star
+            stage == 2 -> Icons.Outlined.Delete
+            starred -> Icons.Filled.Star
+            else -> Icons.Outlined.StarOutline
         }
         Box(
             contentAlignment = Alignment.CenterEnd,

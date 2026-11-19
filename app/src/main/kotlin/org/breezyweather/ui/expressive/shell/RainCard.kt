@@ -35,7 +35,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Percent
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -353,8 +355,8 @@ private fun finer(steps: List<Float>, per: Int): List<Float> {
 @Composable
 private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit) {
     val options = listOf(
-        Triple(false, SolsticeIcons.Drop, R.string.shell_rain_amount),
-        Triple(true, SolsticeIcons.Percent, R.string.shell_rain_probability)
+        Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
+        Triple(true, Icons.Outlined.Percent, R.string.shell_rain_probability)
     )
     val colors = ToggleButtonDefaults.colors(
         containerColor = text.copy(alpha = 0.10f),

@@ -37,7 +37,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.MaterialTheme
@@ -95,7 +97,6 @@ import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.location.model.isDaylight
 import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.SecondarySourcesPreference
-import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
@@ -223,7 +224,7 @@ fun SolsticeShell(
     LaunchedEffect(controller.message) {
         controller.message?.let {
             controller.message = null
-            messages.show(ShellMessage(SolsticeIcons.Explore, it))
+            messages.show(ShellMessage(Icons.Outlined.Explore, it))
         }
     }
     LaunchedEffect(controller.pending) {
@@ -552,7 +553,7 @@ fun SolsticeShell(
                                     saveStarred(context, starred)
                                     messages.show(
                                         ShellMessage(
-                                            SolsticeIcons.StarOn,
+                                            Icons.Filled.Star,
                                             context.getString(R.string.shell_now_main_place)
                                         )
                                     )
@@ -566,7 +567,7 @@ fun SolsticeShell(
                                         viewModel.deleteLocation(index)
                                         messages.show(
                                             ShellMessage(
-                                                icon = SolsticeIcons.Delete,
+                                                icon = Icons.Outlined.Delete,
                                                 text = context.getString(
                                                     R.string.shell_place_removed,
                                                     place.getPlace(context)

@@ -36,7 +36,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Dehaze
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Thunderstorm
+import androidx.compose.material.icons.outlined.WbCloudy
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -95,8 +105,7 @@ import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** A toolbar tab: its label, and its icon unfilled and filled (filled while it's the current tab). */
-internal class Tab(val label: Int, val icon: ImageVector, val iconOn: ImageVector)
+internal class Tab(val label: Int, val icon: ImageVector)
 
 /**
  * Floating toolbar. Each tab is an icon; the selected one unfolds to show its title. Widths, label
@@ -116,7 +125,7 @@ internal fun ShellToolbar(
     onSearchBounds: (Rect) -> Unit,
     // The same toolbar in a postcard window: no Places tab, and the bud (Pin) comes out of Forecast.
     withPlaces: Boolean = true,
-    budIcon: ImageVector = SolsticeIcons.Search,
+    budIcon: ImageVector = Icons.Filled.Search,
     budDescription: String = stringResource(R.string.shell_search_elsewhere),
     budChecked: Boolean = false,
     position: () -> Float? = { null },
@@ -124,13 +133,9 @@ internal fun ShellToolbar(
     onInterrupt: () -> Unit = {},
 ) {
     val tabs = listOfNotNull(
-        Tab(R.string.shell_tab_days, SolsticeIcons.Days, SolsticeIcons.DaysOn),
-        Tab(
-            R.string.shell_tab_forecast,
-            SolsticeIcons.condition(weather, night = sky.sunHeight < 0f),
-            SolsticeIcons.condition(weather, night = sky.sunHeight < 0f, on = true)
-        ),
-        if (withPlaces) Tab(R.string.shell_tab_places, SolsticeIcons.Places, SolsticeIcons.PlacesOn) else null
+        Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
+        Tab(R.string.shell_tab_forecast, conditionIcon(weather, night = sky.sunHeight < 0f)),
+        if (withPlaces) Tab(R.string.shell_tab_places, Icons.Outlined.Map) else null
     )
     val collapsed = 52.dp
     val expanded = 132.dp
@@ -367,13 +372,7 @@ private fun ToolbarTabs(
                     // Icon and label centred in the tab, whatever the label's length.
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Filled while it's the current tab (more than half selected).
-                    Icon(
-                        if (open[i] > 0.5f) tab.iconOn else tab.icon,
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(Sizes.IconLarge)
-                    )
+                    Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(Sizes.IconLarge))
                     Spacer(Modifier.width(Space.S2 * shown[i]))
                     Text(
                         text = label,
@@ -448,4 +447,15 @@ private class BudShape(
         }
         return Outline.Generic(path)
     }
+}
+
+/** The Forecast tab's icon follows the current weather. */
+private fun conditionIcon(weather: SkyWeather, night: Boolean): ImageVector = when (weather) {
+    SkyWeather.CLEAR -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbSunny
+    SkyWeather.PARTLY_CLOUDY -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbCloudy
+    SkyWeather.OVERCAST -> Icons.Outlined.Cloud
+    SkyWeather.RAIN -> SolsticeIcons.RainCloud
+    SkyWeather.THUNDERSTORM -> Icons.Outlined.Thunderstorm
+    SkyWeather.SNOW -> Icons.Outlined.AcUnit
+    SkyWeather.FOG -> Icons.Outlined.Dehaze
 }
