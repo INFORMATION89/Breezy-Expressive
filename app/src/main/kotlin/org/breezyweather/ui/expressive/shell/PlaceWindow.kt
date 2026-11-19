@@ -134,6 +134,8 @@ internal fun PlaceWindow(
         val paper = if (dark) SolsticePalette.PaperDim else SolsticePalette.Paper
         val page = if (dark) Color.Black else Color.White
         val onPage = if (dark) Color.White else Color.Black
+        // The postcard's paper border, which stretches out and thins away as the window grows.
+        val bezel = postcardBezel()
         val pager = rememberPagerState(initialPage = 1) { 2 }
         val days = rememberLazyListState()
         // The status and navigation bar icons follow the window once it's mostly open: the sky's
@@ -174,7 +176,7 @@ internal fun PlaceWindow(
                         from.bottom + (size.height - from.bottom) * p
                     )
                     // The paper frame stretches out with it and thins away...
-                    val edge = 7.dp.toPx() * (1f - p)
+                    val edge = bezel.toPx() * (1f - p)
                     if (edge > 0.3f) {
                         drawRoundRect(
                             paper,
@@ -191,7 +193,7 @@ internal fun PlaceWindow(
                         val h = 52.dp.toPx()
                         drawRect(
                             paper.copy(alpha = stampAlpha),
-                            topLeft = Offset(rect.right - w - 11.dp.toPx(), rect.top + 11.dp.toPx()),
+                            topLeft = Offset(rect.right - w - bezel.toPx(), rect.top + bezel.toPx() + Space.S5.toPx()),
                             size = Size(w, h)
                         )
                     }

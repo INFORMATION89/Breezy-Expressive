@@ -88,8 +88,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
 import kotlinx.coroutines.delay
@@ -165,6 +167,8 @@ internal fun PlaceCard(
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.sp
     )
+    // The paper border: one caption line with its margins, the same on every side.
+    val bezel = postcardBezel()
     val (title, city) = placeName(context, location)
     val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
     val fold by animateFloatAsState(
@@ -216,15 +220,17 @@ internal fun PlaceCard(
                     )
                 )
             }
-            .padding(start = Space.S3, end = Space.S3, top = Space.S3, bottom = Space.S2)
+            // An even paper border all round (agreed 2026-11-19): the captions sit on its top and
+            // bottom, the sides are as wide.
+            .padding(start = bezel, end = bezel, top = Space.S2, bottom = Space.S2)
     ) {
         Column(Modifier.fillMaxSize()) {
-            // Top caption, on the picture: the place, and its weather.
+            // Top caption, on the paper above the picture: the place, and its weather.
             val topCaption: @Composable (Modifier) -> Unit = { captionModifier ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = captionModifier) {
                     // The current location's name is red, like a "you are here" mark on a map.
                     val here = SolsticePalette.HerePin
-                    val nameColor = if (location.isCurrentPosition) here else sky.palette.text
+                    val nameColor = if (location.isCurrentPosition) here else ink
                     if (location.isCurrentPosition) {
                         Icon(
                             Icons.Filled.NearMe,
@@ -252,12 +258,13 @@ internal fun PlaceCard(
                             ).joinToString(" · ")
                         }.uppercase(),
                         style = caption,
-                        color = if (location.isCurrentPosition && starred) here else sky.palette.text,
+                        color = if (location.isCurrentPosition && starred) here else ink,
                         maxLines = 1,
                         modifier = Modifier.padding(start = Space.S2)
                     )
                 }
             }
+            topCaption(Modifier.padding(bottom = Space.S1).graphicsLayer { alpha = 1f - fold })
             // The picture: the place's sky, linen-textured, with the temperature. Folding, it turns
             // up and away about its top edge like paper.
             SkyBackground(
@@ -270,8 +277,9 @@ internal fun PlaceCard(
                         rotationX = 80f * fold
                         cameraDistance = 12f * density
                         alpha = 1f - fold
-                        // Concentric with the card: its corner minus the padding around the picture.
-                        shape = CornerShapes.S
+                        // Concentric with the card would be its corner minus the border (24 - 28 dp),
+                        // below the minimum, so the smallest corner.
+                        shape = CornerShapes.XS
                         clip = true
                     }
                     .drawWithContent {
@@ -280,7 +288,7 @@ internal fun PlaceCard(
                         if (visiting) {
                             drawRoundRect(
                                 ink.copy(alpha = 0.5f),
-                                cornerRadius = CornerRadius(Corners.S.toPx()),
+                                cornerRadius = CornerRadius(Corners.XS.toPx()),
                                 style = Stroke(
                                     width = 1.2.dp.toPx(),
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 5.dp.toPx()))
@@ -290,9 +298,6 @@ internal fun PlaceCard(
                     }
             ) {
                 Box(Modifier.fillMaxSize()) {
-                    topCaption(
-                        Modifier.align(Alignment.TopStart).padding(start = Space.S3, end = Space.S3, top = Space.S2)
-                    )
                     Text(
                         current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
                         color = sky.palette.text,
@@ -342,7 +347,10 @@ internal fun PlaceCard(
                     .align(Alignment.TopEnd)
                     // In the strip it sits centred at the end.
                     // Centred vertically on the strip.
-                    .padding(top = (36f - 32f * fold).dp, end = (16f - 6f * fold).dp)
+                    .padding(
+                        top = lerp(bezel + Space.S6, Space.S1, fold),
+                        end = lerp(bezel + Space.S1, 10.dp, fold)
+                    )
                     .graphicsLayer {
                         val t = peel.value
                         val lower = (t / 0.6f).coerceIn(0f, 1f)
@@ -372,7 +380,7 @@ internal fun PlaceCard(
             ink = sky.palette.text,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 26.dp, end = Space.S3)
+                .padding(bottom = bezel, end = bezel)
                 .graphicsLayer { alpha = 1f - fold }
         )
         // Folded: one line on the paper (the starred place's name; its stamp sits at the end).
@@ -697,4 +705,11 @@ private fun Modifier.dashedEdge(color: Color, corner: androidx.compose.ui.unit.D
         cornerRadius = CornerRadius(r, r),
         style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
     )
+}
+
+/** The postcard's paper border (top and bottom hold a caption line; the sides are as wide). */
+@Composable
+internal fun postcardBezel(): Dp {
+    val line = with(LocalDensity.current) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
+    return Space.S2 + line + Space.S1
 }
