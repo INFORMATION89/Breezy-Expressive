@@ -455,6 +455,7 @@ dependencies {
     implementation(projects.data)
     implementation(projects.domain)
     implementation(projects.mapsUtils)
+    implementation(projects.motion)
     implementation(projects.uiWeatherView)
     implementation(projects.weatherUnit)
     implementation(libs.breezy.datasharing.lib)

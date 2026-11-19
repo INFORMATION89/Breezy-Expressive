@@ -34,6 +34,7 @@ include(":app")
 include(":data")
 include(":domain")
 include(":maps-utils")
+include(":motion")
 include(":ui-weather-view")
 include(":weather-unit")
 

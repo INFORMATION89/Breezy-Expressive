@@ -16,8 +16,8 @@
 
 package org.breezyweather.ui.expressive.components
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import io.github.information89.motion.Motion
+import io.github.information89.motion.MotionPhysics
 
 /**
  * Solstice's motion system (agreed 2026-11-19, the user's reference): Apple-like physics.
@@ -29,21 +29,23 @@ import androidx.compose.animation.core.spring
  * - Inner content is choreographed: it fades and scales in (0.92 to 1) as the container reaches
  *   about 70 % of its size, and leaves first when it closes.
  */
+// The values now come from the :motion module (io.github.information89.motion); this object keeps the
+// existing call sites working until they move to the framework (M3/M4).
 object SolsticeMotion {
     /** Morphing containers (sheets, menus, pills): start immediately, subtle elasticity. */
-    val container = spring<Float>(dampingRatio = 0.78f, stiffness = 380f)
+    val container = Motion.container.spec<Float>()
 
     /** Dismissing a container (a sheet back into its button): no bounce, a touch slower, like iOS. */
-    val dismiss = spring<Float>(dampingRatio = 1f, stiffness = 260f)
+    val dismiss = Motion.dismiss.spec<Float>()
 
     /** Responsive controls (buttons, toggles, sliders): no bounce. */
-    val control = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    val control = Motion.control.spec<Float>()
 
     /** Inner content's scale-in. */
-    val content = spring<Float>(dampingRatio = 0.85f, stiffness = 400f)
+    val content = Motion.content.spec<Float>()
 
     /** Settling into place after a drag or a fling (critically damped, no bounce). */
-    val settle = spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
+    val settle = Motion.settle.spec<Float>()
 
     /** Inner content starts scaled to this, then grows to full size. */
     const val CONTENT_START_SCALE = 0.92f
@@ -57,15 +59,13 @@ object SolsticeMotion {
      * over a [dimension] (e.g. the sheet's height). Close to the finger at first, then ever more
      * resistant, never passing [dimension].
      */
-    fun rubberBand(over: Float, dimension: Float, coefficient: Float = 0.55f): Float {
-        if (over <= 0f || dimension <= 0f) return 0f
-        return (1f - 1f / (over * coefficient / dimension + 1f)) * dimension
-    }
+    fun rubberBand(over: Float, dimension: Float, coefficient: Float = MotionPhysics.RUBBER_BAND): Float =
+        MotionPhysics.rubberBand(over, dimension, coefficient)
 
     /**
      * Where a fling would come to rest, given a [velocity] (units per second), so the release can
      * pick its target from the gesture's momentum and not just its position.
      */
-    fun project(value: Float, velocity: Float, decelerationRate: Float = 0.998f): Float =
-        value + velocity / 1000f * decelerationRate / (1f - decelerationRate)
+    fun project(value: Float, velocity: Float, decelerationRate: Float = MotionPhysics.DECELERATION_NORMAL): Float =
+        MotionPhysics.project(value, velocity, decelerationRate)
 }
