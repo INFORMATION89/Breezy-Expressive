@@ -42,6 +42,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -83,10 +84,12 @@ import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Dehaze
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Thunderstorm
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.FilledTonalButton
@@ -127,6 +130,7 @@ import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.TransformOrigin
@@ -640,6 +644,7 @@ private sealed interface RainOutlook {
         val amounts: List<Float>,
         val chances: List<Float>?,
         val labels: List<String>,
+        val hourLabels: List<String>,
         val minutely: Boolean,
         val total: Double,
         val soon: Boolean,
@@ -661,8 +666,13 @@ private fun rainStrength(mmPerHour: Float): Int = when {
 private fun rainOutlook(context: Context, location: Location, now: Long): RainOutlook? {
     val weather = location.weather ?: return null
     val hourly = weather.nextHourlyForecast
-    fun chanceAt(t: Long): Float? = hourly.firstOrNull { t >= it.date.time && t < it.date.time + 3_600_000L }
-        ?.precipitationProbability?.total?.inPercent?.let { (it / 100.0).toFloat().coerceIn(0f, 1f) }
+    // Probability is hourly: the next 6 hours, whichever view the amount uses.
+    val hours = hourly.take(6)
+    val hourChances = hours.map { it.precipitationProbability?.total?.inPercent?.let { p -> (p / 100.0).toFloat() } }
+        .takeIf { it.isNotEmpty() && it.all { c -> c != null } }?.map { it!!.coerceIn(0f, 1f) }
+    val hourLabels = hours.mapIndexed { i, h ->
+        if (i == 0) context.getString(R.string.shell_now) else time(context, h.date, location.timeZone, hourOnly = true)
+    }
     // Next hour from minute data (5-minute steps), when the source has it.
     val minutes = weather.minutelyForecastBy5Minutes.filter {
         it.date.time + it.minuteInterval * 60_000L > now
@@ -679,13 +689,13 @@ private fun rainOutlook(context: Context, location: Location, now: Long): RainOu
                 RainKind.STARTS to wet.indexOfFirst { it } * step
             }
             val amounts = rate.map { it * step / 60f }
-            val chances = minutes.map { chanceAt(it.date.time) }
             return RainOutlook.Coming(
                 kind = kind,
                 value = value,
                 heavy = rainStrength(rate.max()),
                 amounts = amounts,
-                chances = if (chances.all { it != null }) chances.map { it!! } else null,
+                chances = hourChances,
+                hourLabels = hourLabels,
                 labels = listOf(context.getString(R.string.shell_now), "10m", "20m", "30m", "40m", "50m"),
                 minutely = true,
                 total = amounts.sum().toDouble(),
@@ -694,7 +704,6 @@ private fun rainOutlook(context: Context, location: Location, now: Long): RainOu
         }
     }
     // Otherwise the next 6 hours from the hourly forecast.
-    val hours = hourly.take(6)
     val wetHour = hours.indexOfFirst {
         val w = SkyWeather.of(it.weatherCode)
         w == SkyWeather.RAIN || w == SkyWeather.THUNDERSTORM ||
@@ -702,22 +711,14 @@ private fun rainOutlook(context: Context, location: Location, now: Long): RainOu
     }
     if (wetHour < 0) return RainOutlook.None(6)
     val amounts = hours.map { (it.precipitation?.total?.inMillimeters ?: 0.0).toFloat() }
-    val chances = hours.map { it.precipitationProbability?.total?.inPercent?.let { p -> (p / 100.0).toFloat() } }
     return RainOutlook.Coming(
         kind = if (wetHour == 0) RainKind.ALL_HOUR else RainKind.STARTS_HOURS,
         value = wetHour,
         heavy = rainStrength(amounts.max()),
         amounts = amounts,
-        chances = if (chances.all { it != null }) chances.map { it!!.coerceIn(0f, 1f) } else null,
-        labels = hours.mapIndexed { i, h ->
-            if (i ==
-                0
-            ) {
-                context.getString(R.string.shell_now)
-            } else {
-                time(context, h.date, location.timeZone, hourOnly = true)
-            }
-        },
+        chances = hourChances,
+        hourLabels = hourLabels,
+        labels = hourLabels,
         minutely = false,
         total = amounts.sum().toDouble(),
         soon = wetHour <= 1
@@ -739,25 +740,18 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
         RainKind.STARTS -> stringResource(R.string.shell_rain_starts_in, strength, rain.value)
         RainKind.STARTS_HOURS -> pluralStringResource(R.plurals.shell_rain_in_hours, rain.value, strength, rain.value)
     }
+    // Probability is hourly (the forecasts give it per hour) over the next 6 hours.
     val chances = rain.chances
     // When the amount rounds to nothing (a likely drizzle), probability says more: start there.
     val dryAmount = rain.total < 0.1
     var showChance by remember(rain.minutely) { mutableStateOf(dryAmount && chances != null) }
-    val coarse = if (showChance && chances != null) {
-        chances
-    } else {
-        val max = rain.amounts.max().coerceAtLeast(if (rain.minutely) 0.2f else 1f)
-        rain.amounts.map { (it / max).coerceIn(0f, 1f) }
-    }
-    // Finer than the data, Apple-style: one bar a minute for the next hour, one every 5 minutes
-    // over 6 hours, eased between the source's steps.
-    val values = finer(coarse, if (rain.minutely) 5 else 12)
     GlassCard(text, tint = if (rain.soon) Color(0xFF8CCBFF) else null) {
         // No separate title: the sentence is the header.
         Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // The amount in the window, or the highest chance.
+            // The amount in the window, or the highest chance. One line, so switching never
+            // resizes the card.
             val caption = if (showChance && chances != null) {
                 stringResource(R.string.shell_rain_chance_up_to, (chances.max() * 100).roundToInt())
             } else if (dryAmount) {
@@ -772,49 +766,114 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
                 caption,
                 color = text.copy(alpha = 0.72f),
                 style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             if (chances != null) {
                 RainSwitch(showChance, text) { showChance = it }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        // Rounded bars, no marker lines: a dot where it's dry, a pill as tall as the rain.
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(1.5.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            values.forEach { v ->
-                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.BottomCenter) {
-                    val h = (maxHeight * v).coerceAtLeast(maxWidth.coerceAtMost(4.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(h)
-                            .clip(CircleShape)
-                            .background(
-                                if (v > 0.02f) {
-                                    Brush.verticalGradient(listOf(Color(0xFFB9E1FF), Color(0xFF4F9EEA)))
-                                } else {
-                                    Brush.verticalGradient(listOf(text.copy(alpha = 0.22f), text.copy(alpha = 0.22f)))
-                                }
-                            )
-                    )
-                }
+        Spacer(Modifier.height(10.dp))
+        // The chart keeps one height in both views (room for the percentages on top).
+        Box(Modifier.fillMaxWidth().height(80.dp)) {
+            if (showChance && chances != null) {
+                ChanceBars(chances, text)
+            } else {
+                AmountBars(rain, text)
             }
         }
         // Times under the bars, each at the start of its stretch (Now, 10m, … or the hours).
+        val labels = if (showChance && chances != null) rain.hourLabels else rain.labels
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            rain.labels.forEach {
+            labels.forEach {
                 Text(
                     it,
                     color = text.copy(alpha = 0.65f),
                     style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Start,
+                    textAlign = if (showChance && chances != null) TextAlign.Center else TextAlign.Start,
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Amount: thin pills, finer than the data (Apple-style): one a minute for the next hour, one every
+ * 5 minutes over 6 hours, eased between the source's steps. A dot where it's dry, no marker lines.
+ */
+@Composable
+private fun BoxScope.AmountBars(rain: RainOutlook.Coming, text: Color) {
+    val max = rain.amounts.max().coerceAtLeast(if (rain.minutely) 0.2f else 1f)
+    val values = finer(rain.amounts.map { (it / max).coerceIn(0f, 1f) }, if (rain.minutely) 5 else 12)
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(56.dp)
+    ) {
+        values.forEach { v ->
+            BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.BottomCenter) {
+                val h = (maxHeight * v).coerceAtLeast(maxWidth.coerceAtMost(4.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(h)
+                        .clip(CircleShape)
+                        .background(
+                            if (v > 0.02f) {
+                                Brush.verticalGradient(listOf(Color(0xFFB9E1FF), Color(0xFF4F9EEA)))
+                            } else {
+                                SolidColor(text.copy(alpha = 0.22f))
+                            }
+                        )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Probability: one bar an hour. The grey pill is 100 %, filled from the bottom with a softer
+ * violet-blue gradient up to the chance, with the percentage on top.
+ */
+@Composable
+private fun BoxScope.ChanceBars(chances: List<Float>, text: Color) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize()
+    ) {
+        chances.forEach { c ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                Text(
+                    "${(c * 100).roundToInt()}%",
+                    color = text.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(4.dp))
+                BoxWithConstraints(
+                    contentAlignment = Alignment.BottomCenter,
+                    modifier = Modifier
+                        .weight(1f)
+                        .width(22.dp)
+                        .clip(CircleShape)
+                        .background(text.copy(alpha = 0.14f))
+                ) {
+                    if (c > 0.005f) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height((maxHeight * c).coerceAtLeast(maxWidth))
+                                .clip(CircleShape)
+                                .background(Brush.verticalGradient(listOf(Color(0xFFCBC6FF), Color(0xFF7C7FE6))))
+                        )
+                    }
+                }
             }
         }
     }
@@ -836,7 +895,7 @@ private fun finer(steps: List<Float>, per: Int): List<Float> {
     }
 }
 
-/** Amount | Probability, as two small pills. */
+/** Amount | Probability as two small icon pills: a raindrop and a percent sign. */
 @Composable
 private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit) {
     Row(
@@ -845,17 +904,21 @@ private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit
             .background(text.copy(alpha = 0.10f))
             .padding(3.dp)
     ) {
-        listOf(false to R.string.shell_rain_amount, true to R.string.shell_rain_probability).forEach { (value, label) ->
+        listOf(
+            Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
+            Triple(true, Icons.Outlined.Percent, R.string.shell_rain_probability)
+        ).forEach { (value, icon, label) ->
             val on = chance == value
-            Text(
-                stringResource(label),
-                color = if (on) text else text.copy(alpha = 0.6f),
-                style = MaterialTheme.typography.labelMedium,
+            Icon(
+                icon,
+                contentDescription = stringResource(label),
+                tint = if (on) text else text.copy(alpha = 0.6f),
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(if (on) text.copy(alpha = 0.16f) else Color.Transparent)
                     .clickable { onChange(value) }
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                    .size(18.dp)
             )
         }
     }

@@ -1563,4 +1563,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   eased between the source's steps (dots where dry). It opens on Probability when the amount rounds
   to nothing ("Barely any rain to measure" on the Amount side). Red star on the current-location
   strip confirmed.
+- **2026-11-19 (checked on the Pixel with Paris):** rain card switch uses icons (agreed: Material
+  WaterDrop for amount, Percent for probability). Probability is now hourly over 6 hours: a grey
+  pill is 100 %, filled from the bottom with a softer violet-blue gradient, the percentage on top,
+  hours centred under. The chart keeps one 80 dp height in both views and the caption is one line,
+  so switching no longer resizes the card.
 

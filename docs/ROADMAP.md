@@ -116,7 +116,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 
 ### Fix
 - [ ] Check the rain card with real rain (redesigned 2026-11-19, not yet seen).
-- [ ] 💬 Animate the bars when switching between amount and probability (propose first).
+- [ ] 💬 **For later:** animate the change between amount and probability (propose first).
+- [x] Switch icons (raindrop, percent), probability shown as hourly pills with percentages, no resizing when switching (2026-11-19).
 
 ### Functionality
 - [ ] A precipitation element for This week.
