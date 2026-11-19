@@ -4,7 +4,7 @@
 **Material You Expressive**: wallpaper (dynamic) colors, the M3 Expressive components, shapes and
 motion. Weather data, sources, widgets and everything else stay Breezy Weather's.
 
-Status: **F0, F1 and F2 done** (2026-11-18; F2 blur pending); next F3. Upstream base: `5ec3b9b` (2026-11-17).
+Status: **F0, F1 and F2 done** (2026-11-18); shell, search, postcard window, moon sheet, glass and edge blur built (2026-11-19). Next: design tokens and the motion framework (see "Design system foundations" and "Motion framework"). Upstream base: `5ec3b9b` (2026-11-17).
 
 ## What we start from
 
@@ -1800,3 +1800,5 @@ Things to try on the phone before calling any motion done (debug and release bui
   Custom morph code stays justified for scrubbed overlay morphs. Added "Design system foundations"
   and four additions to "Motion framework" (Solstice `MotionScheme`, `AnchoredDraggable` for snap
   swipes, predictive back everywhere, Navigation 3 for pushed screens).
+- **2026-11-19:** CONTINUE.md brought up to date (state as of 2026-11-19, "Pick up here" for the next
+  session); status line updated. Plan branch merged into main.

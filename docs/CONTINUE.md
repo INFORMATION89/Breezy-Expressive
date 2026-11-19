@@ -3,7 +3,7 @@
 Where things stand and how to pick the work up anywhere. The plan, decisions and log are in
 [PLAN.md](PLAN.md).
 
-## Where we are (2026-11-18)
+## Where we are (2026-11-19)
 
 - **Repo:** this one (`INFORMATION89/Solstice`): upstream Breezy Weather's files at `5ec3b9b`
   **without upstream's git history** (see `UPSTREAM_BASE`). Never push upstream's history here.
@@ -17,9 +17,48 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   button groups, bottom sheets, icon switches, collapsing large title, Compose reorder screens
   (`ui/expressive/reorder/`). New UI code lives in `ui/expressive/`; upstream files touched are
   listed in PLAN.md.
-- **Next:** F3 (Locations + floating Forecast/Locations toolbar). Also on the list (PLAN.md,
-  "Planned next"): in-place block editing like Pixel Weather, Expressive icons, simpler settings,
-  no block fade-ins, edge blur; translucent overlays need the Transit Go license check first.
+- **Built since F2 (2026-11-18/19, details in the PLAN.md log):** the Solstice shell
+  (`ui/expressive/shell/`): Forecast, This week and Places pages in a pager, the floating glass
+  toolbar with the button budding out of it, the redesigned search (`ui/expressive/search/`), the
+  postcard window for visiting a place, messages, the moon card as a sheet that morphs out of its
+  pill, frosted glass (`components/Glass.kt`) and progressive edge blur (`components/EdgeBlur.kt`).
+  AccuWeather is disabled as a source.
+- **Motion rules:** [MOTION.md](MOTION.md) (agreed 2026-11-19); values in
+  `ui/expressive/components/SolsticeMotion.kt`. Only the moon card uses them so far.
+- **Open on the moon sheet:** a dark pill-sized frame at the start of opening, "· 71 %" drifting at
+  the end of closing, a hitch after closing.
+
+## Pick up here (next session)
+
+The current focus is **refining the UI to iOS-level polish with shared systems**, not new features.
+Read these three, in order:
+
+1. [UI_SYSTEMS.md](UI_SYSTEMS.md): audit of every UI system (counts of hand-typed spacing, corners,
+   colours, springs, gestures) and the libraries checked (Haze, Reorderable, Navigation 3,
+   `AnchoredDraggable`, Material 3 `MotionScheme`, graphics-shapes, Backdrop, Glasmio).
+2. PLAN.md, **"Motion framework"**: one motion value per interaction, morphs drawn from anchors
+   instead of a seeked `SharedTransitionLayout`, choreography windows, iOS-style springs (response +
+   damping) and release rules, a standalone `:motion` module. Steps M0 to M5.
+3. PLAN.md, **"Design system foundations"**: tokens first, then the Haze prototype, the component
+   catalog and the library swaps.
+
+Still to decide with the user (M0), before writing motion code:
+
+- the spring tokens (the five current ones, plus maybe `snappy`, `gentle`, `press`);
+- the module's name (`:motion` for now) and license (Apache-2.0 for reuse, or LGPL like Solstice).
+
+Suggested first task, since it changes no motion: **design tokens** (spacing on a 4 dp grid, named
+sizes, shape tokens, a palette file for non-dynamic colours, named hero type styles), replacing
+literals file by file in `ui/expressive/`. Then the **Haze prototype** for glass and edge blur behind
+a debug switch, measured on the Pixel 7 release build against `Glass.kt`.
+
+Rules that still apply: propose and agree any new or changed motion before building it; keep the
+PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`.
+
+Reference used for the iOS behaviour: `NEORUAA/Glasmio` (Apache-2.0), especially
+`docs/ios-sheet-motion.md` and `docs/dropdown-motion.md`. Use it as research, not as a dependency
+(it needs Android 12+ and bundles Apple artwork).
+
 - **Performance:** judge smoothness on a release build; debug is much slower. Release builds take
   a long time the first time (R8).
 - **Windows:** `.gitattributes` keeps LF so Spotless passes. In Git Bash, set
