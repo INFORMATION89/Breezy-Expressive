@@ -19,9 +19,12 @@ package org.breezyweather.ui.expressive.shell
 import android.content.Context
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -69,12 +72,14 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,12 +93,14 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -101,11 +108,13 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -276,6 +285,18 @@ fun SolsticeShell(
     // System bar icons follow whatever is behind them.
 
     val glass = rememberGlassSource()
+    // Tab jump This week <-> Places: a real crossfade. The page being left is snapshotted and drawn on
+    // top fading out, the new page is already underneath; both carry a little blur that clears
+    // quickly. The toolbar's highlight glides across on its own.
+    val leaving = rememberGraphicsLayer()
+    val leavingDraw = rememberGraphicsLayer()
+    var capture by remember { mutableStateOf(false) }
+    // A frozen image of the page being left (a recorded layer alone would keep showing live content).
+    var leavingImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    val fadeOut = remember { Animatable(0f) }
+    val haze = remember { Animatable(0f) }
+    val toolbarPosition = remember { Animatable(-1f) }
+    var jumpDir by remember { mutableFloatStateOf(1f) }
     val searchBlur = rememberGraphicsLayer()
     val searchSharp = rememberGraphicsLayer()
     // Search grows out of the Places button (agreed motion); one spring drives open and close.
@@ -411,88 +432,152 @@ fun SolsticeShell(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
+                    .drawWithContent {
+                        if (capture) {
+                            leaving.record { this@drawWithContent.drawContent() }
+                            capture = false
+                        }
+                        drawContent()
+                        // The page being left, on top, fading out (and blurring a little).
+                        val f = fadeOut.value
+                        val image = leavingImage
+                        if (f > 0.01f && image != null) {
+                            // A slide: the old page stays opaque and moves out; just a touch of blur.
+                            leavingDraw.alpha = 1f
+                            val b = 4.dp.toPx() * (1f - f)
+                            leavingDraw.renderEffect =
+                                if (b > 0.5f &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                                ) {
+                                    BlurEffect(b, b, TileMode.Decal)
+                                } else {
+                                    null
+                                }
+                            leavingDraw.record { drawImage(image) }
+                            // Outside the moving layer (its blur would clip it): slides out the other way.
+                            translate(left = -jumpDir * size.width * (1f - f)) {
+                                drawLayer(leavingDraw)
+                            }
+                        }
+                    }
                     .graphicsLayer {
                         // The page recedes a little while search is open.
                         val k = 1f - 0.04f * searchProgress.value
                         scaleX = k
                         scaleY = k
+                        // The tab jump: the arriving page slides in from the tapped side (a quarter of
+                        // the width) while the old one slides out under the crossfade.
+                        translationX = jumpDir * size.width * fadeOut.value
+                        // The tab jump's brief blur on the arriving page.
+                        val b = 5.dp.toPx() * haze.value
+                        renderEffect = if (b > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            BlurEffect(b, b, TileMode.Decal)
+                        } else {
+                            null
+                        }
                     }
             ) { index ->
-                when (index) {
-                    PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
-                        // The edge blur only comes in once the plain page is mostly there (it showed
-                        // over the sky as soon as a swipe started).
-                        edgeFade(pager.currentPage + pager.currentPageOffsetFraction)
-                    }
-                    PAGE_FORECAST -> ForecastPage(
-                        location = location,
-                        sky = sky,
-                        now = now,
-                        refreshing = loading,
-                        onRefresh = {
-                            viewModel.updateWithUpdatingChecking(triggeredByUser = true, checkPermissions = true)
-                        },
-                        onDetails = actions::openDetails,
-                        onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
-                    )
-                    else -> PlacesPage(
-                        // The visit open in a window isn't listed until you pin it.
-                        locations = locations.filterNot { it.formattedId == windowId && it.formattedId in visiting },
-                        currentId = location?.formattedId,
-                        starred = starred,
-                        visiting = visiting,
-                        now = now,
-                        onPage = onPage,
-                        // Tapping a postcard opens it as a window (no jump, no change of place).
-                        onSelect = { place, bounds ->
-                            windowOrigin = bounds
-                            windowId = place.formattedId
-                        },
-                        onStar = {
-                            val id = it.formattedId
-                            // One star: starring moves it here; the starred place stays starred.
-                            if (id in starred) return@PlacesPage
-                            starred = setOf(id)
-                            saveStarred(context, starred)
-                            // The main place is kept, never a visit.
-                            if (id in starred) Visits.unmark(context, id)
-                            controller.visitsChanged++
-                        },
-                        onDelete = { place ->
-                            val index = locations.indexOfFirst { it.formattedId == place.formattedId }
-                            if (index >= 0) {
-                                viewModel.deleteLocation(index)
-                                messages.show(
-                                    ShellMessage(
-                                        icon = Icons.Outlined.Delete,
-                                        text = context.getString(R.string.shell_place_removed, place.getPlace(context)),
-                                        action = context.getString(R.string.shell_undo),
-                                        onAction = { viewModel.addLocation(place, index, context) }
-                                    )
-                                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            // Partly in view: a little blur that fades as the page comes fully in (read in
+                            // the draw phase, so it follows the finger and reverses with it).
+                            val here = pager.currentPage + pager.currentPageOffsetFraction
+                            val d = abs(here - index).coerceIn(0f, 1f)
+                            val b = 6.dp.toPx() * d
+                            val blurOk = b > 0.5f && d < 1f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            renderEffect = if (blurOk) {
+                                BlurEffect(b, b, TileMode.Decal)
+                            } else {
+                                null
                             }
-                        },
-                        onAddCurrent = {
-                            viewModel.openChooseWeatherSourcesDialog(
-                                Location(isCurrentPosition = true).applyDefaultPreset(sourceManager)
-                            )
-                        },
-                        onEdit = {
-                            viewModel.setLocation(it.formattedId)
-                            actions.openLocationSettings()
-                        },
-                        onMove = { id, beforeId ->
-                            // Same move in the saved list (where the current position may sit anywhere).
-                            val from = locations.indexOfFirst { it.formattedId == id }
-                            val rest = locations.filter { it.formattedId != id }
-                            val to = beforeId?.let { b -> rest.indexOfFirst { it.formattedId == b } }
-                                ?.takeIf { it >= 0 } ?: rest.size
-                            if (from >= 0) viewModel.swapLocations(from, to)
-                        },
-                        onSettings = actions::openSettings,
-                        listState = placesList,
-                        pageFade = { edgeFade(pager.currentPage + pager.currentPageOffsetFraction) }
-                    )
+                        }
+                ) {
+                    when (index) {
+                        PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
+                            // The edge blur only comes in once the plain page is mostly there (it showed
+                            // over the sky as soon as a swipe started).
+                            edgeFade(pager.currentPage + pager.currentPageOffsetFraction)
+                        }
+                        PAGE_FORECAST -> ForecastPage(
+                            location = location,
+                            sky = sky,
+                            now = now,
+                            refreshing = loading,
+                            onRefresh = {
+                                viewModel.updateWithUpdatingChecking(
+                                    triggeredByUser = true,
+                                    checkPermissions = true
+                                )
+                            },
+                            onDetails = actions::openDetails,
+                            onOpenPlaces = { scope.launch { pager.animateScrollToPage(PAGE_PLACES) } }
+                        )
+                        else -> PlacesPage(
+                            // The visit open in a window isn't listed until you pin it.
+                            locations = locations.filterNot {
+                                it.formattedId == windowId && it.formattedId in visiting
+                            },
+                            currentId = location?.formattedId,
+                            starred = starred,
+                            visiting = visiting,
+                            now = now,
+                            onPage = onPage,
+                            // Tapping a postcard opens it as a window (no jump, no change of place).
+                            onSelect = { place, bounds ->
+                                windowOrigin = bounds
+                                windowId = place.formattedId
+                            },
+                            onStar = {
+                                val id = it.formattedId
+                                // One star: starring moves it here; the starred place stays starred.
+                                if (id in starred) return@PlacesPage
+                                starred = setOf(id)
+                                saveStarred(context, starred)
+                                // The main place is kept, never a visit.
+                                if (id in starred) Visits.unmark(context, id)
+                                controller.visitsChanged++
+                            },
+                            onDelete = { place ->
+                                val index = locations.indexOfFirst { it.formattedId == place.formattedId }
+                                if (index >= 0) {
+                                    viewModel.deleteLocation(index)
+                                    messages.show(
+                                        ShellMessage(
+                                            icon = Icons.Outlined.Delete,
+                                            text = context.getString(
+                                                R.string.shell_place_removed,
+                                                place.getPlace(context)
+                                            ),
+                                            action = context.getString(R.string.shell_undo),
+                                            onAction = { viewModel.addLocation(place, index, context) }
+                                        )
+                                    )
+                                }
+                            },
+                            onAddCurrent = {
+                                viewModel.openChooseWeatherSourcesDialog(
+                                    Location(isCurrentPosition = true).applyDefaultPreset(sourceManager)
+                                )
+                            },
+                            onEdit = {
+                                viewModel.setLocation(it.formattedId)
+                                actions.openLocationSettings()
+                            },
+                            onMove = { id, beforeId ->
+                                // Same move in the saved list (where the current position may sit anywhere).
+                                val from = locations.indexOfFirst { it.formattedId == id }
+                                val rest = locations.filter { it.formattedId != id }
+                                val to = beforeId?.let { b -> rest.indexOfFirst { it.formattedId == b } }
+                                    ?.takeIf { it >= 0 } ?: rest.size
+                                if (from >= 0) viewModel.swapLocations(from, to)
+                            },
+                            onSettings = actions::openSettings,
+                            listState = placesList,
+                            pageFade = { edgeFade(pager.currentPage + pager.currentPageOffsetFraction) }
+                        )
+                    }
                 }
             }
         }
@@ -513,7 +598,38 @@ fun SolsticeShell(
                     weather = SkyWeather.of(location?.weather?.current?.weatherCode),
                     glass = glass,
                     labelShown = labelShown,
-                    onTab = { scope.launch { pager.animateScrollToPage(it) } },
+                    onTab = { target ->
+                        scope.launch {
+                            if (abs(target - pager.currentPage) >= 2) {
+                                // Crossfade (agreed 2026-11-18): snapshot the page being left, switch
+                                // underneath, fade the snapshot out over the new page; a little blur on
+                                // both clears quickly. The toolbar highlight glides to the tapped tab.
+                                val from = pager.currentPage.toFloat()
+                                capture = true
+                                withFrameNanos { }
+                                withFrameNanos { }
+                                leavingImage = runCatching { leaving.toImageBitmap() }.getOrNull()
+                                fadeOut.snapTo(1f)
+                                haze.snapTo(1f)
+                                toolbarPosition.snapTo(from)
+                                pager.scrollToPage(target)
+                                launch { haze.animateTo(0f, tween(220)) }
+                                launch {
+                                    toolbarPosition.animateTo(
+                                        target.toFloat(),
+                                        spring(dampingRatio = 1f, stiffness = Spring.StiffnessVeryLow * 2.5f)
+                                    )
+                                    toolbarPosition.snapTo(-1f)
+                                }
+                                jumpDir = if (target > from) 1f else -1f
+                                fadeOut.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+                                leavingImage = null
+                            } else {
+                                pager.animateScrollToPage(target)
+                            }
+                        }
+                    },
+                    position = { toolbarPosition.value.takeIf { it >= 0f } },
                     searchEnabled = !searchOpen,
                     onSearch = {
                         searchHandoff = false
@@ -681,6 +797,7 @@ internal fun ShellToolbar(
     budIcon: ImageVector = Icons.Filled.Search,
     budDescription: String = stringResource(R.string.shell_search_elsewhere),
     budChecked: Boolean = false,
+    position: () -> Float? = { null },
 ) {
     val tabs = listOfNotNull(
         Tab(R.string.shell_tab_days, Icons.Outlined.CalendarMonth),
@@ -689,11 +806,16 @@ internal fun ShellToolbar(
     )
     val collapsed = 52.dp
     val expanded = 132.dp
-    val position = pager.currentPage + pager.currentPageOffsetFraction
+    val position = position() ?: (pager.currentPage + pager.currentPageOffsetFraction)
     val open = tabs.indices.map { (1f - abs(position - it)).coerceIn(0f, 1f) }
     // How far each tab's title is unfolded: selected (follows the swipe) and not already shown as the
     // page's own big title.
-    val shown = tabs.indices.map { open[it] * labelShown[it] }
+    val gliding = position() != null
+    val shown = tabs.indices.map { i ->
+        // While gliding over tabs (a tab jump), only the end tab unfolds its label.
+        val passing = gliding && i != 0 && i != tabs.lastIndex
+        if (passing) 0f else open[i] * labelShown[i]
+    }
     val widths = shown.map { collapsed + (expanded - collapsed) * it }
     val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
     val highlightX = tabs.indices.fold(0.dp) { acc, i -> acc + starts[i] * open[i] }
@@ -719,18 +841,48 @@ internal fun ShellToolbar(
     val pillWidth = starts.last() + 8.dp
     val joined = bud < 0.97f
     val neck = remember { Animatable(1f) }
+    // Liquid drop (agreed 2026-11-18): free of the pill, the bubble wobbles (overshoot); taken back in,
+    // the pill ripples a little as it absorbs it.
+    val wobble = remember { Animatable(0f) }
+    val ripple = remember { Animatable(0f) }
     LaunchedEffect(joined) {
-        neck.animateTo(if (joined) 1f else 0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow))
+        if (!joined) {
+            launch {
+                wobble.snapTo(1f)
+                wobble.animateTo(0f, spring(dampingRatio = 0.32f, stiffness = Spring.StiffnessMediumLow))
+            }
+        } else if (bud > 0.05f) {
+            launch {
+                ripple.snapTo(1f)
+                ripple.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium))
+            }
+        }
+        neck.animateTo(
+            if (joined) 1f else 0f,
+            // Letting go: no bounce (overshooting below zero brought a sliver of neck back).
+            spring(dampingRatio = if (joined) 0.5f else 1f, stiffness = Spring.StiffnessMediumLow)
+        )
     }
     val density = LocalDensity.current
     val shape = with(density) {
         BudShape(budExtra = ((gap + height) * bud).toPx(), neck = neck.value, gap = gap.toPx())
     }
-    Box(Modifier.width(pillWidth + (gap + height) * bud).height(height).glass(glass, shape, tint)) {
+    Box(
+        Modifier
+            .width(pillWidth + (gap + height) * bud)
+            .height(height)
+            .graphicsLayer {
+                // The ripple when it absorbs the bubble.
+                scaleX = 1f + 0.03f * ripple.value
+                scaleY = 1f - 0.04f * ripple.value
+            }
+            .glass(glass, shape, tint)
+    ) {
         ToolbarTabs(
             pillWidth, open, shown, widths, starts, highlightX, highlightW, primary, onPrimary, onSurface, tabs,
             pager, onTab
         )
+        // It swells inside the pill first (a little bigger as it comes out), then shows its icon.
         val iconAlpha = ((bud - 0.6f) / 0.4f).coerceIn(0f, 1f)
         Box(
             contentAlignment = Alignment.Center,
@@ -743,11 +895,37 @@ internal fun ShellToolbar(
                 // disabled clickable would swallow that tab's taps.
                 .then(if (searchEnabled && bud > 0.9f) Modifier.clickable(onClick = onSearch) else Modifier)
         ) {
+            // Push in (agreed 2026-11-18): pinning tilts the pin, jabs it down (squash, haptic) and
+            // stands it up in the Forecast colour; unpinning pops it back out with a little tilt.
+            val jab = remember { Animatable(0f) }
+            var wasChecked by remember { mutableStateOf(budChecked) }
+            val haptics = LocalHapticFeedback.current
+            LaunchedEffect(budChecked) {
+                if (budChecked != wasChecked) {
+                    jab.snapTo(if (budChecked) 1f else -1f)
+                    if (budChecked) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    jab.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                }
+                wasChecked = budChecked
+            }
+            val tintColor by animateColorAsState(if (budChecked) primary else onSurface, label = "bud")
             Icon(
                 budIcon,
                 contentDescription = if (bud > 0.5f) budDescription else null,
-                tint = if (budChecked) primary else onSurface,
-                modifier = Modifier.graphicsLayer { alpha = iconAlpha }
+                tint = tintColor,
+                modifier = Modifier.graphicsLayer {
+                    val j = jab.value
+                    alpha = iconAlpha
+                    // In: down and squashed; out: up and stretched.
+                    translationY = j * 1.5.dp.toPx()
+                    scaleY = 1f - 0.07f * j
+                    scaleX = 1f + 0.03f * j
+                    rotationZ = -8f * kotlin.math.abs(j)
+                    // The bubble's own wobble right after it pops free (scale only).
+                    val w = wobble.value
+                    scaleX *= 1f + 0.1f * w
+                    scaleY *= 1f + 0.1f * w
+                }
             )
         }
     }

@@ -1256,3 +1256,42 @@ Things to try on the phone before calling any motion done (debug and release bui
     start of a swipe). **Places has the same edge blur** now.
   - **Places: a left-to-right swipe goes to the page on the left.** A card only moves when the
     swipe goes right to left (star / delete).
+- **2026-11-18 evening (motion agreed with the user, built):**
+  - **Tab jump This week ⇄ Places: cross-dissolve on paper.** The page fades out and shifts ~28 dp
+    toward the tapped side (130 ms), the pager jumps, and the new page fades in from the other side
+    on a no-bounce spring. No slide through Forecast's sky. Checked on the Pixel. The toolbar
+    highlight jumps rather than gliding.
+  - **Bud: liquid drop.** Once free of the pill, the bubble wobbles (overshoot, damping 0.32); taken
+    back in, the pill ripples a little. Not yet watched on the phone.
+  - **Pin: push in.** The pin tilts, jabs down (squash, haptic) and stands up in the Forecast colour;
+    unpinning pops it out with a tilt; the colour eases. Not yet watched on the phone.
+  - **Loading: develop like a photo.** With no data the Forecast is faint (35 %); when data arrives
+    it comes up to full over 0.7 s while a 10 dp blur clears. Not yet watched on the phone.
+- **2026-11-18 evening (user feedback, built):**
+  - The window always shows "Visiting" (pinned or not), with the local time when it differs.
+  - Calmer pin push: 1.5 dp travel, 7 % squash, 8° tilt, damping 0.75.
+  - **Tab jump is a real crossfade** (checked on the Pixel). A frozen image of the page being left
+    (`GraphicsLayer.toImageBitmap`; a recorded layer alone kept showing live content) fades out over
+    the new page in 300 ms, with a brief blur that clears in about 220 ms. The **toolbar highlight
+    glides** to the tapped tab on its own position.
+- **2026-11-18 evening (user feedback, built):**
+  - **Tab jump is a real slide now** (checked on the Pixel): the frozen old page slides out to one
+    side while the new page slides in from the other (380 ms, fast-out-slow-in), with a touch of
+    blur. The old page is drawn outside the moving layer: that layer's blur effect clipped it.
+  - **The toolbar glides slower**, on a soft no-bounce spring, and doesn't unfold the label of a tab
+    it passes (Forecast).
+  - **This week and Places headings line up** (Places top padding 34 dp).
+  - **Bud:** the neck lets go without bouncing; the spring overshoot brought a sliver of neck back
+    (the "little thing that pops out"). Not yet watched on the phone.
+  - **Progressive blur while swiping:** a page only partly in view is blurred up to 6 dp, clearing
+    as it comes in. It follows the finger and reverses with it (draw phase). Not yet watched on the
+    phone.
+- **2026-11-18 evening (user notes):**
+  - **The starred place folds into a more compact version** (design to propose).
+  - **Very important now: a night counterpart to the sunrise/sunset sun path** (moonrise/moonset,
+    or dusk to dawn with the moon), which is missing at night.
+  - **Bug:** on This week, tap Places, then quickly tap Forecast (also in reverse): things break.
+    **Rework the page navigation as one system** instead of layering it on old code: one source of
+    truth for the current page and transitions (pager position, tab jump slide, toolbar glide,
+    window, search) that any new input can interrupt cleanly. Today the jump's coroutine,
+    `pager.scrollToPage`, the snapshot and the toolbar's own position can fight each other.

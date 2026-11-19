@@ -104,6 +104,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -181,11 +182,28 @@ internal fun ForecastPage(
     val context = LocalContext.current
     val weather = location.weather
     val current = weather?.current
+    // Develop like a photo (agreed 2026-11-18): while there's no data the values are faint; when it
+    // arrives they come up from soft to sharp (a slight blur clearing) instead of popping in.
+    val hasData = current != null
+    val develop = remember { Animatable(if (hasData) 1f else 0f) }
+    LaunchedEffect(hasData) {
+        if (hasData) develop.animateTo(1f, tween(700)) else develop.snapTo(0f)
+    }
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val d = develop.value
+                    alpha = 0.35f + 0.65f * d
+                    val blur = 10.dp.toPx() * (1f - d)
+                    renderEffect = if (blur > 0.5f && android.os.Build.VERSION.SDK_INT >= 31) {
+                        BlurEffect(blur, blur, TileMode.Decal)
+                    } else {
+                        null
+                    }
+                }
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp)
@@ -512,7 +530,8 @@ internal fun PlacesPage(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 132.dp),
+        // Top padding chosen so the heading sits at the same height as This week's.
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 34.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize().grainyPaper(onPage)
             // The same progressive edge blur as This week.

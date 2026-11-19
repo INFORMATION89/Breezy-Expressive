@@ -245,7 +245,7 @@ internal fun PlaceWindow(
                     // "Visiting" until you pin it, and its local time when it differs from yours.
                     val context = LocalContext.current
                     val label = listOfNotNull(
-                        if (!pinned) stringResource(R.string.shell_visiting) else null,
+                        stringResource(R.string.shell_visiting),
                         timeDifference(location.timeZone, now)?.let { diff ->
                             time(context, java.util.Date(now), location.timeZone) + ", " + diff
                         }
