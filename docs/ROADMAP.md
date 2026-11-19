@@ -73,8 +73,9 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   interaction, morphs from anchors instead of a seeked `SharedTransitionLayout`, iOS-style springs and
   release rules. Plan in PLAN.md, "Motion framework" (M0 to M5); M0 = agree it.
 - [ ] **Design frameworks:** spacing scale, type scale, motion tokens, component rules.
-- [ ] 💬⭐ **Icon style (current task):** Google's Material Symbols, one style, one catalog. Inventory,
-  options and steps I1 to I5 in CONTINUE.md; decisions in PLAN.md "Icons".
+- [x] 💬⭐ **Icon style:** Material Symbols Rounded, one catalog (`SolsticeIcons`), old Material Icons
+  removed (2026-11-19, PR #1). Check on the phone (CONTINUE.md).
+- [ ] Icons later (agree first): grade -25 on dark glass, optical sizes 40/48 for big icons, animated fill.
 
 ### Refinement
 - [x] Real blur behind the Forecast cards; moon card in the forecast's tint, dark at night (2026-11-19).
