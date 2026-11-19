@@ -1435,6 +1435,20 @@ Things to try on the phone before calling any motion done (debug and release bui
     the first frames show the glass fading in from the pill, not an empty dark frame. To confirm by
     feel on the phone.
 
+- **2026-11-19: component catalog, first pass** (checked on the Pixel 7: all three pages, the
+  postcard window and its This week):
+  - `ShellPages.kt` (2,237 lines) split by its sections into `ForecastPage.kt`, `RainCard.kt`,
+    `WeekPage.kt`, `PlacesPage.kt`, `Postcard.kt`, `Format.kt` (`3d7b6a4`, code moved as is).
+  - `components/SolsticeCard.kt`: one card with two materials (`Glass` over the sky, `Paper` on a
+    plain page), replacing `GlassCard` and `PaperCard`.
+  - `shell/Toolbar.kt`: the toolbar, its tabs, `BudShape` and the condition icon, out of
+    `SolsticeShell.kt` (now ~760 lines, from ~1,220).
+  - `shell/PageFrame.kt`, used by both the shell and the postcard window: `PagerState.position`,
+    `Modifier.plainPageBackdrop`, `pageFling`, `ToolbarDock`.
+  - Not done, on purpose: one big page scaffold (the shell's tab jump, leaving-page capture and
+    per-page blur would have to move with it; that's M4 motion work) and one `SolsticeSheet` (search
+    first has to move onto `Morph`, M4). `Modifier.searchBlur` in `SolsticeShell.kt` is unused.
+
 ## Backlog (user notes, 2026-11-18)
 
 ### Foundations

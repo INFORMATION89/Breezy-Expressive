@@ -81,6 +81,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.CardMaterial
+import org.breezyweather.ui.expressive.components.SolsticeCard
 import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
@@ -444,7 +446,7 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
     val context = LocalContext.current
     val hours = location.weather?.nextHourlyForecast?.take(6).orEmpty()
     if (hours.isEmpty()) return
-    GlassCard(text) {
+    SolsticeCard(CardMaterial.Glass, text) {
         // The title says what's happening, so you don't have to read the numbers.
         Text(
             hourlyHeadline(context, hours) ?: stringResource(R.string.shell_today),

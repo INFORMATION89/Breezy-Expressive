@@ -44,34 +44,6 @@ import kotlin.math.roundToInt
 // ---------------------------------------------------------------------------------------------
 // Shared bits
 
-/** A translucent card that lets the sky show through (blur comes later). */
-@Composable
-internal fun GlassCard(text: Color, tint: Color? = null, content: @Composable () -> Unit) {
-    val light = text.red + text.green + text.blue < 1.5f // dark text → light sky → white glass
-    val glass = tint ?: Color.White
-    val alpha = when {
-        light -> 0.34f
-        tint != null -> 0.24f
-        else -> 0.10f
-    }
-    val fill = glass.copy(alpha = alpha)
-    val shape = CornerShapes.L
-    // Real frosted glass: the sky behind it, blurred, under the tint (plain tint without a sky).
-    val sky = LocalSkyGlass.current
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .then(
-                if (sky != null) {
-                    Modifier.glass(sky, shape, fill, edge = Color.White.copy(alpha = 0.14f))
-                } else {
-                    Modifier.clip(shape).background(fill)
-                }
-            )
-            .padding(Space.S4)
-    ) { Column { content() } }
-}
-
 internal fun degrees(context: Context, t: org.breezyweather.unit.temperature.Temperature): String {
     val unit = SettingsManager.getInstance(context).getTemperatureUnit(context)
     return "${t.toDouble(unit).roundToInt()}°"

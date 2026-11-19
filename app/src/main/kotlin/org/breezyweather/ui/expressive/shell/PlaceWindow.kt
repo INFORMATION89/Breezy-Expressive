@@ -222,19 +222,13 @@ internal fun PlaceWindow(
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
-                        .drawBehind {
-                            // This week sits on the plain page, like Outlook.
-                            val position = pager.currentPage + pager.currentPageOffsetFraction
-                            drawRect(page, alpha = abs(position - 1f).coerceIn(0f, 1f))
-                        }
+                        // This week sits on the plain page, like Outlook.
+                        .plainPageBackdrop(pager, skyPage = 1, page = page)
                 ) {
                     HorizontalPager(
                         state = pager,
                         beyondViewportPageCount = 1,
-                        flingBehavior = PagerDefaults.flingBehavior(
-                            state = pager,
-                            snapAnimationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
-                        ),
+                        flingBehavior = pageFling(pager),
                         modifier = Modifier.fillMaxSize()
                     ) { index ->
                         if (index == 0) {
@@ -302,13 +296,7 @@ internal fun PlaceWindow(
             // The home toolbar, as is: This week and Forecast, and Pin budding out of Forecast like search
             // does out of Places (pin keeps the place; otherwise it's gone when you go back).
             val scope = rememberCoroutineScope()
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = Space.S3)
-                    .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
-            ) {
+            ToolbarDock(alpha = { ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }) {
                 ShellToolbar(
                     pager = pager,
                     sky = sky,

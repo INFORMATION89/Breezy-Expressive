@@ -61,6 +61,10 @@ The suspicion is partly right.
 **Haze, decided 2026-11-19:** Haze draws the glass (same speed and look as ours on the Pixel 7);
 the edge blur stays ours (Haze's progressive content blur measured slower). Numbers in the PLAN.md log.
 
+**Catalog, first pass 2026-11-19:** `SolsticeCard` (glass/paper), `Toolbar.kt`, `PageFrame.kt`
+(shared by the shell and the postcard window); `ShellPages.kt` split into one file per page. Sheet
+and page scaffold follow in M4.
+
 ## Proposed order (to agree)
 
 1. **Tokens first (cheap, no visual risk):** spacing, sizes, shapes, palette, type names, and the

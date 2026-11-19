@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import org.breezyweather.R
 import org.breezyweather.common.extensions.formatMeasure
+import org.breezyweather.ui.expressive.components.CardMaterial
+import org.breezyweather.ui.expressive.components.SolsticeCard
 import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.theme.Sizes
@@ -187,7 +189,7 @@ internal fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color)
     // When the amount rounds to nothing (a likely drizzle), probability says more: start there.
     val dryAmount = rain.total < 0.1
     var showChance by remember(rain.minutely) { mutableStateOf(dryAmount && chances != null) }
-    GlassCard(text, tint = if (rain.soon) SolsticePalette.RainSoon else null) {
+    SolsticeCard(CardMaterial.Glass, text, tint = if (rain.soon) SolsticePalette.RainSoon else null) {
         // No separate title: the sentence is the header.
         Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
         Spacer(Modifier.height(Space.S1))

@@ -63,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.CardMaterial
+import org.breezyweather.ui.expressive.components.SolsticeCard
 import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
@@ -113,19 +115,6 @@ internal fun DaysPage(
             item { WeekPills(location, days, onPage, onDay) }
         }
     }
-}
-
-/** A plain-paper card (This week): a faint surface over the page. */
-@Composable
-private fun PaperCard(onPage: Color, content: @Composable () -> Unit) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(CornerShapes.L)
-            .background(onPage.copy(alpha = 0.09f))
-            .border(0.5.dp, onPage.copy(alpha = 0.10f), CornerShapes.L)
-            .padding(Space.S5)
-    ) { Column { content() } }
 }
 
 private fun isWet(w: SkyWeather) = w == SkyWeather.RAIN || w == SkyWeather.THUNDERSTORM || w == SkyWeather.SNOW
@@ -186,7 +175,7 @@ private fun WeekSummary(
             )
         }
     )
-    PaperCard(onPage) {
+    SolsticeCard(CardMaterial.Paper, onPage) {
         Text(headline, color = onPage, style = MaterialTheme.typography.titleLargeEmphasized)
         Spacer(Modifier.height(Space.S2))
         Text(
@@ -218,7 +207,7 @@ private fun WeekPills(
     val bottom = lows.filterNotNull().minOrNull() ?: return
     val span = (top - bottom).coerceAtLeast(1.0)
     val pillArea = 84.dp
-    PaperCard(onPage) {
+    SolsticeCard(CardMaterial.Paper, onPage) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             days.forEachIndexed { i, day ->
                 val hi = highs[i] ?: return@forEachIndexed
