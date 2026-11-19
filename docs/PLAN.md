@@ -1310,3 +1310,61 @@ Things to try on the phone before calling any motion done (debug and release bui
   quick Forecast, the reverse, and four rapid taps in a row all end cleanly on the right page; the
   This week ⇄ Places slide still works. Next: the postcard window and search should use the same
   pattern for their opening and closing springs.
+
+### Forecast cards: precipitation and sun path (user guidance, 2026-11-18)
+- **Precipitation timeline, Apple-style.** A card with a headline ("Rain stopping", "Rain starting
+  in 20 min"), one plain sentence ("Rain is expected to stop in 25 min."), and a bar timeline of
+  intensity for the next hour (Now, 10m … 50m), from upstream's minutely data. Fallback to the
+  hourly forecast (next ~6 h) when there's no minutely data.
+- **Forecast items move dynamically.** When rain is happening or coming soon, the rain timeline
+  moves to the top, just under the sun path (which stays where it is for now).
+- **No rain in the next ~6 h:** hide the timeline and show a small line or banner instead, e.g. "No
+  rain expected in the next 6 hours" (the window follows the setting).
+- **Sun path, like the reference:** the arc fills with a soft vertical **gradient** under it (warm
+  by day, blue at night), the horizon line splits day from night, and the **length of daylight
+  sits in the middle** between the sunrise and sunset times ("11 h 12 m of daylight").
+- Mockup first, then build. The hourly card's guidance comes next.
+- **2026-11-18 (user feedback on the mockup):**
+  - With no rain expected, the "No rain expected…" line sits **below the hourly card**.
+  - The rain card has **no separate title**: the descriptive sentence is its header ("Rain is
+    expected to stop in 25 min.").
+  - **All card titles describe what's going on**, so you don't have to read the data. For example,
+    Hourly becomes "Going down to 16° in the next 3 hours".
+  - **Night backgrounds much darker** (e.g. overcast at night).
+  - **Hourly:** like the Seoul mockup, with a small icon between the time and the temperature
+    (icon design direction to search later), and the descriptive text as the title.
+  - **Sun path text is dynamic:** by day the sun strength and UV ("Mild sun, UV 3"); within an
+    hour of sunrise or sunset, the time left ("Sunset in 40 min").
+  - **Sun/moon path shape like the mockup:** a smooth bell curve whose ends run flat into the
+    horizon and fade out towards the screen edges.
+  - **Option: show the feels-like temperature as the main temperature.**
+- **2026-11-18 (user notes):**
+  - **A smooth transition when a new background loads** (e.g. opening a place from search). Maybe
+    start from a really dark sky that animates into the current condition, with the sun or moon
+    visibly moving into place. To propose first.
+  - **A nicer loading UI:** check with the user later.
+- **2026-11-18 night (built, checked in the debug app on the Pixel):**
+  - **Sun/moon path:** a smooth bell between the two times; the ends run flat along the horizon
+    and fade out at the screen edges. A soft gradient fills under the curve (warm by day, cool blue
+    at night). The middle text is dynamic: sun strength and UV by day ("Mild sun, UV 3"),
+    "Sunset in 40 min" / "Sunrise in 40 min" within the last hour, and the moon phase at night
+    when tapped.
+  - **Hourly card:** a descriptive title ("Going down to 11° in the next 5 hours"; up; steady; or
+    rain from a time) and a small condition icon between temperature and time.
+  - **Rain:** with rain now or coming, a card under the sun path whose header is the sentence ("Rain
+    is expected to stop in 25 min."), with bars for the next hour (minute data) or the next 6 hours
+    (hourly chance). Otherwise "No rain expected in the next 6 hours" sits below the hourly card.
+    The rain card wasn't seen (no rain right now).
+  - **Night skies about 45 % darker** (checked: overcast night).
+  - **Option: feels-like as the main temperature** (Settings → Main screen); the line under it then
+    shows the actual temperature. Not yet toggled on the phone.
+  - **Edge-to-edge tab jump:** speed matched to a neighbouring tab change (slide 280 ms, toolbar on
+    the same spring as normal).
+- **2026-11-18 night (user notes):**
+  - The moon phase text is always present at night; tapping it will open a floating card with
+    more moon info (the user will show the design later).
+  - When starring a place, show a message: "This is now your main place".
+  - **This week redesign (to mock up first):** temperature range bars ("blobs") per day with a
+    gradient, warmer orange at the top down to bluer, whose colours follow how hot or cold each day
+    is; as one card like the Seoul mockup; maybe the condition icon somewhere; and a **dynamic
+    summary card at the top** with the week's general conditions.

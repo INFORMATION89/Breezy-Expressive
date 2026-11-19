@@ -38,41 +38,44 @@ data class SkyPalette(
     val sunStrength: Float,
 )
 
-/** Weather families; each has a day and a night sky, and clear skies turn golden at dawn/dusk. */
+/**
+ * Weather families; each has a day and a night sky, and clear skies turn golden at dawn/dusk.
+ * Night skies were darkened ~45 % on 2026-11-18 (user note: night backgrounds much darker).
+ */
 enum class SkyWeather(val day: SkyPalette, val night: SkyPalette, val golden: Boolean) {
     CLEAR(
         sky(0xBFD3F2, 0x8FB0EE, 0xFFE1A8, 0xF3EBDD, 0x1E2340, sun = 0xFFF0C8, sunStrength = 0.9f),
-        sky(0x1D1A3D, 0x8E7CD0, 0x5B5BD6, 0x0F0D22, 0xECE9FF, 0.30f, MOON, 0.4f),
+        sky(0x0F0E21, 0x4E4472, 0x3F3F95, 0x080712, 0xECE9FF, 0.30f, MOON, 0.4f),
         golden = true
     ),
     PARTLY_CLOUDY(
         sky(0xF2D7C9, 0x9DAEE6, 0xF4A46B, 0xF7E3C8, 0x2A1A1A, sun = 0xFFE7C2, sunStrength = 0.75f),
-        sky(0x232043, 0x8E86C9, 0x45417E, 0x14122A, 0xEEEAFB, 0.30f, MOON, 0.3f),
+        sky(0x131124, 0x4E496E, 0x302D58, 0x0B0917, 0xEEEAFB, 0.30f, MOON, 0.3f),
         golden = true
     ),
     OVERCAST(
         sky(0xC9CBD3, 0xA7ABB8, 0xE2DED8, 0xB9B4C4, 0x22252E, sun = 0xFFF6E8, sunStrength = 0.35f),
-        sky(0x2B2A3B, 0x4A4860, 0x6B6680, 0x1C1B27, 0xEEEAFB, 0.30f, MOON, 0.2f),
+        sky(0x171720, 0x282734, 0x4A4759, 0x0F0E15, 0xEEEAFB, 0.30f, MOON, 0.2f),
         golden = false
     ),
     RAIN(
         sky(0x7E8FA8, 0x4D6185, 0x9FB7C9, 0x5B6E7E, 0xF2F5FA, 0.28f, sun = 0xE8EEF5, sunStrength = 0.25f),
-        sky(0x1E2638, 0x2E3D5C, 0x4F6A86, 0x121826, 0xEEF2FA, 0.30f, MOON, 0.15f),
+        sky(0x10141E, 0x192132, 0x374A5D, 0x090D14, 0xEEF2FA, 0.30f, MOON, 0.15f),
         golden = false
     ),
     THUNDERSTORM(
         sky(0x3A3550, 0x1E1B33, 0x7A5FB0, 0x4A5570, 0xF1EEFA, 0.30f, sun = 0xD9D2F2, sunStrength = 0.15f),
-        sky(0x16131F, 0x0C0A14, 0x5B3F96, 0x2A2F45, 0xF1EEFA, 0.30f, MOON, 0.1f),
+        sky(0x0C0A11, 0x06050B, 0x3F2C69, 0x171925, 0xF1EEFA, 0.30f, MOON, 0.1f),
         golden = false
     ),
     SNOW(
         sky(0xE7ECF4, 0xC3D2EC, 0xFFFFFF, 0xD8D2EA, 0x1F2633, sun = 0xFFFFFF, sunStrength = 0.5f),
-        sky(0x2A3044, 0x6E7FA6, 0xB8C3DE, 0x3A3C5E, 0xF3F5FC, 0.30f, MOON, 0.25f),
+        sky(0x171A25, 0x3C455B, 0x80889B, 0x1F2133, 0xF3F5FC, 0.30f, MOON, 0.25f),
         golden = false
     ),
     FOG(
         sky(0xD9D6D1, 0xEDEAE4, 0xC4C0BA, 0xE4E0DA, 0x26241F, 0.18f, sun = 0xFFF6E6, sunStrength = 0.45f),
-        sky(0x2E2C33, 0x4A4750, 0x6E6A72, 0x3A383F, 0xEEEAF2, 0.22f, MOON, 0.25f),
+        sky(0x19181C, 0x28272C, 0x4D4A4F, 0x1F1E22, 0xEEEAF2, 0.22f, MOON, 0.25f),
         golden = false
     ),
     ;

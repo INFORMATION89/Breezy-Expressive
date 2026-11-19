@@ -39,6 +39,7 @@ import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
 import org.breezyweather.ui.common.widgets.insets.FitStatusBarTopAppBar
+import org.breezyweather.ui.expressive.shell.ShellPrefs
 import org.breezyweather.ui.settings.preference.bottomInsetItem
 import org.breezyweather.ui.settings.preference.clickablePreferenceItem
 import org.breezyweather.ui.settings.preference.composables.ListPreferenceView
@@ -124,13 +125,23 @@ fun MainScreenSettingsScreen(
             largeSeparatorItem()
 
             sectionHeaderItem(R.string.settings_main_section_options)
+            // Solstice: the feels-like temperature as the main temperature on Forecast.
+            switchPreferenceItem(R.string.settings_feels_like_main) { id ->
+                SwitchPreferenceView(
+                    titleId = id,
+                    summaryOnId = R.string.settings_enabled,
+                    summaryOffId = R.string.settings_disabled,
+                    checked = ShellPrefs.feelsLikeMain(context),
+                    isFirst = true,
+                    onValueChanged = { ShellPrefs.setFeelsLikeMain(context, it) }
+                )
+            }
             switchPreferenceItem(R.string.settings_main_background_title) { id ->
                 SwitchPreferenceView(
                     titleId = id,
                     summaryOnId = R.string.settings_enabled,
                     summaryOffId = R.string.settings_disabled,
                     checked = SettingsManager.getInstance(context).mainScreenBackgroundEnabled,
-                    isFirst = true,
                     onValueChanged = {
                         SettingsManager.getInstance(context).mainScreenBackgroundEnabled = it
                     }

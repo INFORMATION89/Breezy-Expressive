@@ -34,4 +34,23 @@
     <string name="shell_pin">Pin</string>
     <string name="shell_pinned">Pinned</string>
     <string name="shell_home">Home</string>
+    <string name="shell_sunset_in">Sunset in %1$s</string>
+    <string name="shell_sunrise_in">Sunrise in %1$s</string>
+    <string name="shell_minutes">%1$d min</string>
+    <string name="shell_sun_weak">Weak sun</string>
+    <string name="shell_sun_mild">Mild sun</string>
+    <string name="shell_sun_strong">Strong sun</string>
+    <string name="shell_sun_very_strong">Very strong sun</string>
+    <string name="shell_hourly_down">Going down to %1$s in the next %2$d hours</string>
+    <string name="shell_hourly_up">Going up to %1$s in the next %2$d hours</string>
+    <string name="shell_hourly_steady">Steady, %1$s for the next hours</string>
+    <string name="shell_hourly_rain_at">%1$s from %2$s</string>
+    <string name="shell_rain_now">Rain is expected to continue for the next hour.</string>
+    <string name="shell_rain_stops_in">Rain is expected to stop in %1$d min.</string>
+    <string name="shell_rain_starts_in">Rain is expected to start in %1$d min.</string>
+    <string name="shell_rain_starts_in_hours">Rain is expected in about %1$d hours.</string>
+    <string name="shell_no_rain">No rain expected in the next %1$d hours</string>
+    <string name="settings_feels_like_main">Show feels-like as the main temperature</string>
+    <string name="shell_actual_temperature">Actual %1$s</string>
+    <string name="shell_now_main_place">This is now your main place</string>
 </resources>

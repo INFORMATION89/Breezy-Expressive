@@ -73,10 +73,18 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Dehaze
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.outlined.Thunderstorm
+import androidx.compose.material.icons.outlined.Umbrella
+import androidx.compose.material.icons.outlined.WbCloudy
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -122,6 +130,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -244,8 +253,15 @@ internal fun ForecastPage(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            // The big number is the actual temperature, or the feels-like one when that option is on.
+            val feelsMain = ShellPrefs.feelsLikeMain(context)
+            val main = if (feelsMain) {
+                current?.temperature?.feelsLikeTemperature ?: current?.temperature?.temperature
+            } else {
+                current?.temperature?.temperature
+            }
             Text(
-                current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                main?.let { degrees(context, it) } ?: "–",
                 color = text,
                 fontSize = 112.sp,
                 fontWeight = FontWeight.Light,
@@ -260,7 +276,18 @@ internal fun ForecastPage(
             Spacer(Modifier.height(28.dp))
             SunPath(location, now, text)
             Spacer(Modifier.height(20.dp))
+            // The order follows what matters now: rain near moves its timeline right under the sun
+            // path; otherwise a short "no rain" line sits after the hourly card.
+            val rain = remember(location.weather, now / 60_000L) { rainOutlook(location, now) }
+            if (rain is RainOutlook.Coming) {
+                RainCard(rain, location, text)
+                Spacer(Modifier.height(12.dp))
+            }
             TodayCard(location, now, text)
+            if (rain is RainOutlook.None) {
+                Spacer(Modifier.height(12.dp))
+                NoRainLine(rain.hours, text)
+            }
             Spacer(Modifier.height(16.dp))
             TextButton(onClick = onDetails) {
                 Text(stringResource(R.string.shell_more_details), color = text)
@@ -295,9 +322,7 @@ private fun SunPath(location: Location, now: Long, text: Color) {
     val rise = sun.riseDate ?: return
     val set = sun.setDate ?: return
     val day = 24L * 60 * 60 * 1000
-    // Day: sunrise to sunset with the sun. Night (agreed 2026-11-18): sunset to sunrise with the
-    // moon in its phase; before dawn the night started at yesterday's sunset, after dusk it ends at
-    // tomorrow's sunrise.
+    // Day: sunrise to sunset with the sun. Night: sunset to sunrise with the moon in its phase.
     val night = now !in rise.time..set.time
     val (from, to) = when {
         !night -> rise.time to set.time
@@ -310,63 +335,96 @@ private fun SunPath(location: Location, now: Long, text: Color) {
     // 0/360 = new, 180 = full; waxing below 180 (lit on the right).
     val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
     var showPhase by remember { mutableStateOf(false) }
-    val accent = if (night) Color(0xFFE8E4D8) else Color(0xFFE58A3C)
+    val warm = Color(0xFFF2A33A)
+    val cool = Color(0xFF8FA3E8)
+    val accent = if (night) cool else warm
+    // The shape (agreed 2026-11-18, like the reference): a smooth bell between the two times whose
+    // ends run flat along the horizon and fade out towards the screen edges.
+    val edge = 0.14f
+    fun bell(x: Float): Float {
+        val t = ((x - edge) / (1f - 2 * edge))
+        return if (t <= 0f || t >= 1f) 0f else ((1 - kotlin.math.cos(2 * PI * t)) / 2).toFloat()
+    }
     Column(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth()) {
-            Canvas(
-                Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .pointerInput(night, progress) {
-                        if (!night) return@pointerInput
-                        detectTapGestures { tap ->
-                            val w = size.width
-                            val base = size.height - 6.dp.toPx()
-                            val x = progress * w
-                            val y = base - sin(PI * progress).toFloat() * (base - 6.dp.toPx())
-                            if (kotlin.math.hypot(tap.x - x, tap.y - y) < 36.dp.toPx()) showPhase = !showPhase
-                        }
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(84.dp)
+                .pointerInput(night, progress) {
+                    if (!night) return@pointerInput
+                    detectTapGestures { tap ->
+                        val x = (edge + progress * (1f - 2 * edge)) * size.width
+                        val base = size.height - 10.dp.toPx()
+                        val y = base - bell(x / size.width) * (base - 8.dp.toPx())
+                        if (kotlin.math.hypot(tap.x - x, tap.y - y) < 36.dp.toPx()) showPhase = !showPhase
                     }
-            ) {
-                val w = size.width
-                val h = size.height
-                val base = h - 6.dp.toPx()
-                fun point(p: Float) = Offset(p * w, base - sin(PI * p).toFloat() * (base - 6.dp.toPx()))
-                val path = Path().apply {
-                    moveTo(0f, base)
-                    for (i in 1..48) point(i / 48f).let { lineTo(it.x, it.y) }
                 }
-                drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = 1.dp.toPx())
-                drawPath(path, text.copy(alpha = 0.55f), style = Stroke(1.5.dp.toPx()))
-                val done = Path().apply {
-                    moveTo(0f, base)
-                    val steps = (48 * progress).toInt().coerceAtLeast(1)
-                    for (i in 1..steps) point(progress * i / steps).let { lineTo(it.x, it.y) }
-                }
-                drawPath(
-                    done,
-                    accent.copy(alpha = if (night) 0.8f else 1f),
-                    style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
+        ) {
+            val w = size.width
+            val base = size.height - 10.dp.toPx()
+            val peak = base - 8.dp.toPx()
+            fun point(x: Float) = Offset(x * w, base - bell(x) * peak)
+            val curve = Path().apply {
+                moveTo(0f, base)
+                for (i in 1..96) point(i / 96f).let { lineTo(it.x, it.y) }
+            }
+            // Soft gradient under the curve.
+            val fill = Path().apply {
+                addPath(curve)
+                lineTo(w, base)
+                close()
+            }
+            drawPath(
+                fill,
+                Brush.verticalGradient(
+                    0f to accent.copy(alpha = 0.35f),
+                    1f to accent.copy(alpha = 0f),
+                    startY = 8.dp.toPx(),
+                    endY = base
                 )
-                val c = point(progress)
-                if (!night) {
-                    drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
-                } else {
-                    // The moon in its phase: a pale disc with the shadow sliding across it.
-                    val r = 8.dp.toPx()
-                    drawCircle(Color(0xFFF1EEE4), radius = r, center = c)
-                    val waxing = angle < 180
-                    val shift = 2f * r * lit * if (waxing) -1f else 1f
-                    clipPath(Path().apply { addOval(Rect(c, r)) }) {
-                        drawCircle(Color(0xFF2B2A3A).copy(alpha = 0.85f), radius = r, center = c + Offset(shift, 0f))
-                    }
-                    drawCircle(
-                        Color.White.copy(alpha = 0.18f),
-                        radius = r + 3.dp.toPx(),
-                        center = c,
-                        style = Stroke(1.dp.toPx())
-                    )
+            )
+            // The curve and horizon fade out towards the screen edges.
+            val fade = Brush.horizontalGradient(
+                0f to Color.Transparent,
+                0.1f to Color.Black,
+                0.9f to Color.Black,
+                1f to Color.Transparent
+            )
+            drawContext.canvas.saveLayer(
+                androidx.compose.ui.geometry.Rect(0f, 0f, w, size.height),
+                androidx.compose.ui.graphics.Paint()
+            )
+            drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = 1.dp.toPx())
+            drawPath(curve, text.copy(alpha = 0.55f), style = Stroke(1.5.dp.toPx()))
+            val sunX = edge + progress * (1f - 2 * edge)
+            val done = Path().apply {
+                moveTo(0f, base)
+                for (i in 1..96) {
+                    val x = sunX * i / 96f
+                    point(x).let { lineTo(it.x, it.y) }
                 }
+            }
+            drawPath(done, accent, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+            drawRect(fade, blendMode = BlendMode.DstIn)
+            drawContext.canvas.restore()
+            val c = point(sunX)
+            if (!night) {
+                drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
+            } else {
+                // The moon in its phase: a pale disc with the shadow sliding across it.
+                val r = 8.dp.toPx()
+                drawCircle(Color(0xFFF1EEE4), radius = r, center = c)
+                val waxing = angle < 180
+                val shift = 2f * r * lit * if (waxing) -1f else 1f
+                clipPath(Path().apply { addOval(Rect(c, r)) }) {
+                    drawCircle(Color(0xFF2B2A3A).copy(alpha = 0.85f), radius = r, center = c + Offset(shift, 0f))
+                }
+                drawCircle(
+                    Color.White.copy(alpha = 0.18f),
+                    radius = r + 3.dp.toPx(),
+                    center = c,
+                    style = Stroke(1.dp.toPx())
+                )
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -377,16 +435,25 @@ private fun SunPath(location: Location, now: Long, text: Color) {
                 Alignment.Start
             )
             Spacer(Modifier.weight(1f))
-            // Tap the moon: its phase, kept very simple for now (between the two times).
-            if (night && showPhase && phase != null) {
+            // Dynamic: sun strength and UV by day; time left within an hour of sunrise or sunset;
+            // the moon's phase at night (tap the moon).
+            val middle = when {
+                // At night the moon's phase is always shown (a moon card on tap comes later).
+                night && phase != null ->
+                    listOfNotNull(phase.getDescription(context), "${(lit * 100).roundToInt()} %").joinToString(" · ")
+                !night && set.time - now in 0..3_600_000 ->
+                    context.getString(R.string.shell_sunset_in, minutesText(context, set.time - now))
+                night && to - now in 0..3_600_000 ->
+                    context.getString(R.string.shell_sunrise_in, minutesText(context, to - now))
+                !night -> sunStrength(context, weather.current?.uV?.index)
+                else -> null
+            }
+            if (middle != null) {
                 Text(
-                    listOfNotNull(phase.getDescription(context), "${(lit * 100).roundToInt()} %").joinToString(" · "),
-                    color = text,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(text.copy(alpha = 0.12f))
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                    middle,
+                    color = text.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.weight(1f))
             }
@@ -398,6 +465,21 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             )
         }
     }
+}
+
+private fun minutesText(context: Context, millis: Long): String =
+    context.getString(R.string.shell_minutes, (millis / 60_000L).coerceAtLeast(1L).toInt())
+
+/** "Mild sun, UV 3" from the UV index. */
+private fun sunStrength(context: Context, uv: Double?): String? {
+    uv ?: return null
+    val word = when {
+        uv < 3 -> R.string.shell_sun_weak
+        uv < 6 -> R.string.shell_sun_mild
+        uv < 8 -> R.string.shell_sun_strong
+        else -> R.string.shell_sun_very_strong
+    }
+    return context.getString(word) + ", UV " + uv.roundToInt()
 }
 
 @Composable
@@ -415,12 +497,13 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
     val hours = location.weather?.nextHourlyForecast?.take(6).orEmpty()
     if (hours.isEmpty()) return
     GlassCard(text) {
+        // The title says what's happening, so you don't have to read the numbers.
         Text(
-            stringResource(R.string.shell_today),
+            hourlyHeadline(context, hours) ?: stringResource(R.string.shell_today),
             color = text,
             style = MaterialTheme.typography.titleMediumEmphasized
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             hours.forEachIndexed { i, hour ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -428,6 +511,12 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
                         hour.temperature?.temperature?.let { degrees(context, it) } ?: "–",
                         color = text,
                         style = MaterialTheme.typography.titleMedium
+                    )
+                    Icon(
+                        hourIcon(SkyWeather.of(hour.weatherCode), !hour.isDaylight),
+                        contentDescription = hour.weatherText,
+                        tint = text.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(vertical = 6.dp).size(20.dp)
                     )
                     Text(
                         if (i == 0 && hour.date.time <= now) {
@@ -441,6 +530,165 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
                 }
             }
         }
+    }
+}
+
+/** What the next hours do, in words: "Going down to 16° in the next 3 hours", "Rain from 15:00"… */
+private fun hourlyHeadline(context: Context, hours: List<breezyweather.domain.weather.model.Hourly>): String? {
+    val temps = hours.mapNotNull { it.temperature?.temperature?.inCelsius }
+    if (temps.size < 2) return null
+    val wet = hours.indexOfFirst {
+        val w = SkyWeather.of(it.weatherCode)
+        w == SkyWeather.RAIN ||
+            w == SkyWeather.THUNDERSTORM ||
+            w == SkyWeather.SNOW
+    }
+    if (wet > 0) {
+        return context.getString(
+            R.string.shell_hourly_rain_at,
+            hours[wet].weatherText ?: "",
+            time(context, hours[wet].date, TimeZone.getDefault(), hourOnly = true)
+        )
+    }
+    val first = temps.first()
+    val minIdx = temps.indices.minBy { temps[it] }
+    val maxIdx = temps.indices.maxBy { temps[it] }
+    return when {
+        temps[minIdx] <= first - 2 -> context.getString(
+            R.string.shell_hourly_down,
+            hours[minIdx].temperature?.temperature?.let { degrees(context, it) } ?: "",
+            minIdx.coerceAtLeast(1)
+        )
+        temps[maxIdx] >= first + 2 -> context.getString(
+            R.string.shell_hourly_up,
+            hours[maxIdx].temperature?.temperature?.let { degrees(context, it) } ?: "",
+            maxIdx.coerceAtLeast(1)
+        )
+        else -> context.getString(R.string.shell_hourly_steady, hours.first().weatherText?.lowercase() ?: "")
+    }
+}
+
+/** A small icon for an hour (icon design direction to revisit). */
+private fun hourIcon(weather: SkyWeather, night: Boolean): ImageVector = when (weather) {
+    SkyWeather.CLEAR -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbSunny
+    SkyWeather.PARTLY_CLOUDY -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbCloudy
+    SkyWeather.OVERCAST -> Icons.Outlined.Cloud
+    SkyWeather.RAIN -> Icons.Outlined.Umbrella
+    SkyWeather.THUNDERSTORM -> Icons.Outlined.Thunderstorm
+    SkyWeather.SNOW -> Icons.Outlined.AcUnit
+    SkyWeather.FOG -> Icons.Outlined.Dehaze
+}
+
+// ---- Rain ---------------------------------------------------------------------------------------
+
+private sealed interface RainOutlook {
+    /** Rain now or within the window: [sentence] says what happens; [bars] are 0..1 intensities. */
+    class Coming(val sentence: String, val bars: List<Float>, val labels: List<String>) : RainOutlook
+
+    /** No rain expected in the next [hours]. */
+    class None(val hours: Int) : RainOutlook
+}
+
+private fun rainOutlook(location: Location, now: Long): RainOutlook? {
+    val weather = location.weather ?: return null
+    val context = null
+    // Next hour from minute data (5-minute steps), when the source has it.
+    val minutes = weather.minutelyForecastBy5Minutes.filter {
+        it.date.time + it.minuteInterval * 60_000L > now
+    }.take(12)
+    if (minutes.size >= 6) {
+        val mm = minutes.map { (it.precipitationIntensity?.inMillimeters ?: 0.0).toFloat() }
+        val wet = mm.map { it > 0.05f }
+        if (wet.any { it }) {
+            val max = mm.maxOrNull()?.coerceAtLeast(1f) ?: 1f
+            val bars = mm.map { (it / max).coerceIn(0f, 1f) }
+            val step = minutes.first().minuteInterval.coerceAtLeast(5)
+            val sentence = if (wet.first()) {
+                val stop = wet.indexOfFirst { !it }
+                if (stop > 0) "STOP:" + stop * step else "ON"
+            } else {
+                "START:" + wet.indexOfFirst { it } * step
+            }
+            return RainOutlook.Coming(sentence, bars, listOf("0", "10", "20", "30", "40", "50"))
+        }
+    }
+    // Otherwise the next 6 hours from the hourly forecast.
+    val hours = weather.nextHourlyForecast.take(6)
+    val wetHour = hours.indexOfFirst {
+        val w = SkyWeather.of(it.weatherCode)
+        w == SkyWeather.RAIN || w == SkyWeather.THUNDERSTORM ||
+            (it.precipitationProbability?.total?.inPercent ?: 0.0) >= 50.0
+    }
+    if (wetHour < 0) return RainOutlook.None(6)
+    val bars = hours.map { ((it.precipitationProbability?.total?.inPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) }
+    return RainOutlook.Coming(if (wetHour == 0) "ON" else "STARTH:$wetHour", bars, hours.map { "" })
+}
+
+@Composable
+private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) {
+    val context = LocalContext.current
+    val sentence = when {
+        rain.sentence == "ON" -> stringResource(R.string.shell_rain_now)
+        rain.sentence.startsWith(
+            "STOP:"
+        ) -> stringResource(R.string.shell_rain_stops_in, rain.sentence.removePrefix("STOP:").toInt())
+        rain.sentence.startsWith(
+            "START:"
+        ) -> stringResource(R.string.shell_rain_starts_in, rain.sentence.removePrefix("START:").toInt())
+        else -> stringResource(R.string.shell_rain_starts_in_hours, rain.sentence.removePrefix("STARTH:").toInt())
+    }
+    GlassCard(text) {
+        // No separate title: the sentence is the header.
+        Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
+        Spacer(Modifier.height(12.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            rain.bars.forEach { v ->
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(0.08f + 0.92f * v)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0xFF6FB7F0).copy(alpha = if (v > 0.02f) 0.95f else 0.25f))
+                )
+            }
+        }
+        Box(Modifier.fillMaxWidth().padding(top = 2.dp).height(1.dp).background(text.copy(alpha = 0.25f)))
+        if (rain.labels.size == 6 && rain.labels.first() == "0") {
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(stringResource(R.string.shell_now), "10m", "20m", "30m", "40m", "50m").forEach {
+                    Text(it, color = text.copy(alpha = 0.65f), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+/** "No rain expected in the next 6 hours", after the hourly card. */
+@Composable
+private fun NoRainLine(hours: Int, text: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(text.copy(alpha = 0.08f))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Icon(
+            Icons.Outlined.Umbrella,
+            contentDescription = null,
+            tint = text.copy(alpha = 0.7f),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.shell_no_rain, hours),
+            color = text.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
@@ -1410,6 +1658,11 @@ private fun feelsLikeLine(context: Context, location: Location): String? {
     val current = location.weather?.current ?: return null
     val feels = current.temperature?.feelsLikeTemperature ?: return null
     val actual = current.temperature?.temperature ?: return null
+    // With feels-like as the main number, this line gives the actual temperature instead.
+    if (ShellPrefs.feelsLikeMain(context)) {
+        if (degrees(context, feels) == degrees(context, actual)) return null
+        return context.getString(R.string.shell_actual_temperature, degrees(context, actual))
+    }
     if (degrees(context, feels) == degrees(context, actual)) return null
     return context.getString(R.string.shell_feels_like, degrees(context, feels))
 }

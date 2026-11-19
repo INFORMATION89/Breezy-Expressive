@@ -51,6 +51,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -331,14 +332,15 @@ fun SolsticeShell(
                     toolbarPosition.snapTo(from)
                     pager.scrollToPage(target)
                     coroutineScope {
-                        launch { haze.animateTo(0f, tween(220)) }
+                        launch { haze.animateTo(0f, tween(180)) }
                         launch {
                             toolbarPosition.animateTo(
                                 target.toFloat(),
-                                spring(dampingRatio = 1f, stiffness = Spring.StiffnessVeryLow * 2.5f)
+                                // About the pace of a neighbouring tab change (user: edge to edge a touch faster).
+                                spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
                             )
                         }
-                        fadeOut.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+                        fadeOut.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
                     }
                 } else {
                     pager.animateScrollToPage(target)
@@ -594,6 +596,9 @@ fun SolsticeShell(
                                 if (id in starred) return@PlacesPage
                                 starred = setOf(id)
                                 saveStarred(context, starred)
+                                messages.show(
+                                    ShellMessage(Icons.Filled.Star, context.getString(R.string.shell_now_main_place))
+                                )
                                 // The main place is kept, never a visit.
                                 if (id in starred) Visits.unmark(context, id)
                                 controller.visitsChanged++
