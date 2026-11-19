@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -65,8 +66,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.TransformOrigin
@@ -83,6 +87,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
@@ -92,6 +98,8 @@ import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyWeather
+import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Corners
 import org.breezyweather.ui.expressive.theme.HeroType
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
@@ -166,6 +174,8 @@ internal fun PlaceCard(
     )
     // Tall enough for the star stamp.
     val stripHeight = with(LocalDensity.current) { 64.dp.toPx() }
+    // Rounded like the other cards (agreed 2026-11-19), with the deckle on the straight edges.
+    val deckled = with(LocalDensity.current) { remember(this) { DeckledShape(Corners.L.toPx()) } }
     Box(
         modifier
             .fillMaxWidth()
@@ -188,11 +198,11 @@ internal fun PlaceCard(
             // A soft, low shadow, like card lying on paper.
             .shadow(
                 elevation = if (selected) 8.dp else 6.dp,
-                shape = Deckled,
+                shape = deckled,
                 ambientColor = Color.Black.copy(alpha = 0.10f),
                 spotColor = Color.Black.copy(alpha = 0.22f)
             )
-            .clip(Deckled)
+            .clip(deckled)
             .drawBehind {
                 drawRect(card)
                 drawRect(grainBrush)
@@ -260,13 +270,17 @@ internal fun PlaceCard(
                         rotationX = 80f * fold
                         cameraDistance = 12f * density
                         alpha = 1f - fold
+                        // Concentric with the card: its corner minus the padding around the picture.
+                        shape = CornerShapes.S
+                        clip = true
                     }
                     .drawWithContent {
                         drawContent()
                         drawRect(linen, blendMode = BlendMode.Multiply)
                         if (visiting) {
-                            drawRect(
+                            drawRoundRect(
                                 ink.copy(alpha = 0.5f),
+                                cornerRadius = CornerRadius(Corners.S.toPx()),
                                 style = Stroke(
                                     width = 1.2.dp.toPx(),
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 5.dp.toPx()))
@@ -419,36 +433,59 @@ internal fun PlaceCard(
     }
 }
 
-/** A deckled (finely scalloped) card edge, like an old postcard's. */
-private val Deckled = GenericShape { size, _ ->
-    val step = 5f
-    val bite = 1.6f
-    var x = 0f
-    moveTo(0f, bite)
-    while (x < size.width) {
-        lineTo(x + step / 2, 0f)
-        lineTo(x + step, bite)
-        x += step
+/**
+ * The card's edge: a fine deckle (torn-paper zigzag) along the straight sides, and the cards' large
+ * rounded corners (agreed 2026-11-19, rounder postcards). [radius] in pixels.
+ */
+private class DeckledShape(private val radius: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val step = 5f
+        val bite = 1.6f
+        val w = size.width
+        val h = size.height
+        val r = radius.coerceAtMost(minOf(w, h) / 2f)
+        val path = Path().apply {
+            // Top edge, left to right.
+            moveTo(r, 0f)
+            var x = r
+            while (x + step < w - r) {
+                lineTo(x + step / 2, bite)
+                lineTo(x + step, 0f)
+                x += step
+            }
+            lineTo(w - r, 0f)
+            arcTo(Rect(w - 2 * r, 0f, w, 2 * r), -90f, 90f, false)
+            // Right edge, top to bottom.
+            var y = r
+            while (y + step < h - r) {
+                lineTo(w - bite, y + step / 2)
+                lineTo(w, y + step)
+                y += step
+            }
+            lineTo(w, h - r)
+            arcTo(Rect(w - 2 * r, h - 2 * r, w, h), 0f, 90f, false)
+            // Bottom edge, right to left.
+            x = w - r
+            while (x - step > r) {
+                lineTo(x - step / 2, h - bite)
+                lineTo(x - step, h)
+                x -= step
+            }
+            lineTo(r, h)
+            arcTo(Rect(0f, h - 2 * r, 2 * r, h), 90f, 90f, false)
+            // Left edge, bottom to top.
+            y = h - r
+            while (y - step > r) {
+                lineTo(bite, y - step / 2)
+                lineTo(0f, y - step)
+                y -= step
+            }
+            lineTo(0f, r)
+            arcTo(Rect(0f, 0f, 2 * r, 2 * r), 180f, 90f, false)
+            close()
+        }
+        return Outline.Generic(path)
     }
-    var y = 0f
-    while (y < size.height) {
-        lineTo(size.width, y + step / 2)
-        lineTo(size.width - bite, y + step)
-        y += step
-    }
-    x = size.width
-    while (x > 0f) {
-        lineTo(x - step / 2, size.height)
-        lineTo(x - step, size.height - bite)
-        x -= step
-    }
-    y = size.height
-    while (y > 0f) {
-        lineTo(0f, y - step / 2)
-        lineTo(bite, y - step)
-        y -= step
-    }
-    close()
 }
 
 /** A small tile of fine horizontal and vertical threads, like linen-finish card stock. */

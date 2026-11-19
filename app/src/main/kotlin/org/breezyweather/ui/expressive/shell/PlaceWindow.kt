@@ -84,6 +84,7 @@ import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkySystemBars
 import org.breezyweather.ui.expressive.sky.SkyWeather
+import org.breezyweather.ui.expressive.theme.Corners
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
@@ -155,7 +156,7 @@ internal fun PlaceWindow(
                         from.bottom + (size.height - from.bottom) * p
                     )
                     // Clipped to the growing card; corners from the postcard's to square.
-                    shape = RectShape(rect, 6.dp.toPx() * (1f - p))
+                    shape = RectShape(rect, Corners.L.toPx() * (1f - p))
                     clip = true
                     // Fades in over the postcard during the first moments (their skies are laid out
                     // differently), and out again at the very end of a close.
@@ -179,7 +180,7 @@ internal fun PlaceWindow(
                             paper,
                             topLeft = rect.topLeft + Offset(edge / 2, edge / 2),
                             size = Size(rect.width - edge, rect.height - edge),
-                            cornerRadius = CornerRadius(6.dp.toPx()),
+                            cornerRadius = CornerRadius(Corners.L.toPx()),
                             style = Stroke(edge)
                         )
                     }
