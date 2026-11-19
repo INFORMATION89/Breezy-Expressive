@@ -38,9 +38,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NearMe
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -98,6 +95,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.theme.CornerShapes
@@ -233,7 +231,7 @@ internal fun PlaceCard(
                     val nameColor = if (location.isCurrentPosition) here else ink
                     if (location.isCurrentPosition) {
                         Icon(
-                            Icons.Filled.NearMe,
+                            SolsticeIcons.HereOn,
                             contentDescription = stringResource(R.string.location_current),
                             tint = nameColor,
                             modifier = Modifier.size(12.dp)
@@ -395,7 +393,7 @@ internal fun PlaceCard(
             ) {
                 if (location.isCurrentPosition) {
                     Icon(
-                        Icons.Filled.NearMe,
+                        SolsticeIcons.HereOn,
                         contentDescription = stringResource(R.string.location_current),
                         tint = SolsticePalette.Stamp,
                         modifier = Modifier.padding(start = Space.S2).size(14.dp)
@@ -575,7 +573,7 @@ private fun Stamp(
                 // The star sticker is red everywhere (2026-11-19).
                 val gold = starTint ?: SolsticePalette.Stamp
                 Icon(
-                    Icons.Filled.Star,
+                    SolsticeIcons.StarOn,
                     contentDescription = stringResource(R.string.shell_starred),
                     tint = gold,
                     modifier = Modifier

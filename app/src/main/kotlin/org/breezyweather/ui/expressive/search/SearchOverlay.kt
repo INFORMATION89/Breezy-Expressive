@@ -65,7 +65,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Public
@@ -135,6 +134,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.shell.timeDifference
 import org.breezyweather.ui.expressive.theme.CornerShapes
@@ -425,7 +425,7 @@ fun SearchOverlay(
         ) {
             // While still small it's the bubble's search icon.
             Icon(
-                Icons.Filled.Search,
+                SolsticeIcons.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
@@ -511,7 +511,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
             .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
             .padding(horizontal = Space.S4)
     ) {
-        Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(SolsticeIcons.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(Space.S3))
         Box(Modifier.weight(1f)) {
             if (query.isEmpty()) {
@@ -620,7 +620,7 @@ private fun Results(
                 modifier = Modifier.fillMaxSize().padding(Space.S6)
             ) {
                 Icon(
-                    Icons.Outlined.SearchOff,
+                    SolsticeIcons.SearchOff,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp)
@@ -682,7 +682,7 @@ private fun Results(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 SectionTitle(
                                     stringResource(R.string.search_recent),
-                                    Icons.Outlined.History,
+                                    SolsticeIcons.History,
                                     Modifier.riseIn(o, shownAt).weight(1f)
                                 )
                                 TextButton(onClick = onClearRecents, modifier = Modifier.riseIn(o, shownAt)) {
@@ -708,7 +708,7 @@ private fun Results(
                         item(key = "top") {
                             SectionTitle(
                                 stringResource(R.string.search_top_places),
-                                Icons.Outlined.Public,
+                                SolsticeIcons.World,
                                 Modifier.riseIn(o, shownAt)
                             )
                         }

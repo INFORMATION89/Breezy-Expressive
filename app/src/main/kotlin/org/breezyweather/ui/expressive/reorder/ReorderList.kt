@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -49,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
 import sh.calvin.reorderable.ReorderableItem
@@ -148,7 +148,7 @@ fun <T : Any> ReorderList(
                         modifier = Modifier.padding(start = Space.S1, end = Space.S1, top = Space.S1, bottom = Space.S1)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_drag),
+                            imageVector = SolsticeIcons.Drag,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
@@ -169,7 +169,7 @@ fun <T : Any> ReorderList(
                         trailing?.invoke(item)
                         IconButton(onClick = { onRemove(item) }) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_close),
+                                imageVector = SolsticeIcons.Close,
                                 contentDescription = remove,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
