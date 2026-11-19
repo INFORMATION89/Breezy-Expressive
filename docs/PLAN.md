@@ -1510,3 +1510,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   - **Fold like paper (agreed):** when another place is starred, the current location's picture
     folds up about its top edge and the card shrinks to a one-line strip ("➤ Miguel Hidalgo ☁ 12°");
     starring it again unfolds it.
+- **2026-11-19 (built):** The current location always sorts first (then the starred place). Forecast's
+  night path keeps the plain drawn moon (80 % shadow, no halo). The realistic moon in the moon card
+  **turns like the real one**: suncalc's bright-limb position angle sets where the light comes
+  from, and the parallactic angle at the place and time turns the whole disc (texture and light),
+  so it rotates through the night and flips in the southern hemisphere. Its shadow is 80 % dark.
+  **`docs/WRITING.md`** is the worksheet for tomorrow's conditional-text writing session.

@@ -349,7 +349,6 @@ private fun SunPath(location: Location, now: Long, text: Color) {
     // 0/360 = new, 180 = full; waxing below 180 (lit on the right).
     val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
     var showPhase by remember { mutableStateOf(false) }
-    val moon = MoonRenderer.remember()
     val warm = Color(0xFFF2A33A)
     val cool = Color(0xFF8FA3E8)
     val accent = if (night) cool else warm
@@ -426,16 +425,9 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             if (!night) {
                 drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
             } else {
-                // The real moon in its phase (NASA map, lit by the phase).
-                val r = 9.dp.toPx()
-                drawCircle(Color.White.copy(alpha = 0.08f), radius = r * 1.9f, center = c)
-                moon.draw(this, c, r, angle, Color(0xFF2B2A3A))
-                drawCircle(
-                    Color.White.copy(alpha = 0.18f),
-                    radius = r + 3.dp.toPx(),
-                    center = c,
-                    style = Stroke(1.dp.toPx())
-                )
+                // The plain moon icon in its phase (the realistic moon is for the moon card).
+                val r = 8.dp.toPx()
+                drawMoon(c, r, angle, lit, Color(0xFF2B2A3A).copy(alpha = 0.8f))
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -958,7 +950,8 @@ internal fun PlacesPage(
     // The starred (main) place always first, then the current position; both stay where they are.
     val sortedIds = locations
         .sortedWith(
-            compareByDescending<Location> { it.formattedId in starred }.thenByDescending { it.isCurrentPosition }
+            // The current location always first, then the starred (main) place.
+            compareByDescending<Location> { it.isCurrentPosition }.thenByDescending { it.formattedId in starred }
         )
         .map { it.formattedId }
     fun isPinned(id: String) = id in starred || byId[id]?.isCurrentPosition == true

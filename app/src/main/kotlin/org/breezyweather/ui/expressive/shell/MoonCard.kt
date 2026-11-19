@@ -219,7 +219,11 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
         at
     ).timezone(zone).at(location.latitude, location.longitude).fullCycle().execute()
     val full = MoonPhase.compute().phase(MoonPhase.Phase.FULL_MOON).on(at).execute().time
-    val distance = MoonPosition.compute().on(at).at(location.latitude, location.longitude).execute().distance
+    val position = MoonPosition.compute().on(at).at(location.latitude, location.longitude).execute()
+    val distance = position.distance
+    // How the moon is turned in this place's sky at this time.
+    val limbAngle = MoonIllumination.compute().on(at).execute().angle
+    val parallactic = position.parallacticAngle
     val ink = Color(0xFFEDEBF5)
     run {
         Column(
@@ -252,7 +256,15 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                     radius = size.minDimension * 0.6f,
                     center = center
                 )
-                moon.draw(this, center, size.minDimension * 0.36f, angle, Color(0xFF050509))
+                moon.draw(
+                    this,
+                    center,
+                    size.minDimension * 0.36f,
+                    angle,
+                    Color(0xFF050509),
+                    limbAngle = limbAngle,
+                    parallactic = parallactic
+                )
             }
             Text(
                 breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context) ?: "",

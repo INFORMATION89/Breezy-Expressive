@@ -95,6 +95,8 @@ ship, and add new notes under the right area.
 
 ## Moon
 
+- [x] Realistic moon turns with the sky (bright-limb angle + parallactic angle), shadow 80 %; Forecast keeps the plain moon icon, no halo (2026-11-19).
+
 ### Functionality
 - [x] ⭐ **Realistic moon** from NASA's CGI Moon Kit colour map (done 2026-11-19: NASA map + AGSL shader),
   shader-lit by phase, with earthshine. One component for the button, the moon card and the sun
@@ -126,6 +128,8 @@ ship, and add new notes under the right area.
 ---
 
 ## Places
+
+- [x] The current location always stays at the top (2026-11-19).
 
 ### Functionality
 - [x] ⭐💬 **The starred place folds into a compact version.**
@@ -169,6 +173,10 @@ ship, and add new notes under the right area.
   (alerts fall back to WMO, pollen to Open-Meteo, no normals source), and places that still name it
   skip it quietly.
 - [ ] Re-test that a searched city keeps its name (e.g. "Puebla").
+
+## Writing
+
+- [ ] 🗓 **Writing session for the conditional texts** (tomorrow): fill in `docs/WRITING.md`.
 
 ## Settings
 
