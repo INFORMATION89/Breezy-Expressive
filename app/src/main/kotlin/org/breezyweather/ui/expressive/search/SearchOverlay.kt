@@ -86,6 +86,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -115,6 +116,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -189,6 +191,8 @@ fun SearchOverlay(
     BackHandler(enabled = open, onBack = onClose)
     // Hiding the keyboard (its dismiss key) while search is open expands the card to full height.
     val imeShown = WindowInsets.isImeVisible
+    val imeNow = rememberUpdatedState(imeShown)
+    val keyboardController = LocalSoftwareKeyboardController.current
     var hadIme by remember { mutableStateOf(false) }
     LaunchedEffect(imeShown) {
         if (open && hadIme && !imeShown) {
@@ -294,7 +298,14 @@ fun SearchOverlay(
             // Up: undo any pull first, then grow.
             val lift = minOf(-delta, pulled)
             pulled -= lift
+            val before = extra
             extra = (extra + (-delta - lift)).coerceAtMost(room[0])
+            // With the keyboard hidden, swiping the card up until it hits the top brings the
+            // keyboard back.
+            if (!imeNow.value && before < room[0] - 0.5f && extra >= room[0] - 0.5f) {
+                runCatching { focus.requestFocus() }
+                keyboardController?.show()
+            }
         }
     }
 

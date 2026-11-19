@@ -83,6 +83,7 @@ import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Dehaze
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Thunderstorm
@@ -146,6 +147,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -169,6 +172,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
+import org.breezyweather.common.extensions.formatMeasure
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.domain.weather.model.getDescription
@@ -178,6 +182,7 @@ import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.paletteAt
+import org.breezyweather.unit.precipitation.Precipitation.Companion.millimeters
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -200,6 +205,8 @@ internal fun ForecastPage(
     onRefresh: () -> Unit,
     onDetails: () -> Unit,
     onOpenPlaces: () -> Unit,
+    // Off in a postcard window, whose label already gives the local time.
+    showLocalTime: Boolean = true,
 ) {
     val text = sky.palette.text
     if (location == null) {
@@ -267,6 +274,26 @@ internal fun ForecastPage(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            // The place's local time when it's in another time zone from yours, e.g. "[clock] 2:33 PM, +1 h"
+            // (the same clock as a visit's label).
+            if (showLocalTime) {
+                timeDifference(location.timeZone, now)?.let { diff ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        Icon(
+                            Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = text.copy(alpha = 0.72f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            time(context, Date(now), location.timeZone) + ", " + diff,
+                            color = text.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
             // The big number is the actual temperature, or the feels-like one when that option is on.
             val feelsMain = ShellPrefs.feelsLikeMain(context)
             val main = if (feelsMain) {
@@ -292,7 +319,7 @@ internal fun ForecastPage(
             Spacer(Modifier.height(20.dp))
             // The order follows what matters now: rain near moves its timeline right under the sun
             // path; otherwise a short "no rain" line sits after the hourly card.
-            val rain = remember(location.weather, now / 60_000L) { rainOutlook(location, now) }
+            val rain = remember(location.weather, now / 60_000L) { rainOutlook(context, location, now) }
             if (rain is RainOutlook.Coming) {
                 RainCard(rain, location, text)
                 Spacer(Modifier.height(12.dp))
@@ -600,87 +627,213 @@ private fun hourIcon(weather: SkyWeather, night: Boolean): ImageVector = when (w
 // ---- Rain ---------------------------------------------------------------------------------------
 
 private sealed interface RainOutlook {
-    /** Rain now or within the window: [sentence] says what happens; [bars] are 0..1 intensities. */
-    class Coming(val sentence: String, val bars: List<Float>, val labels: List<String>) : RainOutlook
+    /**
+     * Rain now or within the window. [kind] and [value] (minutes or hours) say what happens; [heavy]
+     * is 0 light, 1 moderate, 2 heavy. [amounts] are millimetres per step, [chances] 0..1 per step
+     * (null when the source has none), [labels] go under the bars, [total] is the window's sum in
+     * millimetres, and [soon] (rain within the hour) tints the card light blue.
+     */
+    class Coming(
+        val kind: RainKind,
+        val value: Int,
+        val heavy: Int,
+        val amounts: List<Float>,
+        val chances: List<Float>?,
+        val labels: List<String>,
+        val minutely: Boolean,
+        val total: Double,
+        val soon: Boolean,
+    ) : RainOutlook
 
     /** No rain expected in the next [hours]. */
     class None(val hours: Int) : RainOutlook
 }
 
-private fun rainOutlook(location: Location, now: Long): RainOutlook? {
+private enum class RainKind { ALL_HOUR, STOPS, STARTS, STARTS_HOURS }
+
+/** Light under 2.5 mm/h, moderate up to 7.6 mm/h, heavy above (the usual rainfall-rate bands). */
+private fun rainStrength(mmPerHour: Float): Int = when {
+    mmPerHour < 2.5f -> 0
+    mmPerHour < 7.6f -> 1
+    else -> 2
+}
+
+private fun rainOutlook(context: Context, location: Location, now: Long): RainOutlook? {
     val weather = location.weather ?: return null
-    val context = null
+    val hourly = weather.nextHourlyForecast
+    fun chanceAt(t: Long): Float? = hourly.firstOrNull { t >= it.date.time && t < it.date.time + 3_600_000L }
+        ?.precipitationProbability?.total?.inPercent?.let { (it / 100.0).toFloat().coerceIn(0f, 1f) }
     // Next hour from minute data (5-minute steps), when the source has it.
     val minutes = weather.minutelyForecastBy5Minutes.filter {
         it.date.time + it.minuteInterval * 60_000L > now
     }.take(12)
     if (minutes.size >= 6) {
-        val mm = minutes.map { (it.precipitationIntensity?.inMillimeters ?: 0.0).toFloat() }
-        val wet = mm.map { it > 0.05f }
+        val rate = minutes.map { (it.precipitationIntensity?.inMillimeters ?: 0.0).toFloat() }
+        val wet = rate.map { it > 0.05f }
         if (wet.any { it }) {
-            val max = mm.maxOrNull()?.coerceAtLeast(1f) ?: 1f
-            val bars = mm.map { (it / max).coerceIn(0f, 1f) }
             val step = minutes.first().minuteInterval.coerceAtLeast(5)
-            val sentence = if (wet.first()) {
+            val (kind, value) = if (wet.first()) {
                 val stop = wet.indexOfFirst { !it }
-                if (stop > 0) "STOP:" + stop * step else "ON"
+                if (stop > 0) RainKind.STOPS to stop * step else RainKind.ALL_HOUR to 0
             } else {
-                "START:" + wet.indexOfFirst { it } * step
+                RainKind.STARTS to wet.indexOfFirst { it } * step
             }
-            return RainOutlook.Coming(sentence, bars, listOf("0", "10", "20", "30", "40", "50"))
+            val amounts = rate.map { it * step / 60f }
+            val chances = minutes.map { chanceAt(it.date.time) }
+            return RainOutlook.Coming(
+                kind = kind,
+                value = value,
+                heavy = rainStrength(rate.max()),
+                amounts = amounts,
+                chances = if (chances.all { it != null }) chances.map { it!! } else null,
+                labels = listOf(context.getString(R.string.shell_now), "10m", "20m", "30m", "40m", "50m"),
+                minutely = true,
+                total = amounts.sum().toDouble(),
+                soon = true
+            )
         }
     }
     // Otherwise the next 6 hours from the hourly forecast.
-    val hours = weather.nextHourlyForecast.take(6)
+    val hours = hourly.take(6)
     val wetHour = hours.indexOfFirst {
         val w = SkyWeather.of(it.weatherCode)
         w == SkyWeather.RAIN || w == SkyWeather.THUNDERSTORM ||
             (it.precipitationProbability?.total?.inPercent ?: 0.0) >= 50.0
     }
     if (wetHour < 0) return RainOutlook.None(6)
-    val bars = hours.map { ((it.precipitationProbability?.total?.inPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) }
-    return RainOutlook.Coming(if (wetHour == 0) "ON" else "STARTH:$wetHour", bars, hours.map { "" })
+    val amounts = hours.map { (it.precipitation?.total?.inMillimeters ?: 0.0).toFloat() }
+    val chances = hours.map { it.precipitationProbability?.total?.inPercent?.let { p -> (p / 100.0).toFloat() } }
+    return RainOutlook.Coming(
+        kind = if (wetHour == 0) RainKind.ALL_HOUR else RainKind.STARTS_HOURS,
+        value = wetHour,
+        heavy = rainStrength(amounts.max()),
+        amounts = amounts,
+        chances = if (chances.all { it != null }) chances.map { it!!.coerceIn(0f, 1f) } else null,
+        labels = hours.mapIndexed { i, h ->
+            if (i ==
+                0
+            ) {
+                context.getString(R.string.shell_now)
+            } else {
+                time(context, h.date, location.timeZone, hourOnly = true)
+            }
+        },
+        minutely = false,
+        total = amounts.sum().toDouble(),
+        soon = wetHour <= 1
+    )
 }
 
+/**
+ * The rain card (refined 2026-11-19): the sentence as the header, rounded bars with a soft
+ * gradient, times under them, the amount in the window, and a switch between amount and
+ * probability. Light blue when the rain is within the hour.
+ */
 @Composable
 private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) {
     val context = LocalContext.current
-    val sentence = when {
-        rain.sentence == "ON" -> stringResource(R.string.shell_rain_now)
-        rain.sentence.startsWith(
-            "STOP:"
-        ) -> stringResource(R.string.shell_rain_stops_in, rain.sentence.removePrefix("STOP:").toInt())
-        rain.sentence.startsWith(
-            "START:"
-        ) -> stringResource(R.string.shell_rain_starts_in, rain.sentence.removePrefix("START:").toInt())
-        else -> stringResource(R.string.shell_rain_starts_in_hours, rain.sentence.removePrefix("STARTH:").toInt())
+    val strength = stringArrayResource(R.array.shell_rain_strength)[rain.heavy]
+    val sentence = when (rain.kind) {
+        RainKind.ALL_HOUR -> stringResource(R.string.shell_rain_next_hour, strength)
+        RainKind.STOPS -> stringResource(R.string.shell_rain_stops_in, rain.value)
+        RainKind.STARTS -> stringResource(R.string.shell_rain_starts_in, strength, rain.value)
+        RainKind.STARTS_HOURS -> pluralStringResource(R.plurals.shell_rain_in_hours, rain.value, strength, rain.value)
     }
-    GlassCard(text) {
+    var showChance by remember { mutableStateOf(false) }
+    val chances = rain.chances
+    val values = if (showChance && chances != null) {
+        chances
+    } else {
+        val max = rain.amounts.max().coerceAtLeast(if (rain.minutely) 0.2f else 1f)
+        rain.amounts.map { (it / max).coerceIn(0f, 1f) }
+    }
+    GlassCard(text, tint = if (rain.soon) Color(0xFF8CCBFF) else null) {
         // No separate title: the sentence is the header.
         Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // The amount in the window, or the highest chance.
+            val caption = if (showChance && chances != null) {
+                stringResource(R.string.shell_rain_chance_up_to, (chances.max() * 100).roundToInt())
+            } else {
+                stringResource(
+                    if (rain.minutely) R.string.shell_rain_total_hour else R.string.shell_rain_total_hours,
+                    rain.total.millimeters.formatMeasure(context)
+                )
+            }
+            Text(
+                caption,
+                color = text.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            if (chances != null) {
+                RainSwitch(showChance, text) { showChance = it }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        // Rounded bars, no marker lines: a dot where it's dry, a pill as tall as the rain.
         Row(
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            modifier = Modifier.fillMaxWidth().height(48.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (rain.minutely) 5.dp else 10.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            rain.bars.forEach { v ->
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight(0.08f + 0.92f * v)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0xFF6FB7F0).copy(alpha = if (v > 0.02f) 0.95f else 0.25f))
+            values.forEach { v ->
+                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.BottomCenter) {
+                    val h = (maxHeight * v).coerceAtLeast(maxWidth.coerceAtMost(maxHeight))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(h)
+                            .clip(CircleShape)
+                            .background(
+                                if (v > 0.02f) {
+                                    Brush.verticalGradient(listOf(Color(0xFFB9E1FF), Color(0xFF4F9EEA)))
+                                } else {
+                                    Brush.verticalGradient(listOf(text.copy(alpha = 0.22f), text.copy(alpha = 0.22f)))
+                                }
+                            )
+                    )
+                }
+            }
+        }
+        // Times under the bars: every other bar for the minutes (Now, 10m, …), each hour otherwise.
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            rain.labels.forEach {
+                Text(
+                    it,
+                    color = text.copy(alpha = 0.65f),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = if (rain.minutely) TextAlign.Start else TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
-        Box(Modifier.fillMaxWidth().padding(top = 2.dp).height(1.dp).background(text.copy(alpha = 0.25f)))
-        if (rain.labels.size == 6 && rain.labels.first() == "0") {
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf(stringResource(R.string.shell_now), "10m", "20m", "30m", "40m", "50m").forEach {
-                    Text(it, color = text.copy(alpha = 0.65f), style = MaterialTheme.typography.labelSmall)
-                }
-            }
+    }
+}
+
+/** Amount | Probability, as two small pills. */
+@Composable
+private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(text.copy(alpha = 0.10f))
+            .padding(3.dp)
+    ) {
+        listOf(false to R.string.shell_rain_amount, true to R.string.shell_rain_probability).forEach { (value, label) ->
+            val on = chance == value
+            Text(
+                stringResource(label),
+                color = if (on) text else text.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (on) text.copy(alpha = 0.16f) else Color.Transparent)
+                    .clickable { onChange(value) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
         }
     }
 }
@@ -1572,6 +1725,8 @@ private fun PlaceCard(
                 starred = true,
                 paper = Color(0xFFF6EBD6),
                 ink = ink,
+                // Red on the current location, like its name.
+                starTint = if (location.isCurrentPosition) Color(0xFFE5483C) else null,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     // In the strip it sits centred at the end.
@@ -1648,14 +1803,14 @@ private fun PlaceCard(
                         Icon(
                             hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
                             contentDescription = current?.weatherText,
-                            tint = ink,
+                            tint = Color(0xFFE5483C),
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
                             style = MaterialTheme.typography.titleMedium,
-                            color = ink,
+                            color = Color(0xFFE5483C),
                             modifier = Modifier.padding(end = 8.dp)
                         )
                     }
@@ -1751,6 +1906,7 @@ private fun Stamp(
     modifier: Modifier = Modifier,
     peel: () -> Float = { 1f },
     shine: () -> Float = { 1f },
+    starTint: Color? = null,
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -1774,7 +1930,7 @@ private fun Stamp(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (starred) {
-                val gold = Color(0xFFD69A2E)
+                val gold = starTint ?: Color(0xFFD69A2E)
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = stringResource(R.string.shell_starred),
@@ -1913,13 +2069,24 @@ private fun Modifier.dashedEdge(color: Color, corner: androidx.compose.ui.unit.D
 
 /** A translucent card that lets the sky show through (blur comes later). */
 @Composable
-private fun GlassCard(text: Color, content: @Composable () -> Unit) {
+private fun GlassCard(text: Color, tint: Color? = null, content: @Composable () -> Unit) {
     val light = text.red + text.green + text.blue < 1.5f // dark text → light sky → white glass
+    val glass = tint ?: Color.White
     Box(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(if (light) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f))
+            .background(
+                glass.copy(
+                    alpha = if (light) {
+                        0.34f
+                    } else if (tint != null) {
+                        0.24f
+                    } else {
+                        0.10f
+                    }
+                )
+            )
             .padding(16.dp)
     ) { Column { content() } }
 }

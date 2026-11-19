@@ -252,18 +252,28 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
     val distance = position.distance
     // How the moon is turned in this place's sky at the shown time: the real parallactic angle while
     // the moon is up, easing to upright as it nears and drops below the horizon (where its true
-    // tilt would look wild). Both inputs change continuously with time, and a spring smooths the
-    // rest, so scrubbing turns it gently instead of jumping.
+    // tilt would look wild). To keep it calm, the tilt is averaged over the hours around the shown
+    // time (so each 6-hour tick doesn't rock it), and a heavy, slow spring follows that: a flick of
+    // the dial mostly passes the moon by, and it turns gently into place once the dial settles.
     val limbAngle = MoonIllumination.compute().on(at).execute().angle
-    val up = ((position.altitude + 5.0) / 20.0).coerceIn(0.0, 1.0)
     val rest = if (location.latitude < 0) 180.0 else 0.0
-    var q = position.parallacticAngle
-    if (q - rest > 180) q -= 360
-    if (q - rest < -180) q += 360
-    val targetParallactic = rest + (q - rest) * up * up * (3 - 2 * up)
+    fun tiltAt(t: Long): Double {
+        val p = MoonPosition.compute().on(Date(t)).at(location.latitude, location.longitude).execute()
+        val up = ((p.altitude + 5.0) / 20.0).coerceIn(0.0, 1.0)
+        var q = p.parallacticAngle
+        if (q - rest > 180) q -= 360
+        if (q - rest < -180) q += 360
+        return (q - rest) * up * up * (3 - 2 * up)
+    }
+    // Snapped to the hour so the average only changes once an hour of the dial has gone by.
+    val hour = 3_600_000L
+    val centre = ((now + (offset * DAY).toLong()) / hour) * hour
+    val targetParallactic = remember(centre, location.latitude, location.longitude) {
+        rest + (-4..4).map { tiltAt(centre + it * hour) }.average()
+    }
     val parallactic by animateFloatAsState(
         targetParallactic.toFloat(),
-        spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 1f, stiffness = 12f),
         label = "moonTilt"
     )
     val ink = Color(0xFFEDEBF5)

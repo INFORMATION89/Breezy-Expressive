@@ -1541,3 +1541,21 @@ Things to try on the phone before calling any motion done (debug and release bui
     on the strip.
   - **Places scrolls under a transparent status bar** like This week.
   - **Toolbar labels centred** in their tabs; a folding label only takes the width it has unfolded.
+- **2026-11-19 (7:30 AM list, built; not checked on the Pixel, which wasn't connected):**
+  - **Moon tilt calmer:** the tilt is averaged over the 9 hours around the shown time (snapped to
+    the hour), then followed by a heavy critically damped spring (stiffness 12). Each 6-hour tick
+    no longer rocks it, and a flick of the dial mostly passes the moon by; it turns into place once
+    the dial settles.
+  - **Main screen:** the starred place shows its local time under the name ("[clock] 2:33 PM, +1 h")
+    when it's in another time zone (not in a postcard window, whose label already has it).
+  - **Places:** on the current location's strip, the star and the weather icon and temperature
+    are red like its name.
+  - **Rain card redesigned:** sentence header ("Light rain expected in the next hour", "Heavy rain
+    expected in 15 minutes"; light < 2.5 mm/h, moderate < 7.6, heavy above), pill-shaped bars with
+    a light-to-deeper blue gradient (dots where dry, no marker lines), times under the bars (Now,
+    10m… or the hours), the amount in the window, and an Amount | Probability switch (minute data
+    takes each hour's probability). The card turns light blue when rain is within the hour; the sky
+    already switches to rain once it's raining.
+  - **Search:** with the keyboard hidden, swiping the card up until it hits the top brings the
+    keyboard back.
+

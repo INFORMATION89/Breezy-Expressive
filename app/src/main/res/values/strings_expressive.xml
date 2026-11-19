@@ -45,10 +45,23 @@
     <string name="shell_hourly_up">Going up to %1$s in the next %2$d hours</string>
     <string name="shell_hourly_steady">Steady, %1$s for the next hours</string>
     <string name="shell_hourly_rain_at">%1$s from %2$s</string>
-    <string name="shell_rain_now">Rain is expected to continue for the next hour.</string>
-    <string name="shell_rain_stops_in">Rain is expected to stop in %1$d min.</string>
-    <string name="shell_rain_starts_in">Rain is expected to start in %1$d min.</string>
-    <string name="shell_rain_starts_in_hours">Rain is expected in about %1$d hours.</string>
+    <string-array name="shell_rain_strength">
+        <item>Light</item>
+        <item>Moderate</item>
+        <item>Heavy</item>
+    </string-array>
+    <string name="shell_rain_next_hour">%1$s rain expected in the next hour</string>
+    <string name="shell_rain_stops_in">Rain expected to stop in %1$d minutes</string>
+    <string name="shell_rain_starts_in">%1$s rain expected in %2$d minutes</string>
+    <plurals name="shell_rain_in_hours">
+        <item quantity="one">%1$s rain expected in about %2$d hour</item>
+        <item quantity="other">%1$s rain expected in about %2$d hours</item>
+    </plurals>
+    <string name="shell_rain_total_hour">%1$s in the next hour</string>
+    <string name="shell_rain_total_hours">%1$s in the next 6 hours</string>
+    <string name="shell_rain_chance_up_to">Up to %1$d %% chance</string>
+    <string name="shell_rain_amount">Amount</string>
+    <string name="shell_rain_probability">Probability</string>
     <string name="shell_no_rain">No rain expected in the next %1$d hours</string>
     <string name="settings_feels_like_main">Show feels-like as the main temperature</string>
     <string name="shell_actual_temperature">Actual %1$s</string>

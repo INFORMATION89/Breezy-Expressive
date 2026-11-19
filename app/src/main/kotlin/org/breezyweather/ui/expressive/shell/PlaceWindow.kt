@@ -241,7 +241,8 @@ internal fun PlaceWindow(
                                 refreshing = false,
                                 onRefresh = {},
                                 onDetails = onDetails,
-                                onOpenPlaces = onClose
+                                onOpenPlaces = onClose,
+                                showLocalTime = false
                             )
                         }
                     }

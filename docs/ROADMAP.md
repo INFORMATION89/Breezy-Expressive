@@ -13,26 +13,29 @@ ship, and add new notes under the right area.
 
 ## 🗓 Scheduled for today, 7:30 AM (2026-11-19)
 
-- [ ] ⭐ **TOP PRIORITY · Fix · Moon:** the rotation still rocks back and forth. Smooth it with a
+Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
+
+
+- [x] ⭐ **TOP PRIORITY · Fix · Moon:** the rotation still rocks back and forth. Smooth it with a
   heavy ease so the motion isn't jerky.
-- [ ] ⭐ **TOP PRIORITY · Fix · Moon:** when you flick the dial, the moon should ignore some of the
+- [x] ⭐ **TOP PRIORITY · Fix · Moon:** when you flick the dial, the moon should ignore some of the
   movement so it doesn't turn too much.
-- [ ] **Refinement · Search:** with the keyboard collapsed, swiping up and hitting the top opens the
+- [x] **Refinement · Search:** with the keyboard collapsed, swiping up and hitting the top opens the
   keyboard.
-- [ ] **Functionality · Forecast:** show the local time on the main screen when the starred place
+- [x] **Functionality · Forecast:** show the local time on the main screen when the starred place
   is in a different time zone from you.
-- [ ] **Refinement · Places:** make the star (stamp) on the current location's strip red too.
-- [ ] **Refinement · Places:** make the current location's weather icon and temperature red too.
-- [ ] **Refinement · Precipitation:** refine the rain card (reference:
+- [x] **Refinement · Places:** make the star (stamp) on the current location's strip red too.
+- [x] **Refinement · Places:** make the current location's weather icon and temperature red too.
+- [x] **Refinement · Precipitation:** refine the rain card (reference:
   `docs/references/rain-next-hour.png`, minute bars with Now · 10m · 20m … 50m under them). Take
   the layout as inspiration only: no marker lines for the rain, and rounder shapes like the rest
   of the app.
   - add the times under the bars, a gradient, and the amount of rain;
   - a switch between probability and amount;
   - wording: "Light rain expected in the next hour" / "Heavy rain expected in 15 minutes".
-- [ ] **Refinement · Forecast:** when precipitation is within the next hour, the rain card's
+- [x] **Refinement · Forecast:** when precipitation is within the next hour, the rain card's
   background turns light blue. Once it's actually raining, the sky changes to its rain state.
-- [ ] Commit and push.
+- [x] Commit and push.
 
 ## 🗓 Scheduled for Friday
 
@@ -112,7 +115,8 @@ ship, and add new notes under the right area.
 ## Precipitation (Forecast)
 
 ### Fix
-- [ ] Check the rain card with real rain (built, not yet seen).
+- [ ] Check the rain card with real rain (redesigned 2026-11-19, not yet seen).
+- [ ] 💬 Animate the bars when switching between amount and probability (propose first).
 
 ### Functionality
 - [ ] A precipitation element for This week.
