@@ -22,10 +22,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -77,11 +73,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -123,14 +117,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.Motion
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.SolsticeIcons
+import org.breezyweather.ui.expressive.components.SolsticeSheetState
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.shell.timeDifference
 import org.breezyweather.ui.expressive.theme.CornerShapes
@@ -149,14 +144,15 @@ import kotlin.math.roundToInt
  * docked at the bottom, above the keyboard: a handle on top, results (segmented rows) in the
  * middle, the field at the bottom. The card has a fixed height; drag the handle up to show more,
  * or down to dismiss (it follows the finger; releasing early springs it back). Results settle in
- * place when they change. [progress] (0 = bubble, 1 = open) is one spring for opening and closing;
- * it's read in layout and draw only, so opening never recomposes the screen.
+ * place when they change. Its motion is a [SolsticeSheetState] ([sheet]): grab it at any point, even
+ * mid-open or mid-close, and a flick down carries its speed into the close. It's read in layout and
+ * draw only, so opening never recomposes the screen.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchOverlay(
     open: Boolean,
-    progress: () -> Float,
+    sheet: SolsticeSheetState,
     origin: Rect?,
     searchViewModel: SearchViewModel,
     near: Pair<Double, Double>?,
@@ -164,27 +160,25 @@ fun SearchOverlay(
     onPickLocation: (Location) -> Unit,
     onPickCity: (City) -> Unit,
     onClose: () -> Unit,
+    // Caught while closing and thrown back up: the caller opens it again.
+    onReopen: () -> Unit = {},
     // A pick hands the card over to the postcard window: it reports where it is and then vanishes.
     onCardBounds: (Rect) -> Unit = {},
     glass: GlassSource? = null,
     handedOff: Boolean = false,
 ) {
     // Only this check reads the progress in composition, and it flips just twice per open/close.
-    val visible by remember { derivedStateOf { progress() > 0f } }
+    val visible by remember { derivedStateOf { sheet.presence.value > 0f } }
     if (!visible && !open) return
     val context = LocalContext.current
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var query by rememberSaveable { mutableStateOf("") }
     val results by searchViewModel.listResource.collectAsState()
-    // Handle drag: extra height above the compact size, and how far the card is pulled down.
-    var extra by remember { mutableFloatStateOf(0f) }
-    var pulled by remember { mutableFloatStateOf(0f) }
-    var settle by remember { mutableStateOf<Job?>(null) }
-    // Written by the card's layout each frame; read by the drags (how far it can grow).
-    val room = remember { FloatArray(1) }
+    val openNow = rememberUpdatedState(open)
+    val onCloseNow = rememberUpdatedState(onClose)
+    val onReopenNow = rememberUpdatedState(onReopen)
     // The query last sent, so "no results" only shows once that search has answered.
     var requested by remember { mutableStateOf("") }
 
@@ -195,30 +189,12 @@ fun SearchOverlay(
     val keyboardController = LocalSoftwareKeyboardController.current
     var hadIme by remember { mutableStateOf(false) }
     LaunchedEffect(imeShown) {
-        if (open && hadIme && !imeShown) {
-            settle?.cancel()
-            extra = extra.coerceAtMost(room[0])
-            settle = scope.launch {
-                animate(
-                    extra,
-                    room[0],
-                    animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
-                ) {
-                        v,
-                        _,
-                    ->
-                    extra = v
-                }
-            }
-        }
+        if (open && hadIme && !imeShown) sheet.expand()
         hadIme = imeShown
     }
     LaunchedEffect(open) {
         if (open) {
-            // Full screen height from the start (agreed 2026-11-19): as tall as there's room for
-            // (the layout clamps it), like the moon card.
-            extra = Float.MAX_VALUE / 4f
-            pulled = 0f
+            // Opens tall (agreed 2026-11-19): the caller's sheet.showTall().
             delay(120)
             runCatching { focus.requestFocus() }
         } else {
@@ -269,7 +245,7 @@ fun SearchOverlay(
     val cardShape = remember {
         GenericShape { size, _ ->
             val top = minOf(32.dp.value * density.density, size.minDimension / 2)
-            val bottom = top * (1f - progress().coerceIn(0f, 1f))
+            val bottom = top * (1f - sheet.presence.value.coerceIn(0f, 1f))
             addRoundRect(
                 RoundRect(
                     0f,
@@ -284,61 +260,41 @@ fun SearchOverlay(
             )
         }
     }
-    // Written by the card's layout each frame; read by the handle's drag (how far it can grow).
 
     // How far the inside is shown, from the open progress (read only in draw/layout lambdas).
-    fun inside() = ((progress().coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
+    fun inside() = ((sheet.presence.value.coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
 
     // The card's height and pull, from the handle or the list (deltas: + is the finger going down).
     fun drag(delta: Float) {
-        settle?.cancel()
-        extra = extra.coerceAtMost(room[0])
-        if (delta > 0f) {
-            // Down: shrink back to compact first, then pull the card down.
-            val shrink = minOf(delta, extra)
-            extra -= shrink
-            pulled += delta - shrink
-        } else {
-            // Up: undo any pull first, then grow.
-            val lift = minOf(-delta, pulled)
-            pulled -= lift
-            val before = extra
-            extra = (extra + (-delta - lift)).coerceAtMost(room[0])
-            // With the keyboard hidden, swiping the card up until it hits the top brings the
-            // keyboard back.
-            if (!imeNow.value && before < room[0] - 0.5f && extra >= room[0] - 0.5f) {
-                runCatching { focus.requestFocus() }
-                keyboardController?.show()
-            }
+        if (sheet.presence.isRunning || sheet.detent.isRunning) sheet.catch()
+        val wasTall = sheet.extra >= sheet.room - 0.5f
+        sheet.drag(delta)
+        // With the keyboard hidden, swiping the card up until it hits the top brings the keyboard back.
+        if (delta < 0f && !imeNow.value && !wasTall && sheet.extra >= sheet.room - 0.5f) {
+            runCatching { focus.requestFocus() }
+            keyboardController?.show()
         }
     }
 
-    // Let go: far enough down (or flung down) dismisses; otherwise it settles compact or tall.
+    // Let go: the sheet picks where to rest from the fling (UIKit's rule); resting pulled down far
+    // enough dismisses, carrying the fling's speed into the close.
     fun release(velocity: Float) {
-        extra = extra.coerceAtMost(room[0])
-        val far = with(density) { 110.dp.toPx() }
-        val some = with(density) { 24.dp.toPx() }
-        if (pulled > far || (pulled > some && velocity > 900f)) {
-            onClose()
-        } else {
-            val soft = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
-            val goTall = (extra > room[0] / 2 && velocity < 900f) || velocity < -900f
-            val to = if (goTall) room[0] else 0f
-            settle = scope.launch {
-                launch { animate(pulled, 0f, velocity, soft) { v, _ -> pulled = v } }
-                launch { animate(extra, to, -velocity, soft) { v, _ -> extra = v } }
-            }
+        val close = sheet.release(velocity)
+        if (close && openNow.value) {
+            onCloseNow.value()
+        } else if (!close && !openNow.value) {
+            onReopenNow.value()
         }
     }
 
     // The list drives the card like a bottom sheet: scrolling the results up grows the card first;
     // with the list at its edge, pulling down shrinks it and then dismisses it. Flings settle it.
-    val sheet = remember {
+    val listDrag = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val dy = available.y
                 if (dy >= 0f || source != NestedScrollSource.UserInput) return Offset.Zero
-                val space = pulled + (room[0] - extra).coerceAtLeast(0f)
+                val space = sheet.pulled + (sheet.room - sheet.extra).coerceAtLeast(0f)
                 val take = minOf(-dy, space)
                 if (take <= 0f) return Offset.Zero
                 drag(-take)
@@ -353,7 +309,8 @@ fun SearchOverlay(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                val between = pulled > 0f || (extra > 0.5f && extra < room[0] - 0.5f)
+                val between = sheet.unsettled || sheet.pulled > 0f ||
+                    (sheet.extra > 0.5f && sheet.extra < sheet.room - 0.5f)
                 if (!between) return Velocity.Zero
                 release(available.y)
                 return available
@@ -368,8 +325,7 @@ fun SearchOverlay(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val pullFade = 1f - (pulled / 220.dp.toPx()).coerceIn(0f, 1f)
-                    alpha = progress().coerceIn(0f, 1f) * pullFade
+                    alpha = sheet.backdrop()
                 }
                 .background(Color.Black.copy(alpha = 0.25f))
                 .clickable(
@@ -398,12 +354,13 @@ fun SearchOverlay(
                     val chrome = (24.dp + 64.dp).toPx() // handle + field
                     val compact = 280.dp.toPx()
                     val tall = (height - bottomInset - top - chrome).coerceAtLeast(compact)
-                    room[0] = tall - compact
-                    val content = (compact + extra).coerceIn(compact, tall)
-                    val bottom = height - bottomInset + pulled
+                    sheet.measure(room = tall - compact, dismissDistance = 220.dp.toPx())
+                    val content = (compact + sheet.extra).coerceIn(compact, tall)
+                    val bottom = height - bottomInset + sheet.pulled
                     val target = Rect(margin, bottom - content - chrome, width - margin, bottom)
                     val start = origin ?: target
-                    val p = progress().coerceIn(0f, 1f)
+                    sheet.travel = start.top - (height - bottomInset - content - chrome)
+                    val p = sheet.presence.value.coerceIn(0f, 1f)
                     val left = start.left + (target.left - start.left) * p
                     val topEdge = start.top + (target.top - start.top) * p
                     val w = (start.width + (target.width - start.width) * p).roundToInt().coerceAtLeast(0)
@@ -426,12 +383,12 @@ fun SearchOverlay(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
             )
-            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }.nestedScroll(sheet)) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }.nestedScroll(listDrag)) {
                 Spacer(Modifier.height(Space.S6)) // room for the handle, drawn on top
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Built once the card is a third of the way open (it's invisible before that), so the
                     // first frame of the animation only has the card and field to build.
-                    val ready by remember { derivedStateOf { progress() > 0.3f } }
+                    val ready by remember { derivedStateOf { sheet.presence.value > 0.3f } }
                     if (ready || !open) {
                         Results(
                             context = context,
@@ -463,6 +420,8 @@ fun SearchOverlay(
             // The handle's touch area is taller than it looks (it overlaps the top of the results).
             Handle(
                 modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = inside() },
+                moving = { sheet.presence.isRunning || sheet.detent.isRunning },
+                onStart = { sheet.catch() },
                 onDelta = { drag(it) },
                 onRelease = { release(it) }
             )
@@ -472,7 +431,13 @@ fun SearchOverlay(
 
 /** The grab bar: drag up for more, down to dismiss. */
 @Composable
-private fun Handle(modifier: Modifier, onDelta: (Float) -> Unit, onRelease: (Float) -> Unit) {
+private fun Handle(
+    modifier: Modifier,
+    moving: () -> Boolean,
+    onStart: () -> Unit,
+    onDelta: (Float) -> Unit,
+    onRelease: (Float) -> Unit,
+) {
     // Looks like a 24 dp strip with the bar in the middle, but grabs 40 dp.
     Box(
         contentAlignment = Alignment.TopCenter,
@@ -482,6 +447,9 @@ private fun Handle(modifier: Modifier, onDelta: (Float) -> Unit, onRelease: (Flo
             .draggable(
                 orientation = Orientation.Vertical,
                 state = rememberDraggableState(onDelta),
+                // While it's moving, a touch catches it at once (no touch slop).
+                startDragImmediately = moving(),
+                onDragStarted = { onStart() },
                 onDragStopped = { velocity -> onRelease(velocity) }
             )
     ) {
@@ -601,11 +569,10 @@ private fun Results(
         searching -> ResultsMode.FOUND
         else -> ResultsMode.SUGGEST
     }
-    val rowSpring =
-        spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset(1, 1))
+    val rowSpring = Motion.settle.spec(visibilityThreshold = IntOffset(1, 1))
     AnimatedContent(
         targetState = mode,
-        transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(90)) },
+        transitionSpec = { fadeIn(Motion.content.spec()) togetherWith fadeOut(Motion.snappy.spec()) },
         label = "results",
         modifier = Modifier.fillMaxSize().softEdges()
     ) { shown ->
@@ -655,7 +622,11 @@ private fun Results(
                             first = i == hits.lastIndex,
                             last = i == 0,
                             modifier = Modifier
-                                .animateItem(fadeInSpec = null, placementSpec = rowSpring, fadeOutSpec = tween(120))
+                                .animateItem(
+                                    fadeInSpec = null,
+                                    placementSpec = rowSpring,
+                                    fadeOutSpec = Motion.snappy.spec()
+                                )
                                 .riseIn(order = i, shownAt = changedAt),
                             onClick = hit.pick
                         )
@@ -738,7 +709,7 @@ private fun Modifier.riseIn(order: Int, shownAt: Long): Modifier {
     LaunchedEffect(Unit) {
         if (enter.value < 1f) {
             delay(order.coerceIn(0, 6) * 25L)
-            enter.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+            enter.animateTo(1f, Motion.content.spec())
         }
     }
     return graphicsLayer {
@@ -840,7 +811,7 @@ private fun ResultRow(
     // The best-match highlight eases on and off instead of jumping between rows.
     val fill by animateColorAsState(
         if (highlighted) colors.secondaryContainer else colors.surfaceContainerHighest.copy(alpha = 0.7f),
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = Motion.control.spec(),
         label = "row"
     )
     // Material 3 surface button in the segmented list's shape.

@@ -2024,3 +2024,15 @@ Things to try on the phone before calling any motion done (debug and release bui
   Pixel 7: Days, Forecast and Places each show their icon filled when selected, the others outlined.
   Also: this PC had built the same icon task a second way (Symbols library); it was reverted on main
   in favour of the `material-symbols` branch, which is now merged into main.
+- **2026-11-19: M4 started, search on `:motion`** (option B, agreed with the user). New
+  `components/SolsticeSheetState.kt`: `presence` (0 folded into the button, 1 open; opens on
+  `Motion.container`, closes on `dismiss`, so the close no longer overshoots) and `detent` (px: compact
+  0, tall `room`, dismiss at -220 dp; UIKit release rule, rubber-band 80 dp past tall). A touch catches
+  it mid-open or mid-close and drives `presence`; resting at the dismiss point closes and carries the
+  fling's speed into `presence`; thrown back up while closing, it reopens. The page behind scales and
+  the scrim fades with `backdrop()` (open, less as it's pulled). Search's tweens and loose springs are
+  now tokens (`content`, `snappy`, `settle`, `control`). `:motion`: `MotionValue.restPoints` can change
+  (and `rememberMotionValue` applies changed ones), `release` returns the chosen rest point. Checked
+  on the Pixel 7 (profile build): opens tall, a slow short drag springs back, a fast flick from tall
+  settles compact (one step, like iOS), a flick from compact dismisses into the button. **Not yet
+  checked:** catching it mid-close (the phone kept disconnecting); try it by hand.

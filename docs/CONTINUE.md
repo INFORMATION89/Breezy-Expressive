@@ -70,15 +70,16 @@ Navigation 3: if that migration adds icons, use `SolsticeIcons` (CI fails on the
 
 ### Still open from before
 
-- **M4:** search (`search/SearchOverlay.kt`, 906 lines) and the rest onto `:motion`; brings one
-  `SolsticeSheet` and a page scaffold. Propose search's open/close options first (motion rule).
+- **M4:** search is on `:motion` (`SolsticeSheetState`, option B; check catching it mid-close by
+  hand). Next: the postcard window, Places drag, the toolbar, the moon card onto the sheet state, and
+  the page scaffold. Propose each motion first (motion rule).
   27 `spring(…)`, 7 `tween(…)` and 12 `animate*AsState` left in `ui/expressive/`.
 - **Moon card by feel:** a flick just under 1000 dp/s that projects to about half way stays open
   (the UIKit rule as specified). Lower the fast-flick speed for it if it feels wrong.
 - **Tokens left:** 174 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`; finish alongside
   M4 and I2.
 - Smaller: `Motion.control` and `Motion.settle` are the same spring (merge or tell apart);
-  `rememberMotionValue` ignores later changes to its rest points; `Modifier.searchBlur` in
+  `Modifier.searchBlur` in
   `SolsticeShell.kt` is unused; `unresist` caps at 99.9 % of the over-pull limit (a very hard fling
   past `overMax` snaps back slightly when caught).
 - **M5:** the motion lab screen and the `:motion` README for other projects.

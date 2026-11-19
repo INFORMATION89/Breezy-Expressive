@@ -96,6 +96,7 @@ import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
+import org.breezyweather.ui.expressive.components.rememberSolsticeSheetState
 import org.breezyweather.ui.expressive.search.RecentSearches
 import org.breezyweather.ui.expressive.search.SearchOverlay
 import org.breezyweather.ui.expressive.sky.AnimatedSkyBackground
@@ -357,12 +358,15 @@ fun SolsticeShell(
         }
     }
 
-    val searchProgress = remember { Animatable(0f) }
+    // Search's motion (a SolsticeSheet): opens on Motion.container, closes on dismiss; a drag can
+    // catch it at any point and a flick down carries its speed into the close.
+    val searchSheet = rememberSolsticeSheetState()
     LaunchedEffect(searchOpen) {
-        searchProgress.animateTo(
-            if (searchOpen) 1f else 0f,
-            spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
-        )
+        if (searchOpen) {
+            if (searchSheet.presence.value < 0.5f) searchSheet.showTall() else searchSheet.presence.animateTo(1f)
+        } else {
+            searchSheet.dismiss()
+        }
     }
     // A picked place becomes a visit straight away: no weather-sources panel (that's in the place's
     // settings as an advanced option).
@@ -474,7 +478,7 @@ fun SolsticeShell(
                         }
                         .graphicsLayer {
                             // The page recedes a little while search or the moon card is open.
-                            val k = 1f - 0.04f * maxOf(searchProgress.value, MoonCardState.progress)
+                            val k = 1f - 0.04f * maxOf(searchSheet.backdrop(), MoonCardState.progress)
                             scaleX = k
                             scaleY = k
                             // The tab jump: the arriving page slides in from the tapped side (a quarter of
@@ -600,7 +604,7 @@ fun SolsticeShell(
                 }
             }
             // The toolbar steps aside while search or a place window is open.
-            ToolbarDock(alpha = { 1f - maxOf(searchProgress.value, windowProgress.value) }) {
+            ToolbarDock(alpha = { 1f - maxOf(searchSheet.presence.value.coerceIn(0f, 1f), windowProgress.value) }) {
                 ShellMessageHost(messages, glass)
                 ShellToolbar(
                     pager = pager,
@@ -627,7 +631,7 @@ fun SolsticeShell(
                 )?.let { it.latitude to it.longitude }
             SearchOverlay(
                 open = searchOpen,
-                progress = { searchProgress.value },
+                sheet = searchSheet,
                 origin = searchOrigin,
                 searchViewModel = searchViewModel,
                 near = nearPoint,
@@ -635,6 +639,7 @@ fun SolsticeShell(
                 onPickLocation = { pick(it) },
                 onPickCity = { pick(it.toLocation()) },
                 onClose = { searchOpen = false },
+                onReopen = { searchOpen = true },
                 onCardBounds = { searchCard = it },
                 glass = glass,
                 handedOff = searchHandoff && windowReady
