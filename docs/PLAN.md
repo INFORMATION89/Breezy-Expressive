@@ -621,7 +621,7 @@ Added after the library research (2026-11-19, [UI_SYSTEMS.md](UI_SYSTEMS.md)):
   predictive back instead of `ScreenPush`. Compose's own shared elements fit those; our `Morph` is
   only for overlays opened from a control.
 
-### Solstice `MotionScheme`: proposal (to agree, not built)
+### Solstice `MotionScheme`: decided 2026-11-19, built (`SolsticeMotionScheme`) with a sixth token `snappy` (0.2 s / 0.9) for Material's fast springs
 
 Material's expressive scheme has three spatial springs (fast ≈ 0.17 s, default ≈ 0.31 s, slow
 ≈ 0.48 s, all bouncy) and three effects springs (no bounce). With only our five tokens, the closest
