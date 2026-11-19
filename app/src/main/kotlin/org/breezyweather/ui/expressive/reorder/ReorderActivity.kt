@@ -58,6 +58,7 @@ import org.breezyweather.domain.settings.SettingsChangedMessage
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
 import org.breezyweather.ui.common.widgets.insets.FitStatusBarTopAppBar
+import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
 
 /**
@@ -183,10 +184,10 @@ private fun <T : BaseEnum> ReorderScreen(spec: Spec<T>, onBack: () -> Unit) {
                 }
             },
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                start = Space.S4,
+                end = Space.S4,
+                top = padding.calculateTopPadding() + Space.S2,
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + Space.S4
             ),
             footer = {
                 val hidden = spec.hidden
@@ -196,12 +197,16 @@ private fun <T : BaseEnum> ReorderScreen(spec: Spec<T>, onBack: () -> Unit) {
                             text = stringResource(R.string.reorder_hidden_expressive),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 8.dp).animateItem()
+                            modifier = Modifier.padding(
+                                start = Space.S2,
+                                top = Space.S6,
+                                bottom = Space.S2
+                            ).animateItem()
                         )
                     }
                     item(key = "hiddenChips") {
                         FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Space.S2),
                             modifier = Modifier.fillMaxWidth().animateItem()
                         ) {
                             hidden.forEach { item ->

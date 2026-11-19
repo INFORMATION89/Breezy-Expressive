@@ -59,14 +59,14 @@ fun ExpressiveTheme(
 
 /** Larger, softer corners than baseline Material 3. Buttons are pills by default in Expressive. */
 val ExpressiveShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
-    largeIncreased = RoundedCornerShape(28.dp),
-    extraLargeIncreased = RoundedCornerShape(36.dp),
-    extraExtraLarge = RoundedCornerShape(48.dp)
+    extraSmall = CornerShapes.XS,
+    small = CornerShapes.S,
+    medium = CornerShapes.M,
+    large = CornerShapes.L,
+    extraLarge = CornerShapes.XL,
+    largeIncreased = CornerShapes.LIncreased,
+    extraLargeIncreased = CornerShapes.XLIncreased,
+    extraExtraLarge = CornerShapes.XXL
 )
 
 @Composable

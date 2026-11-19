@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.breezyweather.ui.expressive.theme.Space
 
 /** Check / close icon shown inside a Switch thumb. */
 @Composable
@@ -110,7 +111,7 @@ fun InlineChoiceButtons(
                 // Width follows the label, so "Follow system" gets more room than "Dark".
                 // + 6: every button needs room for its padding, whatever its label length.
                 modifier = Modifier.weight(choiceLabel(nameArray[i]).length + 6f),
-                contentPadding = PaddingValues(horizontal = 8.dp),
+                contentPadding = PaddingValues(horizontal = Space.S2),
                 colors = ToggleButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -161,12 +162,12 @@ fun ChoiceSheet(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.94f)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp).navigationBarsPadding()) {
+        Column(modifier = Modifier.padding(horizontal = Space.S4).navigationBarsPadding()) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmallEmphasized,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 8.dp, bottom = 16.dp)
+                modifier = Modifier.padding(start = Space.S2, bottom = Space.S4)
             )
             // Segment boundaries: options between headers form one rounded group.
             val isHeader = nameArray.map { it.isEmpty() }
@@ -177,7 +178,17 @@ fun ChoiceSheet(
                             text = value,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 8.dp, top = if (i == 0) 0.dp else 16.dp, bottom = 8.dp)
+                            modifier = Modifier.padding(
+                                start = Space.S2,
+                                top = if (i ==
+                                    0
+                                ) {
+                                    0.dp
+                                } else {
+                                    Space.S4
+                                },
+                                bottom = Space.S2
+                            )
                         )
                     } else {
                         val first = i == 0 || isHeader[i - 1]
@@ -200,13 +211,13 @@ fun ChoiceSheet(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = if (last) 0.dp else 2.dp)
+                                .padding(bottom = if (last) 0.dp else Space.Half)
                                 .clickable(enabled = itemEnabled, role = Role.RadioButton) {
                                     close { onSelect(value) }
                                 }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                modifier = Modifier.padding(horizontal = Space.S4, vertical = Space.S4),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -233,7 +244,7 @@ fun ChoiceSheet(
             }
             if (extraButton != null) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = Space.S2),
                     horizontalArrangement = Arrangement.End
                 ) { extraButton() }
             }

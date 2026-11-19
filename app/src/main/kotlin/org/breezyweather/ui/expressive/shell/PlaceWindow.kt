@@ -84,6 +84,9 @@ import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkySystemBars
 import org.breezyweather.ui.expressive.sky.SkyWeather
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.SolsticePalette
+import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
 import kotlin.math.abs
 
@@ -127,7 +130,7 @@ internal fun PlaceWindow(
     val night = sky.sunHeight < 0f
     BreezyWeatherTheme(darkTheme = night || isSystemInDarkTheme()) {
         val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-        val paper = if (dark) Color(0xFFE6E0D2) else Color(0xFFFAF7F0)
+        val paper = if (dark) SolsticePalette.PaperDim else SolsticePalette.Paper
         val page = if (dark) Color.Black else Color.White
         val onPage = if (dark) Color.White else Color.Black
         val pager = rememberPagerState(initialPage = 1) { 2 }
@@ -268,15 +271,15 @@ internal fun PlaceWindow(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
-                            .padding(top = 8.dp)
+                            .padding(top = Space.S2)
                     ) {
                         Icon(
                             Icons.Outlined.FlightLand,
                             contentDescription = null,
                             tint = ink,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(Sizes.IconSmall)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(Space.S1))
                         Text(
                             stringResource(R.string.shell_visiting),
                             style = MaterialTheme.typography.labelLarge,
@@ -288,9 +291,9 @@ internal fun PlaceWindow(
                                 Icons.Outlined.Schedule,
                                 contentDescription = null,
                                 tint = ink,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(Sizes.IconSmall)
                             )
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(Space.S1))
                             Text(localTime, style = MaterialTheme.typography.labelLarge, color = ink)
                         }
                     }
@@ -303,7 +306,7 @@ internal fun PlaceWindow(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
+                    .padding(bottom = Space.S3)
                     .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
             ) {
                 ShellToolbar(

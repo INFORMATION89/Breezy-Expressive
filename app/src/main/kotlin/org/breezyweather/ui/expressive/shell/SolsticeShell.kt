@@ -157,6 +157,9 @@ import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkySystemBars
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.skyAt
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.SolsticePalette
+import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.main.MainActivityViewModel
 import org.breezyweather.ui.search.SearchViewModel
 import kotlin.math.abs
@@ -671,7 +674,7 @@ fun SolsticeShell(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(bottom = 12.dp)
+                        .padding(bottom = Space.S3)
                         // The toolbar steps aside while search or a place window is open.
                         .graphicsLayer { alpha = 1f - maxOf(searchProgress.value, windowProgress.value) }
                 ) {
@@ -885,7 +888,7 @@ internal fun ShellToolbar(
     // On Forecast the highlight wears the weather (a colour from the sky); swiping to Outlook or
     // Places morphs it into the Material You colour, in step with the swipe.
     val skyAccent = sky.palette.blobs[1]
-    val onSkyAccent = if (skyAccent.luminance() > 0.45f) Color(0xFF1B1B1F) else Color.White
+    val onSkyAccent = if (skyAccent.luminance() > 0.45f) SolsticePalette.InkNearBlack else Color.White
     val primary = lerp(MaterialTheme.colorScheme.primary, skyAccent, open[PAGE_FORECAST])
     val onPrimary = lerp(MaterialTheme.colorScheme.onPrimary, onSkyAccent, open[PAGE_FORECAST])
     val onSurface = MaterialTheme.colorScheme.onSurface
@@ -1049,7 +1052,7 @@ private fun ToolbarTabs(
                     }
                 )
             }
-            .padding(4.dp)
+            .padding(Space.S1)
     ) {
         Box(
             Modifier
@@ -1095,12 +1098,12 @@ private fun ToolbarTabs(
                             scaleX = squeeze.value
                             scaleY = squeeze.value
                         }
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = Space.S2),
                     // Icon and label centred in the tab, whatever the label's length.
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(8.dp * shown[i]))
+                    Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(Sizes.IconLarge))
+                    Spacer(Modifier.width(Space.S2 * shown[i]))
                     Text(
                         text = label,
                         color = color,

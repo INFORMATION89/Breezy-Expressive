@@ -622,8 +622,9 @@ Added after the library research (2026-11-19, [UI_SYSTEMS.md](UI_SYSTEMS.md)):
 
 ### Steps
 
-1. **M0, agree:** this plan, the token list and values, and the module's name and license (Solstice
-   is LGPL-3.0; the module is our own code, so it could be Apache-2.0 for easier reuse).
+1. **M0, agreed 2026-11-19:** springs are the five current tokens only (`container`, `dismiss`,
+   `control`, `content`, `settle`; no `snappy`/`gentle`/`press`); the module is `:motion`,
+   licensed Apache-2.0 (our own code, for reuse). First task: design tokens, then Haze.
 2. **M1, core:** tokens, `MotionValue`, drag/release with the rules above, unit tests for the
    maths (spring conversion, projection, rubber-band, target choice).
 3. **M2, morph:** anchors, overlay, geometry and text morph, choreography windows, reduced motion.
@@ -1329,6 +1330,15 @@ Things to try on the phone before calling any motion done (debug and release bui
   - Fixed (checked): once a postcard window is mostly open, it sets the system bar icons (the sky's
     text colour on Forecast, the page's on This week), so they're light on a dark night window.
     The shell sets them again once it closes.
+
+- **2026-11-19:** M0 agreed (five spring tokens only; `:motion`, Apache-2.0). Design tokens started:
+  `ui/expressive/theme/Tokens.kt` with `Space` (4 dp grid, `S1` = 4 dp … `S12` = 48 dp, `Half` for
+  optical nudges), `Sizes` (touch target, icons), `Stroke`, `Corners`/`CornerShapes` (M3 Expressive
+  scale; `ExpressiveShapes` uses them), `SolsticePalette` (all non-dynamic colours) and `HeroType`.
+  Replaced in 12 files: ~150 spacing values, 19 corner shapes, every hex colour outside `sky/`,
+  icon/touch sizes, the two hero temperature styles. ~40 off-grid values snapped to the grid
+  (mostly 6 → 8 dp, 10 → 12 dp). ~150 one-off layout dimensions (chart heights, widths) stay as
+  literals. Compiles; not yet checked on the phone. Next: continuous corners, then the Haze prototype.
 
 ## Backlog (user notes, 2026-11-18)
 

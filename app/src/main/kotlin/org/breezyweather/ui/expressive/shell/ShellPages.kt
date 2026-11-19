@@ -188,6 +188,11 @@ import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.paletteAt
+import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.HeroType
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.SolsticePalette
+import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.unit.precipitation.Precipitation.Companion.millimeters
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -246,8 +251,8 @@ internal fun ForecastPage(
                 }
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(top = 40.dp, bottom = 120.dp)
+                .padding(horizontal = Space.S5)
+                .padding(top = Space.S10, bottom = 120.dp)
         ) {
             // Only the location's title at the top (plus an icon for the current position).
             val (title, city) = placeName(context, location)
@@ -259,7 +264,7 @@ internal fun ForecastPage(
                         tint = text,
                         modifier = Modifier.size(18.dp)
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Space.S2))
                 }
                 // Long names shrink to fit, then ellipsize.
                 Text(
@@ -284,14 +289,14 @@ internal fun ForecastPage(
             // (the same clock as a visit's label).
             if (showLocalTime) {
                 timeDifference(location.timeZone, now)?.let { diff ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = Space.Half)) {
                         Icon(
                             Icons.Outlined.Schedule,
                             contentDescription = null,
                             tint = text.copy(alpha = 0.72f),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(Sizes.IconSmall)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(Space.S1))
                         Text(
                             time(context, Date(now), location.timeZone) + ", " + diff,
                             color = text.copy(alpha = 0.72f),
@@ -310,9 +315,7 @@ internal fun ForecastPage(
             Text(
                 main?.let { degrees(context, it) } ?: "–",
                 color = text,
-                fontSize = 112.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = (-4).sp
+                style = HeroType.Temperature
             )
             current?.weatherText?.let {
                 Text(it, color = text, style = MaterialTheme.typography.headlineSmallEmphasized)
@@ -320,22 +323,22 @@ internal fun ForecastPage(
             feelsLikeLine(context, location)?.let {
                 Text(it, color = text.copy(alpha = 0.72f), style = MaterialTheme.typography.bodyLarge)
             }
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(Space.S7))
             SunPath(location, now, text, sky.palette)
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Space.S5))
             // The order follows what matters now: rain near moves its timeline right under the sun
             // path; otherwise a short "no rain" line sits after the hourly card.
             val rain = remember(location.weather, now / 60_000L) { rainOutlook(context, location, now) }
             if (rain is RainOutlook.Coming) {
                 RainCard(rain, location, text)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Space.S3))
             }
             TodayCard(location, now, text)
             if (rain is RainOutlook.None) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Space.S3))
                 NoRainLine(rain.hours, text)
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Space.S4))
             TextButton(onClick = onDetails) {
                 Text(stringResource(R.string.shell_more_details), color = text)
             }
@@ -348,14 +351,14 @@ private fun EmptyForecast(text: Color, onOpenPlaces: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize().padding(32.dp)
+        modifier = Modifier.fillMaxSize().padding(Space.S8)
     ) {
         Text(
             stringResource(R.string.shell_no_location),
             color = text,
             style = MaterialTheme.typography.titleLarge
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Space.S4))
         FilledTonalButton(onClick = onOpenPlaces) { Text(stringResource(R.string.shell_tab_places)) }
     }
 }
@@ -388,8 +391,8 @@ private fun SunPath(
     val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
     var showPhase by remember { mutableStateOf(false) }
     val phaseIcons = rememberMoonPhaseIcons()
-    val warm = Color(0xFFF2A33A)
-    val cool = Color(0xFF8FA3E8)
+    val warm = SolsticePalette.SunWarm
+    val cool = SolsticePalette.MoonCool
     val accent = if (night) cool else warm
     // The shape (agreed 2026-11-18, like the reference): a smooth bell between the two times whose
     // ends run flat along the horizon and fade out towards the screen edges.
@@ -476,7 +479,7 @@ private fun SunPath(
             )
             drawContext.canvas.restore()
             if (!night) {
-                drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
+                drawCircle(SolsticePalette.Sun, radius = 7.dp.toPx(), center = c)
             } else {
                 // The plain outline phase icon (the realistic moon is for the moon card).
                 drawMoonPhaseIcon(phaseIcons, c, 10.dp.toPx(), angle, text)
@@ -559,7 +562,7 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
             color = text,
             style = MaterialTheme.typography.titleMediumEmphasized
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Space.S3))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             hours.forEachIndexed { i, hour ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -572,7 +575,7 @@ private fun TodayCard(location: Location, now: Long, text: Color) {
                         hourIcon(SkyWeather.of(hour.weatherCode), !hour.isDaylight),
                         contentDescription = hour.weatherText,
                         tint = text.copy(alpha = 0.85f),
-                        modifier = Modifier.padding(vertical = 6.dp).size(20.dp)
+                        modifier = Modifier.padding(vertical = Space.S2).size(Sizes.Icon)
                     )
                     Text(
                         if (i == 0 && hour.date.time <= now) {
@@ -752,10 +755,10 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
     // When the amount rounds to nothing (a likely drizzle), probability says more: start there.
     val dryAmount = rain.total < 0.1
     var showChance by remember(rain.minutely) { mutableStateOf(dryAmount && chances != null) }
-    GlassCard(text, tint = if (rain.soon) Color(0xFF8CCBFF) else null) {
+    GlassCard(text, tint = if (rain.soon) SolsticePalette.RainSoon else null) {
         // No separate title: the sentence is the header.
         Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Space.S1))
         Row(verticalAlignment = Alignment.CenterVertically) {
             // The amount in the window, or the highest chance. One line, so switching never
             // resizes the card.
@@ -775,13 +778,13 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                modifier = Modifier.weight(1f).padding(end = Space.S2)
             )
             if (chances != null) {
                 RainSwitch(showChance, text) { showChance = it }
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Space.S3))
         // The chart keeps one height in both views (room for the percentages on top).
         Box(Modifier.fillMaxWidth().height(80.dp)) {
             if (showChance && chances != null) {
@@ -792,7 +795,7 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
         }
         // Times under the bars, each at the start of its stretch (Now, 10m, … or the hours).
         val labels = if (showChance && chances != null) rain.hourLabels else rain.labels
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = Space.S2)) {
             labels.forEach {
                 Text(
                     it,
@@ -830,7 +833,7 @@ private fun BoxScope.AmountBars(rain: RainOutlook.Coming, text: Color) {
                         .clip(CircleShape)
                         .background(
                             if (v > 0.02f) {
-                                Brush.verticalGradient(listOf(Color(0xFFB9E1FF), Color(0xFF4F9EEA)))
+                                Brush.verticalGradient(listOf(SolsticePalette.RainLight, SolsticePalette.Rain))
                             } else {
                                 SolidColor(text.copy(alpha = 0.22f))
                             }
@@ -848,7 +851,7 @@ private fun BoxScope.AmountBars(rain: RainOutlook.Coming, text: Color) {
 @Composable
 private fun BoxScope.ChanceBars(chances: List<Float>, text: Color) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.S3),
         modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize()
     ) {
         chances.forEach { c ->
@@ -862,7 +865,7 @@ private fun BoxScope.ChanceBars(chances: List<Float>, text: Color) {
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Space.S1))
                 BoxWithConstraints(
                     contentAlignment = Alignment.BottomCenter,
                     modifier = Modifier
@@ -877,7 +880,9 @@ private fun BoxScope.ChanceBars(chances: List<Float>, text: Color) {
                                 .fillMaxWidth()
                                 .height((maxHeight * c).coerceAtLeast(maxWidth))
                                 .clip(CircleShape)
-                                .background(Brush.verticalGradient(listOf(Color(0xFFCBC6FF), Color(0xFF7C7FE6))))
+                                .background(
+                                    Brush.verticalGradient(listOf(SolsticePalette.SnowLight, SolsticePalette.Snow))
+                                )
                         )
                     }
                 }
@@ -909,7 +914,7 @@ private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit
         Modifier
             .clip(CircleShape)
             .background(text.copy(alpha = 0.10f))
-            .padding(3.dp)
+            .padding(Space.S1)
     ) {
         listOf(
             Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
@@ -924,7 +929,7 @@ private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit
                     .clip(CircleShape)
                     .background(if (on) text.copy(alpha = 0.16f) else Color.Transparent)
                     .clickable { onChange(value) }
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                    .padding(horizontal = Space.S3, vertical = Space.S1)
                     .size(18.dp)
             )
         }
@@ -939,15 +944,15 @@ private fun NoRainLine(hours: Int, text: Color) {
         modifier = Modifier
             .clip(CircleShape)
             .background(text.copy(alpha = 0.08f))
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = Space.S4, vertical = Space.S2)
     ) {
         Icon(
             SolsticeIcons.RainCloud,
             contentDescription = null,
             tint = text.copy(alpha = 0.7f),
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(Sizes.IconSmall)
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Space.S2))
         Text(
             stringResource(R.string.shell_no_rain, hours),
             color = text.copy(alpha = 0.8f),
@@ -977,8 +982,8 @@ internal fun DaysPage(
     // at both edges (also a hint that there's more to scroll).
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 40.dp, bottom = 160.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = Space.S4, end = Space.S4, top = top + Space.S10, bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(Space.S3),
         modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp, strength = pageFade)
     ) {
         item {
@@ -986,7 +991,7 @@ internal fun DaysPage(
                 stringResource(R.string.shell_tab_days),
                 color = onPage,
                 style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
-                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                modifier = Modifier.padding(start = Space.S1, bottom = Space.S1)
             )
         }
         if (location != null && days.isNotEmpty()) {
@@ -1002,10 +1007,10 @@ private fun PaperCard(onPage: Color, content: @Composable () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(CornerShapes.L)
             .background(onPage.copy(alpha = 0.09f))
-            .border(0.5.dp, onPage.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
-            .padding(18.dp)
+            .border(0.5.dp, onPage.copy(alpha = 0.10f), CornerShapes.L)
+            .padding(Space.S5)
     ) { Column { content() } }
 }
 
@@ -1069,7 +1074,7 @@ private fun WeekSummary(
     )
     PaperCard(onPage) {
         Text(headline, color = onPage, style = MaterialTheme.typography.titleLargeEmphasized)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(Space.S2))
         Text(
             body,
             inlineContent = inline,
@@ -1109,15 +1114,15 @@ private fun WeekPills(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(CornerShapes.S)
                         .clickable { onDay(i) }
-                        .padding(horizontal = 2.dp, vertical = 4.dp)
+                        .padding(horizontal = Space.Half, vertical = Space.S1)
                 ) {
                     Text(
                         day.day?.temperature?.temperature?.let { degrees(context, it) } ?: "",
                         color = onPage,
                         style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = Space.S2)
                     )
                     Box(Modifier.height(pillArea).width(22.dp)) {
                         val topFrac = ((top - hi) / span).toFloat()
@@ -1127,7 +1132,7 @@ private fun WeekPills(
                                 .padding(top = pillArea * topFrac)
                                 .fillMaxWidth()
                                 .height(pillArea * heightFrac)
-                                .clip(RoundedCornerShape(11.dp))
+                                .clip(CornerShapes.S)
                                 .background(Brush.verticalGradient(listOf(tempColor(hi), tempColor(lo))))
                         )
                     }
@@ -1135,17 +1140,17 @@ private fun WeekPills(
                         day.night?.temperature?.temperature?.let { degrees(context, it) } ?: "",
                         color = onPage.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = Space.S2)
                     )
                     Icon(
                         hourIcon(weather, false),
                         contentDescription = day.day?.weatherText,
-                        tint = if (wet) Color(0xFFD85A30) else onPage.copy(alpha = 0.75f),
-                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp).size(18.dp)
+                        tint = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(top = Space.S2, bottom = Space.Half).size(18.dp)
                     )
                     Text(
                         if (i == 0) stringResource(R.string.shell_today) else dayShort(day.date, location.timeZone),
-                        color = if (wet) Color(0xFFD85A30) else onPage.copy(alpha = 0.8f),
+                        color = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.8f),
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -1157,11 +1162,11 @@ private fun WeekPills(
 /** Cold blue to warm orange by temperature (°C). */
 private fun tempColor(c: Double): Color {
     val stops = listOf(
-        -5.0 to Color(0xFF6C8DE0),
-        8.0 to Color(0xFF85B7EB),
-        16.0 to Color(0xFFB9CFE6),
-        22.0 to Color(0xFFF0B27B),
-        30.0 to Color(0xFFE4683A)
+        -5.0 to SolsticePalette.TempFreezing,
+        8.0 to SolsticePalette.TempCold,
+        16.0 to SolsticePalette.TempMild,
+        22.0 to SolsticePalette.TempWarm,
+        30.0 to SolsticePalette.TempHot
     )
     if (c <= stops.first().first) return stops.first().second
     if (c >= stops.last().first) return stops.last().second
@@ -1266,12 +1271,12 @@ internal fun PlacesPage(
         // Edge to edge like This week: the list scrolls under a transparent status bar. Top padding
         // chosen so the heading sits at the same height as This week's.
         contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
+            start = Space.S4,
+            end = Space.S4,
             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 34.dp,
             bottom = 132.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(Space.S4),
         // The same plain page and progressive edge blur as This week (the grain paper is off for now).
         modifier = Modifier.fillMaxSize()
             .edgeBlur(
@@ -1281,12 +1286,12 @@ internal fun PlacesPage(
             )
     ) {
         item(key = "header") {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = Space.S2)) {
                 Text(
                     stringResource(R.string.shell_tab_places),
                     style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
                     color = onPage,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp)
+                    modifier = Modifier.weight(1f).padding(start = Space.S1)
                 )
                 IconButton(onClick = onSettings) {
                     Icon(
@@ -1349,7 +1354,7 @@ internal fun PlacesPage(
                             shadowElevation = glide.value * 10.dp.toPx()
                             ambientShadowColor = Color.Black.copy(alpha = 0.10f)
                             spotShadowColor = Color.Black.copy(alpha = 0.16f)
-                            shape = RoundedCornerShape(4.dp)
+                            shape = CornerShapes.XXS
                         }
                         if (isCarried) {
                             translationY = carryY
@@ -1359,7 +1364,7 @@ internal fun PlacesPage(
                             shadowElevation = ((lift.value - 1f) / 0.03f).coerceIn(0f, 1f) * 10.dp.toPx()
                             ambientShadowColor = Color.Black.copy(alpha = 0.10f)
                             spotShadowColor = Color.Black.copy(alpha = 0.16f)
-                            shape = RoundedCornerShape(4.dp)
+                            shape = CornerShapes.XXS
                         } else {
                             translationY = nudge(id) + bump.value
                         }
@@ -1452,9 +1457,9 @@ internal fun PlacesPage(
         }
         if (locations.none { it.isCurrentPosition }) {
             item(key = "current") {
-                OutlinedButton(onClick = onAddCurrent, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                OutlinedButton(onClick = onAddCurrent, modifier = Modifier.fillMaxWidth().padding(top = Space.S2)) {
                     Icon(Icons.Outlined.MyLocation, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Space.S2))
                     Text(stringResource(R.string.shell_use_current_location))
                 }
             }
@@ -1538,9 +1543,9 @@ private fun SwipeablePlace(
             modifier = Modifier
                 .matchParentSize()
                 .graphicsLayer { alpha = (pulled / starAt).coerceIn(0f, 1f) }
-                .clip(RoundedCornerShape(24.dp))
+                .clip(CornerShapes.L)
                 .background(behind)
-                .padding(end = 28.dp)
+                .padding(end = Space.S7)
         ) {
             Icon(icon, contentDescription = null, tint = onBehind, modifier = Modifier.size(28.dp))
         }
@@ -1623,8 +1628,8 @@ private fun PlaceCard(
     LaunchedEffect(pressed) {
         sink.animateTo(if (pressed) 0.98f else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
     }
-    val card = Color(0xFFF8F2E4)
-    val ink = Color(0xFF2E2A24)
+    val card = SolsticePalette.PaperWarm
+    val ink = SolsticePalette.Ink
     // Sticker peel (agreed 2026-11-18): when it gets the star, a gold star sticker drops onto the
     // stamp slightly too big and tilted, presses down (squash, haptic), settles, and a shine sweeps
     // across it as it flattens. Waits for the card's glide to the top.
@@ -1695,20 +1700,20 @@ private fun PlaceCard(
                 drawRect(
                     Brush.radialGradient(
                         0.6f to Color.Transparent,
-                        1f to Color(0xFF8A6A3A).copy(alpha = 0.16f),
+                        1f to SolsticePalette.Sepia.copy(alpha = 0.16f),
                         center = center,
                         radius = size.maxDimension * 0.62f
                     )
                 )
             }
-            .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)
+            .padding(start = Space.S3, end = Space.S3, top = Space.S3, bottom = Space.S2)
     ) {
         Column(Modifier.fillMaxSize()) {
             // Top caption, on the picture: the place, and its weather.
             val topCaption: @Composable (Modifier) -> Unit = { captionModifier ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = captionModifier) {
                     // The current location's name is red, like a "you are here" mark on a map.
-                    val here = Color(0xFFFF5A4E)
+                    val here = SolsticePalette.HerePin
                     val nameColor = if (location.isCurrentPosition) here else sky.palette.text
                     if (location.isCurrentPosition) {
                         Icon(
@@ -1717,7 +1722,7 @@ private fun PlaceCard(
                             tint = nameColor,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(Space.S1))
                     }
                     Text(
                         title.uppercase(),
@@ -1739,7 +1744,7 @@ private fun PlaceCard(
                         style = caption,
                         color = if (location.isCurrentPosition && starred) here else sky.palette.text,
                         maxLines = 1,
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = Space.S2)
                     )
                 }
             }
@@ -1771,20 +1776,21 @@ private fun PlaceCard(
                     }
             ) {
                 Box(Modifier.fillMaxSize()) {
-                    topCaption(Modifier.align(Alignment.TopStart).padding(start = 10.dp, end = 10.dp, top = 8.dp))
+                    topCaption(
+                        Modifier.align(Alignment.TopStart).padding(start = Space.S3, end = Space.S3, top = Space.S2)
+                    )
                     Text(
                         current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
                         color = sky.palette.text,
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Light,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 6.dp)
+                        style = HeroType.CardTemperature,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = Space.S3, bottom = Space.S2)
                     )
                 }
             }
             // Bottom caption: the region, and the local time when it differs from yours.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 5.dp).graphicsLayer { alpha = 1f - fold }
+                modifier = Modifier.padding(top = Space.S1).graphicsLayer { alpha = 1f - fold }
             ) {
                 Text(
                     location.country.uppercase(),
@@ -1803,7 +1809,7 @@ private fun PlaceCard(
                         style = caption,
                         color = ink,
                         maxLines = 1,
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = Space.S2)
                     )
                 }
             }
@@ -1816,7 +1822,7 @@ private fun PlaceCard(
             Stamp(
                 time = null,
                 starred = true,
-                paper = Color(0xFFF6EBD6),
+                paper = SolsticePalette.PaperAged,
                 ink = ink,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -1852,7 +1858,7 @@ private fun PlaceCard(
             ink = sky.palette.text,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 26.dp, end = 12.dp)
+                .padding(bottom = 26.dp, end = Space.S3)
                 .graphicsLayer { alpha = 1f - fold }
         )
         // Folded: one line on the paper (the starred place's name; its stamp sits at the end).
@@ -1862,24 +1868,24 @@ private fun PlaceCard(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = Space.S2)
                     .graphicsLayer { alpha = ((fold - 0.4f) / 0.6f).coerceIn(0f, 1f) }
             ) {
                 if (location.isCurrentPosition) {
                     Icon(
                         Icons.Filled.NearMe,
                         contentDescription = stringResource(R.string.location_current),
-                        tint = Color(0xFFE5483C),
-                        modifier = Modifier.padding(start = 8.dp).size(14.dp)
+                        tint = SolsticePalette.Stamp,
+                        modifier = Modifier.padding(start = Space.S2).size(14.dp)
                     )
                 }
                 Text(
                     placeName(context, location).first,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (location.isCurrentPosition) Color(0xFFE5483C) else ink,
+                    color = if (location.isCurrentPosition) SolsticePalette.Stamp else ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(start = 8.dp, end = 8.dp)
+                    modifier = Modifier.weight(1f).padding(start = Space.S2, end = Space.S2)
                 )
                 // The current location: "you are here" when it's the main place, its weather otherwise.
                 if (location.isCurrentPosition) {
@@ -1887,26 +1893,26 @@ private fun PlaceCard(
                         Text(
                             stringResource(R.string.shell_you_are_here).uppercase(),
                             style = caption,
-                            color = Color(0xFFE5483C),
+                            color = SolsticePalette.Stamp,
                             modifier = Modifier.padding(end = 56.dp)
                         )
                     } else {
                         Icon(
                             hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
                             contentDescription = current?.weatherText,
-                            tint = Color(0xFFE5483C),
+                            tint = SolsticePalette.Stamp,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Space.S2))
                         Text(
                             current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFFE5483C),
-                            modifier = Modifier.padding(end = 8.dp)
+                            color = SolsticePalette.Stamp,
+                            modifier = Modifier.padding(end = Space.S2)
                         )
                     }
                 } else {
-                    Spacer(Modifier.width(48.dp))
+                    Spacer(Modifier.width(Space.S12))
                 }
             }
         }
@@ -2017,12 +2023,12 @@ private fun Stamp(
                     )
                 )
             }
-            .padding(3.dp)
+            .padding(Space.S1)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (starred) {
                 // The star sticker is red everywhere (2026-11-19).
-                val gold = starTint ?: Color(0xFFE5483C)
+                val gold = starTint ?: SolsticePalette.Stamp
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = stringResource(R.string.shell_starred),
@@ -2082,7 +2088,7 @@ private fun Modifier.grainyPaper(onPage: Color): Modifier {
     val grain = remember(light) { paperGrain(light) }
     val brush = remember(grain) { ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)) }
     return drawBehind {
-        drawRect(if (light) Color(0xFFF7F3EA) else Color(0xFF1D1C19))
+        drawRect(if (light) SolsticePalette.PaperSheet else SolsticePalette.PaperNight)
         drawRect(brush)
     }
 }
@@ -2170,7 +2176,7 @@ private fun GlassCard(text: Color, tint: Color? = null, content: @Composable () 
         else -> 0.10f
     }
     val fill = glass.copy(alpha = alpha)
-    val shape = RoundedCornerShape(24.dp)
+    val shape = CornerShapes.L
     // Real frosted glass: the sky behind it, blurred, under the tint (plain tint without a sky).
     val sky = LocalSkyGlass.current
     Box(
@@ -2183,7 +2189,7 @@ private fun GlassCard(text: Color, tint: Color? = null, content: @Composable () 
                     Modifier.clip(shape).background(fill)
                 }
             )
-            .padding(16.dp)
+            .padding(Space.S4)
     ) { Column { content() } }
 }
 

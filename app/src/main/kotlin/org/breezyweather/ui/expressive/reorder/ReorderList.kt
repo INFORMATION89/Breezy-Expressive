@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.Space
 
 /**
  * A segmented list whose rows are reordered by dragging the handle (or long-pressing the row).
@@ -196,7 +198,7 @@ fun <T : Any> ReorderList(
                 shadowElevation = elevation,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 2.dp)
+                    .padding(bottom = Space.Half)
                     .then(
                         if (isDragging) {
                             Modifier.zIndex(1f).graphicsLayer { translationY = dragOffset }
@@ -230,16 +232,16 @@ fun <T : Any> ReorderList(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                    modifier = Modifier.padding(start = Space.S1, end = Space.S1, top = Space.S1, bottom = Space.S1)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_drag),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(Sizes.TouchTarget)
                             .then(dragModifier(item))
-                            .padding(12.dp)
+                            .padding(Space.S3)
                     )
                     Text(
                         text = label(item),

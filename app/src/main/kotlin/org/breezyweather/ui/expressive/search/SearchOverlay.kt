@@ -136,6 +136,9 @@ import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.shell.timeDifference
+import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.search.LoadableLocationStatus
 import org.breezyweather.ui.search.SearchViewModel
 import java.text.SimpleDateFormat
@@ -427,7 +430,7 @@ fun SearchOverlay(
                 modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - inside() }
             )
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = inside() }.nestedScroll(sheet)) {
-                Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
+                Spacer(Modifier.height(Space.S6)) // room for the handle, drawn on top
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Built once the card is a third of the way open (it's invisible before that), so the
                     // first frame of the animation only has the card and field to build.
@@ -487,7 +490,7 @@ private fun Handle(modifier: Modifier, onDelta: (Float) -> Unit, onRelease: (Flo
     ) {
         Box(
             Modifier
-                .padding(top = 10.dp)
+                .padding(top = Space.S3)
                 .width(36.dp)
                 .height(4.dp)
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
@@ -501,14 +504,14 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, focus: FocusRe
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+            .padding(start = Space.S2, end = Space.S2, bottom = Space.S2)
             .height(56.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(CornerShapes.L)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = Space.S4)
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Space.S3))
         Box(Modifier.weight(1f)) {
             if (query.isEmpty()) {
                 Text(
@@ -613,7 +616,7 @@ private fun Results(
             ResultsMode.NONE -> Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxSize().padding(24.dp)
+                modifier = Modifier.fillMaxSize().padding(Space.S6)
             ) {
                 Icon(
                     Icons.Outlined.SearchOff,
@@ -621,7 +624,7 @@ private fun Results(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp)
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Space.S2))
                 Text(
                     stringResource(R.string.search_no_results, query.trim()),
                     style = MaterialTheme.typography.titleMedium,
@@ -641,7 +644,7 @@ private fun Results(
                 val changedAt = remember(hits.map { it.key }) { SystemClock.uptimeMillis() }
                 LazyColumn(
                     reverseLayout = true, // the best match sits right above the field
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(horizontal = Space.S2, vertical = Space.S3),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     itemsIndexed(hits, key = { _, it -> it.key }) { i, hit ->
@@ -668,7 +671,7 @@ private fun Results(
                 val rows = (if (recents.isEmpty()) 0 else recents.size + 1) + suggestions.size + 1
                 fun order(index: Int) = (minOf(rows, 6) - 1 - index).coerceAtLeast(0)
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(horizontal = Space.S2, vertical = Space.S3),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     var at = 0
@@ -799,10 +802,15 @@ private fun CityRow(
 private fun SectionTitle(text: String, icon: ImageVector, modifier: Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(start = 12.dp, top = 12.dp, bottom = 6.dp)
+        modifier = modifier.padding(start = Space.S3, top = Space.S3, bottom = Space.S2)
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(Sizes.IconSmall)
+        )
+        Spacer(Modifier.width(Space.S2))
         Text(text, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
     }
 }
@@ -853,7 +861,7 @@ private fun ResultRow(
             )
             .background(fill)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Space.S4, vertical = Space.S3)
     ) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

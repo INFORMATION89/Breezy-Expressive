@@ -125,6 +125,9 @@ import org.breezyweather.domain.weather.model.getDescription
 import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.SolsticeMotion
 import org.breezyweather.ui.expressive.components.glass
+import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.SolsticePalette
+import org.breezyweather.ui.expressive.theme.Space
 import org.shredzone.commons.suncalc.MoonIllumination
 import org.shredzone.commons.suncalc.MoonPhase
 import org.shredzone.commons.suncalc.MoonPosition
@@ -162,7 +165,7 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
     }
     drawCircle(
         Brush.radialGradient(
-            listOf(Color(0xFFF4F1E8), Color(0xFFCFCBC0)),
+            listOf(SolsticePalette.MoonLight, SolsticePalette.MoonShade),
             center = center - Offset(r / 3, r / 3),
             radius =
             r * 1.6f
@@ -175,7 +178,7 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
     repeat(6) {
         val o = Offset((rnd.nextFloat() - 0.5f) * r * 1.2f, (rnd.nextFloat() - 0.5f) * r * 1.2f)
         drawCircle(
-            Color(0xFF9E9A90).copy(alpha = 0.28f),
+            SolsticePalette.MoonCrater.copy(alpha = 0.28f),
             radius = r * (0.14f + rnd.nextFloat() * 0.18f),
             center =
             center + o
@@ -270,7 +273,7 @@ internal fun MoonButton(
                     MoonCardState.buttonInk = text
                     MoonCardState.show(location, now, null, phase + suffix, palette, night)
                 }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(horizontal = Space.S3, vertical = Space.S2)
         ) {
             Text(phase, color = text, style = MaterialTheme.typography.labelLarge, modifier = label)
             Text(suffix, color = text, style = MaterialTheme.typography.labelLarge)
@@ -455,12 +458,12 @@ internal fun MoonCardOverlay(glass: GlassSource) {
     val night = MoonCardState.night
     val tint = when {
         sky == null -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
-        night -> lerp(sky.base, Color(0xFF05050A), 0.55f).copy(alpha = 0.62f)
+        night -> lerp(sky.base, SolsticePalette.NightDeep, 0.55f).copy(alpha = 0.62f)
         else -> lerp(sky.base, Color.White, 0.55f).copy(alpha = 0.55f)
     }
     val ink = when {
         sky == null -> MaterialTheme.colorScheme.onSurface
-        night -> Color(0xFFEDEBF5)
+        night -> SolsticePalette.MoonNightText
         else -> sky.text
     }
     val status = WindowInsets.statusBars
@@ -549,7 +552,7 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                                 }
                             }
                         ) {
-                            Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
+                            Spacer(Modifier.height(Space.S6)) // room for the handle, drawn on top
                             MoonCard(
                                 location,
                                 now,
@@ -590,7 +593,7 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                         Box(
                             Modifier
                                 .align(Alignment.TopCenter)
-                                .padding(top = 10.dp)
+                                .padding(top = Space.S3)
                                 .width(36.dp)
                                 .height(4.dp)
                                 .background(ink.copy(alpha = 0.4f), CircleShape)
@@ -714,7 +717,7 @@ private fun MoonCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
+                .padding(start = Space.S5, end = Space.S5, top = Space.S2, bottom = Space.S5)
         ) {
             // A big heading, like This week: the phase, and the date under it. It's the button's label
             // grown (shared bounds), so it morphs from and back into the button.
@@ -761,12 +764,12 @@ private fun MoonCard(
                             center,
                             size.minDimension * 0.36f,
                             angle,
-                            Color(0xFF050509),
+                            SolsticePalette.NightDeepest,
                             limbAngle = limbAngle,
                             parallactic = parallactic.toDouble()
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Space.S1))
                     // The dial: ticks every 6 hours, a longer one per day; drag to move through the days.
                     Box(
                         Modifier
@@ -838,7 +841,7 @@ private fun MoonCard(
                                 })
                             }
                     ) {
-                        Canvas(Modifier.fillMaxWidth().padding(top = 16.dp).height(28.dp)) {
+                        Canvas(Modifier.fillMaxWidth().padding(top = Space.S4).height(28.dp)) {
                             val perDay = size.width / 4f
                             val mid = size.width / 2
                             for (q in -40..40) {
@@ -884,12 +887,12 @@ private fun MoonCard(
                                         lineTo(ax + dir * 3f * density, ay + 4f * density)
                                         close()
                                     },
-                                    Color(0xFFF6B04A)
+                                    SolsticePalette.Sun
                                 )
                             }
                             if (todayX in 0f..size.width) {
                                 drawCircle(
-                                    Color(0xFFF6B04A),
+                                    SolsticePalette.Sun,
                                     radius = 3.5f * density,
                                     center = Offset(
                                         todayX,
@@ -897,7 +900,12 @@ private fun MoonCard(
                                     )
                                 )
                             }
-                            drawLine(Color(0xFF6FB7F0), Offset(mid, 0f), Offset(mid, size.height), strokeWidth = 3f)
+                            drawLine(
+                                SolsticePalette.TideLine,
+                                Offset(mid, 0f),
+                                Offset(mid, size.height),
+                                strokeWidth = 3f
+                            )
                         }
                     }
                     Text(
@@ -915,7 +923,7 @@ private fun MoonCard(
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(Space.S4))
                     fun hm(d: Date?) =
                         d?.let { hhmm(zone).format(it) } ?: "–"
                     // The details in a sentence (design A), values bold and underlined like This week.
@@ -954,10 +962,10 @@ private fun MoonCard(
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(24.dp))
+                            .clip(CornerShapes.L)
                             .background(ink.copy(alpha = 0.09f))
-                            .border(0.5.dp, ink.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
-                            .padding(18.dp)
+                            .border(0.5.dp, ink.copy(alpha = 0.10f), CornerShapes.L)
+                            .padding(Space.S5)
                     ) {
                         Text(body, color = ink, style = MaterialTheme.typography.bodyLarge)
                     }

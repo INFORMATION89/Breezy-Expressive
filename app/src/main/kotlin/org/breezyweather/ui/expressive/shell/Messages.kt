@@ -71,6 +71,8 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.glass
+import org.breezyweather.ui.expressive.theme.Sizes
+import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 
 /** A short, icon-led message: "[compass] Visiting Tokyo", "[bin] Guadalajara removed · Undo". */
@@ -171,8 +173,8 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 10.dp)
+                .padding(horizontal = Space.S6)
+                .padding(bottom = Space.S3)
                 .widthIn(max = 420.dp)
                 .heightIn(min = 48.dp)
                 .onSizeChanged { width = it.width.coerceAtLeast(1) }
@@ -218,25 +220,25 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
                 }
                 .glass(glass, CircleShape, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
                 .semantics { liveRegion = LiveRegionMode.Polite }
-                .padding(start = 16.dp, end = if (message.action != null) 6.dp else 20.dp)
+                .padding(start = Space.S4, end = if (message.action != null) Space.S2 else Space.S5)
         ) {
             Icon(
                 message.icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(Sizes.Icon)
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Space.S3))
             Text(
                 message.text,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false).padding(vertical = 12.dp)
+                modifier = Modifier.weight(1f, fill = false).padding(vertical = Space.S3)
             )
             message.action?.let { label ->
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(Space.S1))
                 TextButton(onClick = {
                     message.onAction()
                     scope.launch { sinkAndClear() }

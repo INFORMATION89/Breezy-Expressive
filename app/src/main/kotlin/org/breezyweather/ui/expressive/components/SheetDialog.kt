@@ -30,6 +30,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.breezyweather.ui.expressive.theme.Space
 
 /**
  * A bottom sheet with the same slots as upstream's `AlertDialogNoPadding`, so a dialog call site
@@ -53,16 +54,16 @@ fun SheetDialog(
     ) {
         Column(modifier = Modifier.navigationBarsPadding()) {
             if (title != null) {
-                Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)) {
+                Box(modifier = Modifier.padding(start = Space.S6, end = Space.S6, bottom = Space.S3)) {
                     ProvideTextStyle(MaterialTheme.typography.headlineSmallEmphasized) { title() }
                 }
             }
             if (text != null) {
-                Box(modifier = Modifier.weight(1f, fill = false).padding(horizontal = 8.dp)) { text() }
+                Box(modifier = Modifier.weight(1f, fill = false).padding(horizontal = Space.S2)) { text() }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Space.S4, vertical = Space.S3),
+                horizontalArrangement = Arrangement.spacedBy(Space.S2, Alignment.End)
             ) {
                 dismissButton?.invoke()
                 confirmButton()
