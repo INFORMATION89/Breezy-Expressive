@@ -1587,4 +1587,40 @@ Things to try on the phone before calling any motion done (debug and release bui
     sky and each postcard window's sky, provided as `LocalSkyGlass`). The Forecast's glass cards
     (hourly, rain) blur it under their tint, so the grain and glow soften behind them like
     frosted glass. Without a sky source (older Android) they keep the plain tint.
+- **2026-11-19 (agreed and checked on the Pixel):**
+  - **Sheets open to full screen height:** the moon card and search both go up to just under the
+    status bar (search above the keyboard). There's no compact state on opening.
+  - **Moon card morph refined:** the button's label morphs into the heading. The phase name slides
+    and grows from the button's middle to the heading's place (labelLarge to headlineMedium), the
+    "· 70 %" fades, and its colour turns from the forecast's text to the card's. The rest rises in
+    (32 dp, from 65 % of the way). Closing plays it backwards.
+  - **Progressive close:** pulling the sheet down drives the morph itself (420 dp of pull = fully
+    closed), so it shrinks towards the pill under the finger. Let go past a quarter, or flick, and
+    it finishes closing; otherwise it springs back open.
+- **2026-11-19 (trial, checked on the Pixel):** the moon morph is now built on Compose's own shared
+  bounds (container transform) instead of hand-written layout. `MoonSharedLayout` wraps the shell in
+  a `SharedTransitionLayout` with one seekable transition (`MoonCardState.seek`). The button and the
+  sheet share bounds (`moon-<place>`), and the button's phase name and the heading share bounds
+  with scale-to-bounds (`moon-<place>-label`). Opening and closing animate the seekable state, and
+  a pull seeks it (measured on the whole screen, since the sheet shrinks under the finger). A tap
+  above the sheet closes it. Progress for the dim, the page recede and the rising content comes
+  straight from the seekable state.
+- **2026-11-19 (agreed: the user's motion reference, now `docs/MOTION.md`; checked on the Pixel):**
+  - New motion system, `SolsticeMotion.kt`:
+    - container spring 0.78 / 380;
+    - control spring (no bounce, MediumLow);
+    - content spring 0.85 / 400;
+    - settle spring;
+    - rubber-band (0.55);
+    - fling projection.
+  - Moon sheet rebuilt on it. A gesture `Animatable` drives the morph, and the shared transition
+    is seeked to it, with linear bounds so the spring is the only curve. Release velocity feeds
+    the spring. A drag catches it mid-flight. The target comes from the projected fling.
+  - Pulling up past open rubber-bands: the sheet stretches up from the bottom, and the spring's
+    overshoot shows the same way.
+  - No container crossfade: the glass is the pill grown from the first frame. The pill's border
+    and "· 71 %" fade in the first tenth (and come back last).
+  - Content is choreographed: it fades and scales from 0.92 between 35 % and 70 % of the morph,
+    and leaves first when closing.
+  - Known: while scrubbing, the shrinking heading can overlap the date line for a moment.
 

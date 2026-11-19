@@ -197,6 +197,7 @@ fun SearchOverlay(
     LaunchedEffect(imeShown) {
         if (open && hadIme && !imeShown) {
             settle?.cancel()
+            extra = extra.coerceAtMost(room[0])
             settle = scope.launch {
                 animate(
                     extra,
@@ -214,7 +215,9 @@ fun SearchOverlay(
     }
     LaunchedEffect(open) {
         if (open) {
-            extra = 0f
+            // Full screen height from the start (agreed 2026-11-19): as tall as there's room for
+            // (the layout clamps it), like the moon card.
+            extra = Float.MAX_VALUE / 4f
             pulled = 0f
             delay(120)
             runCatching { focus.requestFocus() }
@@ -289,6 +292,7 @@ fun SearchOverlay(
     // The card's height and pull, from the handle or the list (deltas: + is the finger going down).
     fun drag(delta: Float) {
         settle?.cancel()
+        extra = extra.coerceAtMost(room[0])
         if (delta > 0f) {
             // Down: shrink back to compact first, then pull the card down.
             val shrink = minOf(delta, extra)
@@ -311,6 +315,7 @@ fun SearchOverlay(
 
     // Let go: far enough down (or flung down) dismisses; otherwise it settles compact or tall.
     fun release(velocity: Float) {
+        extra = extra.coerceAtMost(room[0])
         val far = with(density) { 110.dp.toPx() }
         val some = with(density) { 24.dp.toPx() }
         if (pulled > far || (pulled > some && velocity > 900f)) {

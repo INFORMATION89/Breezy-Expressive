@@ -59,6 +59,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   faster.
 - [ ] **A reusable "move and transform into place" system** (morphs, for buttons too). Search for
   libraries first. First use: a visited place's loading state (see Postcard window).
+- [x] Motion tokens: `SolsticeMotion.kt` and `docs/MOTION.md` (2026-11-19), first used by the moon sheet.
+- [ ] Apply the motion system to search, the postcard window, Places drag and the toolbar.
 - [ ] **Design frameworks:** spacing scale, type scale, motion tokens, component rules.
 - [ ] **Icon style:** Google's new Material icons (Material Symbols). Find a library we can use
   properly.
