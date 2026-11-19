@@ -41,6 +41,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,6 +55,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -70,8 +72,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -265,19 +269,19 @@ internal fun MoonButton(
     val open = MoonCardState.request?.first?.formattedId == location.formattedId
     val motion = MoonCardState.motion
     fun fade(span: Float): Float = if (open && motion != null) 1f - motion.window(0f, span) else 1f
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // Material 3 outlined button, in the sky's ink.
+    OutlinedButton(
+        onClick = {
+            MoonCardState.glass = pageGlass
+            MoonCardState.buttonInk = text
+            MoonCardState.show(location, now, null, phase + suffix, palette, night)
+        },
+        border = BorderStroke(1.dp, text.copy(alpha = 0.35f)),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
+        contentPadding = PaddingValues(horizontal = Space.S3, vertical = Space.S2),
         modifier = Modifier
             .morphAnchor(pillKey(location), cornerRadius = 100.dp)
             .graphicsLayer { alpha = smooth(fade(MATERIAL_SPAN)) }
-            .clip(CircleShape)
-            .border(1.dp, text.copy(alpha = 0.35f), CircleShape)
-            .clickable {
-                MoonCardState.glass = pageGlass
-                MoonCardState.buttonInk = text
-                MoonCardState.show(location, now, null, phase + suffix, palette, night)
-            }
-            .padding(horizontal = Space.S3, vertical = Space.S2)
     ) {
         Text(
             phase,

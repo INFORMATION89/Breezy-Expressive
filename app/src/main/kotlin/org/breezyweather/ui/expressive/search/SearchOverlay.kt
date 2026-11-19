@@ -73,6 +73,7 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -846,57 +847,59 @@ private fun ResultRow(
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "row"
     )
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // Material 3 surface button in the segmented list's shape.
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(
+            topStart = if (first) big else small,
+            topEnd = if (first) big else small,
+            bottomStart = if (last) big else small,
+            bottomEnd = if (last) big else small
+        ),
+        color = fill,
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = if (first) big else small,
-                    topEnd = if (first) big else small,
-                    bottomStart = if (last) big else small,
-                    bottomEnd = if (last) big else small
-                )
-            )
-            .background(fill)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.S4, vertical = Space.S3)
     ) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                // The keyboard's key picks this one.
-                if (highlighted) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = Space.S4, vertical = Space.S3)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        " · " + stringResource(R.string.search_select),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.primary,
-                        maxLines = 1
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    // The keyboard's key picks this one.
+                    if (highlighted) {
+                        Text(
+                            " · " + stringResource(R.string.search_select),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.primary,
+                            maxLines = 1
+                        )
+                    }
+                }
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(time, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
-            if (diff != null) {
-                Text(diff, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(time, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
+                if (diff != null) {
+                    Text(diff, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                }
             }
         }
     }

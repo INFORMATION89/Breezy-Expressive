@@ -1449,6 +1449,21 @@ Things to try on the phone before calling any motion done (debug and release bui
     per-page blur would have to move with it; that's M4 motion work) and one `SolsticeSheet` (search
     first has to move onto `Morph`, M4). `Modifier.searchBlur` in `SolsticeShell.kt` is unused.
 
+- **2026-11-19: library swaps** (checked on the Pixel 7, profile build):
+  - **Reorderable 3.1.0** runs `ReorderList.kt` (`1f41369`): drag, swap, auto-scroll and drop are the
+    library's; look, haptics and TalkBack actions are ours (263 → 183 lines).
+  - **Material 3 controls** (the user: "everything except the toolbars"): the rain card's amount /
+    probability switch is M3 connected `ToggleButton`s; This week's day columns and search result rows
+    are `Surface(onClick)`; Settings choice rows are a selectable `Surface` (radio, now announced as
+    checked); the moon pill is an `OutlinedButton` (still the morph's anchor). Kept custom, like the
+    toolbar: the postcard (its press sinks the card, part of the artwork) and the search scrim's
+    tap-to-close (not a control).
+  - **Navigation 3: not done, open.** Settings already pushes with `ScreenPush` and predictive back
+    through upstream's `NavHost`. Navigation 3 would bring an owned back stack, tablet two-pane
+    layouts, folding the reorder/About/details activities into one Compose navigation, and shared
+    elements between screens; it costs rewriting upstream's `SettingsActivity` (harder merges).
+    Waiting for the user's decision.
+
 ## Backlog (user notes, 2026-11-18)
 
 ### Foundations

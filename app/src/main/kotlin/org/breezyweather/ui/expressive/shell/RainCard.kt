@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -37,9 +38,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +59,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -341,31 +348,38 @@ private fun finer(steps: List<Float>, per: Int): List<Float> {
     }
 }
 
-/** Amount | Probability as two small icon pills: a raindrop and a percent sign. */
+/**
+ * Amount | Probability: Material 3's connected toggle buttons (a raindrop and a percent sign),
+ * coloured for the sky they sit on.
+ */
 @Composable
 private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(text.copy(alpha = 0.10f))
-            .padding(Space.S1)
-    ) {
-        listOf(
-            Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
-            Triple(true, Icons.Outlined.Percent, R.string.shell_rain_probability)
-        ).forEach { (value, icon, label) ->
-            val on = chance == value
-            Icon(
-                icon,
-                contentDescription = stringResource(label),
-                tint = if (on) text else text.copy(alpha = 0.6f),
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(if (on) text.copy(alpha = 0.16f) else Color.Transparent)
-                    .clickable { onChange(value) }
-                    .padding(horizontal = Space.S3, vertical = Space.S1)
-                    .size(18.dp)
-            )
+    val options = listOf(
+        Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
+        Triple(true, Icons.Outlined.Percent, R.string.shell_rain_probability)
+    )
+    val colors = ToggleButtonDefaults.colors(
+        containerColor = text.copy(alpha = 0.10f),
+        contentColor = text.copy(alpha = 0.6f),
+        checkedContainerColor = text.copy(alpha = 0.22f),
+        checkedContentColor = text
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+        options.forEachIndexed { i, (value, icon, label) ->
+            ToggleButton(
+                checked = chance == value,
+                onCheckedChange = { onChange(value) },
+                shapes = if (i == 0) {
+                    ButtonGroupDefaults.connectedLeadingButtonShapes()
+                } else {
+                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                },
+                colors = colors,
+                contentPadding = PaddingValues(horizontal = Space.S3),
+                modifier = Modifier.height(Space.S8).semantics { role = Role.RadioButton }
+            ) {
+                Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(Sizes.IconSmall))
+            }
         }
     }
 }

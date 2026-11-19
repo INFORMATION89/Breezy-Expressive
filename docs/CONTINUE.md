@@ -117,10 +117,11 @@ by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals 
 4. ~~M3: the moon card on `Morph`/`MotionValue`~~ (done 2026-11-19, see the PLAN.md log; confirm the
    feel on the phone).
 5. ~~Component catalog, first pass~~ (done 2026-11-19: pages split into files, `SolsticeCard`,
-   `Toolbar.kt`, `PageFrame.kt`; see the PLAN.md log). Next: library swaps (Reorderable, Navigation 3
-   for pushed screens, M3 Expressive controls), then M4 (search and the rest onto `:motion`, which
-   also brings `SolsticeSheet` and the page scaffold) and M5.
-6. Finish the tokens (remaining literals) alongside M4.
+   `Toolbar.kt`, `PageFrame.kt`; see the PLAN.md log).
+6. ~~Library swaps~~ (done 2026-11-19: Reorderable, M3 controls everywhere but the toolbar). Open:
+   Navigation 3 (pros and cons in the PLAN.md log; the user hasn't decided). Next: M4 (search and the
+   rest onto `:motion`, which also brings `SolsticeSheet` and the page scaffold), then M5.
+7. Finish the tokens (remaining literals) alongside M4.
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the
 PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`.

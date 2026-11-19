@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -214,48 +215,48 @@ private fun WeekPills(
                 val lo = lows[i] ?: hi
                 val weather = SkyWeather.of(day.day?.weatherCode)
                 val wet = isWet(weather)
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(CornerShapes.S)
-                        .clickable { onDay(i) }
-                        .padding(horizontal = Space.Half, vertical = Space.S1)
-                ) {
-                    Text(
-                        day.day?.temperature?.temperature?.let { degrees(context, it) } ?: "",
-                        color = onPage,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(bottom = Space.S2)
-                    )
-                    Box(Modifier.height(pillArea).width(22.dp)) {
-                        val topFrac = ((top - hi) / span).toFloat()
-                        val heightFrac = ((hi - lo) / span).toFloat().coerceAtLeast(0.12f)
-                        Box(
-                            Modifier
-                                .padding(top = pillArea * topFrac)
-                                .fillMaxWidth()
-                                .height(pillArea * heightFrac)
-                                .clip(CornerShapes.S)
-                                .background(Brush.verticalGradient(listOf(tempColor(hi), tempColor(lo))))
+                // Material 3 surface button: ripple, press and button semantics.
+                Surface(onClick = { onDay(i) }, shape = CornerShapes.S, color = Color.Transparent) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = Space.Half, vertical = Space.S1)
+                    ) {
+                        Text(
+                            day.day?.temperature?.temperature?.let { degrees(context, it) } ?: "",
+                            color = onPage,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(bottom = Space.S2)
+                        )
+                        Box(Modifier.height(pillArea).width(22.dp)) {
+                            val topFrac = ((top - hi) / span).toFloat()
+                            val heightFrac = ((hi - lo) / span).toFloat().coerceAtLeast(0.12f)
+                            Box(
+                                Modifier
+                                    .padding(top = pillArea * topFrac)
+                                    .fillMaxWidth()
+                                    .height(pillArea * heightFrac)
+                                    .clip(CornerShapes.S)
+                                    .background(Brush.verticalGradient(listOf(tempColor(hi), tempColor(lo))))
+                            )
+                        }
+                        Text(
+                            day.night?.temperature?.temperature?.let { degrees(context, it) } ?: "",
+                            color = onPage.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(top = Space.S2)
+                        )
+                        Icon(
+                            hourIcon(weather, false),
+                            contentDescription = day.day?.weatherText,
+                            tint = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.75f),
+                            modifier = Modifier.padding(top = Space.S2, bottom = Space.Half).size(18.dp)
+                        )
+                        Text(
+                            if (i == 0) stringResource(R.string.shell_today) else dayShort(day.date, location.timeZone),
+                            color = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
-                    Text(
-                        day.night?.temperature?.temperature?.let { degrees(context, it) } ?: "",
-                        color = onPage.copy(alpha = 0.6f),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(top = Space.S2)
-                    )
-                    Icon(
-                        hourIcon(weather, false),
-                        contentDescription = day.day?.weatherText,
-                        tint = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.75f),
-                        modifier = Modifier.padding(top = Space.S2, bottom = Space.Half).size(18.dp)
-                    )
-                    Text(
-                        if (i == 0) stringResource(R.string.shell_today) else dayShort(day.date, location.timeZone),
-                        color = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelMedium
-                    )
                 }
             }
         }

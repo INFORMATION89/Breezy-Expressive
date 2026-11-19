@@ -48,6 +48,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -197,7 +199,11 @@ fun ChoiceSheet(
                         val small = 4.dp
                         val itemEnabled = enableArray?.getOrNull(i) ?: true
                         val isSelected = value == selected
+                        // Material 3 selectable surface (radio semantics), in the segmented shape.
                         Surface(
+                            selected = isSelected,
+                            onClick = { close { onSelect(value) } },
+                            enabled = itemEnabled,
                             shape = RoundedCornerShape(
                                 topStart = if (first) big else small,
                                 topEnd = if (first) big else small,
@@ -212,9 +218,7 @@ fun ChoiceSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = if (last) 0.dp else Space.Half)
-                                .clickable(enabled = itemEnabled, role = Role.RadioButton) {
-                                    close { onSelect(value) }
-                                }
+                                .semantics { role = Role.RadioButton }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = Space.S4, vertical = Space.S4),
