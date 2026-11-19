@@ -24,6 +24,9 @@ jobs:
       - name: Lint (spotless)
         run: ./gradlew spotlessCheck
 
+      - name: Unit tests (:motion)
+        run: ./gradlew :motion:test
+
       # Never build with -Pbreezy: that config is reserved for the official Breezy Weather app.
       - name: Assemble basic debug
         run: ./gradlew assembleBasicDebug

@@ -58,7 +58,7 @@ are done; see "Done since the last handoff" above.
 
 ### Code review of those commits (2026-11-19, not yet fixed)
 
-Unit tests weren't run in the review (no Android SDK there); run `./gradlew :motion:test` first.
+Unit tests run in CI (`:motion:test`), since the cloud sessions have no Android SDK.
 
 **Fixed 2026-11-19 (user agreed), items 1–3 below:** `MotionPhysics.unresist` (+ `unRubberBand`),
 used by `MotionValue.stop()`; `motionDrag` starts at once while moving; 7 `MotionValue` tests
@@ -88,11 +88,16 @@ These are bug fixes, not new motion, but confirm with the user before pushing (m
   card's "dark frame at the start of opening".
 - `Morph` creates a `RoundedCornerShape` every frame in `graphicsLayer`; reuse one shape object.
 - Haze glass reads `alpha` only when composed (already noted in the log).
-- **Reduced motion:** with "Remove animations" on, Compose finishes animations instantly, so
-  `Morph`'s "short fade" is really a snap. Fine, but say so in MOTION.md / PLAN.md.
+- ~~Reduced motion is really a snap~~: PLAN.md and `Morph`'s KDoc now say so (2026-11-19).
 - `Motion.control` and `Motion.settle` are the same spring (0.31 s / 1): merge or tell them apart.
 - `rememberMotionValue` ignores later changes to `restPoints`/`overMin`/`overMax` (not keys);
-  `motionDrag` writes `slowFlick`/`fastFlick` during composition. Harmless today.
+  ~~`motionDrag` writes `slowFlick`/`fastFlick` during composition~~ (now in a `SideEffect`).
+- Edge case: `unresist` caps at 99.9 % of the over-pull limit, so an overshoot past `overMax` (a very
+  hard fling) still snaps back to just under the limit when caught. Raise `overMax` for that surface
+  if it shows.
+- `RoundedCornerShape` per frame in `Morph`: left as is (the radius changes every frame anyway, so
+  the outline is rebuilt regardless).
+- CI now runs `./gradlew :motion:test` on every push.
 
 **Tokens pass:** it rounded off-grid values (6 → 4/8, 10 → 8/12, 14 → 12/16), so some spacing moved
 by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals (most common: 10 dp

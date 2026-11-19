@@ -602,7 +602,8 @@ it can go into other projects as is. Rough API:
 - `Modifier.motionDrag(value, orientation, range)` for a gesture that drives a value.
 - `MorphHost` + `Modifier.morphAnchor(key)` + `Morph(key, value) { … }` for container transforms.
 - `p.window(from, to)`, `Modifier.reveal(...)`, `Modifier.handOff(...)` for choreography.
-- `Motion.reduced`: with "Remove animations" on, morphs become a short fade (no scaling or travel).
+- Reduced motion: with "Remove animations" on, morphs jump straight to the end (no travel or
+  scaling). Compose finishes every animation instantly at that setting, so there is no short fade.
 - `Modifier.pressMorph()` on the same tokens (replaces `PressMorph.kt`'s `animateDpAsState`).
 
 Not in it: glass, blur, colours, layouts. Those stay in Solstice and only read the motion value.
@@ -1857,3 +1858,6 @@ Things to try on the phone before calling any motion done (debug and release bui
   `motionDrag` doesn't catch a moving surface until the touch slop. Plus smaller notes (Morph content
   alignment, per-frame shape, reduced motion is a snap, `control` = `settle`) and what the token pass
   left. Details and next steps in CONTINUE.md, "Code review of those commits".
+- **2026-11-19:** Safe review leftovers: CI runs `:motion:test`; reduced motion documented as a jump
+  (Compose finishes animations instantly with "Remove animations"); `motionDrag` sets its flick
+  thresholds in a `SideEffect`. Still for the user: `Morph` content alignment, `control` vs `settle`.
