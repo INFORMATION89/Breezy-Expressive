@@ -31,9 +31,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -100,6 +97,7 @@ import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.ui.common.charts.compose.BreezyLineChart
 import org.breezyweather.ui.common.charts.compose.IconCartesianMarker
 import org.breezyweather.ui.common.widgets.AnimatableIconView
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.theme.resource.ResourceHelper
 import org.breezyweather.ui.theme.resource.ResourcesProviderFactory
 import org.breezyweather.unit.formatting.UnitWidth
@@ -462,7 +460,7 @@ private fun TemperatureSwitcher(
         ) {
             if (showRealTemp) {
                 Icon(
-                    Icons.Filled.Check,
+                    SolsticeIcons.Check,
                     contentDescription = stringResource(R.string.settings_enabled)
                 )
                 Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
@@ -477,7 +475,7 @@ private fun TemperatureSwitcher(
         ) {
             if (!showRealTemp) {
                 Icon(
-                    Icons.Filled.Check,
+                    SolsticeIcons.Check,
                     contentDescription = stringResource(R.string.settings_enabled)
                 )
                 Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
@@ -698,7 +696,7 @@ fun NormalsDepartureLabel(
                     maxLines = 1
                 )
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                    imageVector = SolsticeIcons.Help,
                     // TooltipBox already takes care of adding the info that there is a tooltip:
                     contentDescription = null,
                     modifier = Modifier

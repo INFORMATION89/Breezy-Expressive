@@ -31,13 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddLocationAlt
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -70,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
@@ -223,7 +217,7 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
                 .padding(start = Space.S4, end = if (message.action != null) Space.S2 else Space.S5)
         ) {
             Icon(
-                message.icon,
+                SolsticeIcons.forSize(message.icon, Sizes.Icon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(Sizes.Icon)
@@ -250,10 +244,10 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
 
 /** An icon for upstream's plain-text messages, picked from what they say. */
 fun messageIcon(context: Context, text: String): ImageVector = when (text) {
-    context.getString(R.string.location_message_added) -> Icons.Outlined.AddLocationAlt
-    context.getString(R.string.location_message_updated) -> Icons.Outlined.Check
-    context.getString(R.string.location_message_deleted) -> Icons.Outlined.Delete
-    context.getString(R.string.message_please_wait_refresh) -> Icons.Outlined.HourglassEmpty
-    context.getString(R.string.message_multiple_refresh_errors) -> Icons.Outlined.CloudOff
-    else -> Icons.Outlined.Info
+    context.getString(R.string.location_message_added) -> SolsticeIcons.AddLocationAlt
+    context.getString(R.string.location_message_updated) -> SolsticeIcons.Check
+    context.getString(R.string.location_message_deleted) -> SolsticeIcons.Delete
+    context.getString(R.string.message_please_wait_refresh) -> SolsticeIcons.HourglassEmpty
+    context.getString(R.string.message_multiple_refresh_errors) -> SolsticeIcons.CloudOff
+    else -> SolsticeIcons.Info
 }

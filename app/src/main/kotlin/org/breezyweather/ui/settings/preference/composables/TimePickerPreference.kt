@@ -33,9 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +66,7 @@ import org.breezyweather.common.extensions.getFormattedTime
 import org.breezyweather.common.extensions.is12Hour
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.defaultCardListItemElevation
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.theme.compose.themeRipple
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -193,9 +191,9 @@ private fun TimePickerPreferenceView(
                             onClick = { showingPicker.value = !showingPicker.value }
                         ) {
                             val icon = if (showingPicker.value) {
-                                Icons.Outlined.Keyboard
+                                SolsticeIcons.Keyboard
                             } else {
-                                Icons.Outlined.Schedule
+                                SolsticeIcons.Schedule
                             }
                             Icon(
                                 icon,

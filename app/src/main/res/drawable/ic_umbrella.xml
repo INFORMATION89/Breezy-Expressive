@@ -1,10 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols Rounded "umbrella" (weight 400, grade 0, optical size 24, fill 0). Apache-2.0, google/material-design-icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M480,880Q468,880 457.5,873.5Q447,867 442,853L240,243L380,277L440,231L440,136Q440,96 469,68Q498,40 540,40Q582,40 611,68Q640,96 640,136L640,160L560,160L560,136Q560,128 554,122.5Q548,117 540,117Q532,117 526,122.5Q520,128 520,136L520,231L580,277L720,243L518,852Q513,866 502.5,873Q492,880 480,880ZM520,592L598,354L562,363L520,332L520,592ZM440,592L440,332L398,364L361,354L440,592Z" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="m520-368 78-238-36 9-42-31v260Zm-80 0v-260l-42 32-37-10 79 238Zm40 288q-12 0-22.5-6.5T442-107L263-649q-8-23 8-39.5t39-11.5l70 17 60-46v-95q0-40 29-68t71-28q42 0 71 28t29 68q0 17-11.5 28.5T600-784q-17 0-28.5-11.5T560-824q0-8-6-13.5t-14-5.5q-8 0-14 5.5t-6 13.5v95l60 46 70-17q23-5 39 11.5t8 39.5L518-108q-5 14-15.5 21T480-80Z" />
+    </group>
 </vector>

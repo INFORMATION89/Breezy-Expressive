@@ -17,8 +17,6 @@
 package org.breezyweather.ui.settings.compose
 
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import org.breezyweather.R
 import org.breezyweather.common.utils.helpers.IntentHelper
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 
 @Composable
 fun AboutActivityIconButton(
@@ -37,7 +36,7 @@ fun AboutActivityIconButton(
     onClick = { IntentHelper.startAboutActivity(context) }
 ) {
     Icon(
-        imageVector = Icons.Outlined.Info,
+        imageVector = SolsticeIcons.Info,
         contentDescription = stringResource(R.string.action_about),
         tint = MaterialTheme.colorScheme.onSurface
     )

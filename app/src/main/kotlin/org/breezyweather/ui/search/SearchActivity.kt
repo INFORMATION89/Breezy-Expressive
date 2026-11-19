@@ -35,9 +35,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -86,6 +83,7 @@ import org.breezyweather.ui.common.composables.SecondarySourcesPreference
 import org.breezyweather.ui.common.widgets.Material3ExpressiveCardListItem
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.Material3SearchBarInputField
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.settings.preference.LargeSeparatorItem
 import org.breezyweather.ui.settings.preference.composables.RadioButton
 import org.breezyweather.ui.theme.compose.BreezyWeatherTheme
@@ -154,7 +152,7 @@ class SearchActivity : BreezyActivity() {
                             containerColor = FloatingActionButtonDefaults.containerColor,
                             elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
                         ) {
-                            Icon(Icons.Filled.Tune, stringResource(R.string.location_search_change_source))
+                            Icon(SolsticeIcons.Tune, stringResource(R.string.location_search_change_source))
                         }
                     }
                 )
@@ -185,7 +183,7 @@ class SearchActivity : BreezyActivity() {
                             if (!it) finishSelf(null)
                         },
                         placeholder = { Text(stringResource(R.string.location_search_placeholder)) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                        leadingIcon = { Icon(SolsticeIcons.Search, contentDescription = null) }
                     )
                     HorizontalDivider(color = SearchBarDefaults.colors().dividerColor)
                     val listResourceState = viewModel.listResource.collectAsState()

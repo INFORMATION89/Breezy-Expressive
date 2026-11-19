@@ -1,11 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols Rounded "replay" (weight 400, grade 0, optical size 24, fill 0). Apache-2.0, google/material-design-icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:autoMirrored="true"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960"
-    android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M480.21,920Q398,920 326,889Q254,858 200.5,804.5Q147,751 116,679Q85,607 85,526L211,526Q211,637.99 289.3,715.99Q367.6,794 480,794Q591.99,794 669.99,715.7Q748,637.4 748,525Q748,413.01 669.7,335.01Q591.4,257 479,257L472,257L526,311L459,380L273,194L459,8L526,78L473,131L479,131Q561.28,131 633.14,162Q705,193 759,246.5Q813,300 844,371.56Q875,443.12 875,525.06Q875,607 844,679Q813,751 759.5,804.5Q706,858 634.21,889Q562.41,920 480.21,920Z" />
+    android:tint="?attr/colorControlNormal"
+    android:autoMirrored="true">
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M480-80q-75 0-140.5-28.5t-114-77q-48.5-48.5-77-114T120-440q0-17 11.5-28.5T160-480q17 0 28.5 11.5T200-440q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720h-6l34 34q12 12 11.5 28T508-630q-12 12-28.5 12.5T451-629L348-732q-12-12-12-28t12-28l103-103q12-12 28.5-11.5T508-890q11 12 11.5 28T508-834l-34 34h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80Z" />
+    </group>
 </vector>

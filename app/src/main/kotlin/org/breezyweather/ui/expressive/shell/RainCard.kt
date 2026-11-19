@@ -35,9 +35,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Percent
-import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -355,8 +352,8 @@ private fun finer(steps: List<Float>, per: Int): List<Float> {
 @Composable
 private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit) {
     val options = listOf(
-        Triple(false, Icons.Outlined.WaterDrop, R.string.shell_rain_amount),
-        Triple(true, Icons.Outlined.Percent, R.string.shell_rain_probability)
+        Triple(false, SolsticeIcons.WaterDrop, R.string.shell_rain_amount),
+        Triple(true, SolsticeIcons.Percent, R.string.shell_rain_probability)
     )
     val colors = ToggleButtonDefaults.colors(
         containerColor = text.copy(alpha = 0.10f),
@@ -378,7 +375,11 @@ private fun RainSwitch(chance: Boolean, text: Color, onChange: (Boolean) -> Unit
                 contentPadding = PaddingValues(horizontal = Space.S3),
                 modifier = Modifier.height(Space.S8).semantics { role = Role.RadioButton }
             ) {
-                Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(Sizes.IconSmall))
+                Icon(
+                    SolsticeIcons.forSize(icon, Sizes.IconSmall),
+                    contentDescription = stringResource(label),
+                    modifier = Modifier.size(Sizes.IconSmall)
+                )
             }
         }
     }
@@ -395,7 +396,7 @@ internal fun NoRainLine(hours: Int, text: Color) {
             .padding(horizontal = Space.S4, vertical = Space.S2)
     ) {
         Icon(
-            SolsticeIcons.RainCloud,
+            SolsticeIcons.Small.Rainy,
             contentDescription = null,
             tint = text.copy(alpha = 0.7f),
             modifier = Modifier.size(Sizes.IconSmall)

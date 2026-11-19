@@ -38,9 +38,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NearMe
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -98,6 +95,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.theme.CornerShapes
@@ -233,7 +231,7 @@ internal fun PlaceCard(
                     val nameColor = if (location.isCurrentPosition) here else ink
                     if (location.isCurrentPosition) {
                         Icon(
-                            Icons.Filled.NearMe,
+                            SolsticeIcons.Small.NearMeFill,
                             contentDescription = stringResource(R.string.location_current),
                             tint = nameColor,
                             modifier = Modifier.size(12.dp)
@@ -395,7 +393,7 @@ internal fun PlaceCard(
             ) {
                 if (location.isCurrentPosition) {
                     Icon(
-                        Icons.Filled.NearMe,
+                        SolsticeIcons.Small.NearMeFill,
                         contentDescription = stringResource(R.string.location_current),
                         tint = SolsticePalette.Stamp,
                         modifier = Modifier.padding(start = Space.S2).size(14.dp)
@@ -420,7 +418,10 @@ internal fun PlaceCard(
                         )
                     } else {
                         Icon(
-                            hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
+                            SolsticeIcons.forSize(
+                                hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
+                                18.dp
+                            ),
                             contentDescription = current?.weatherText,
                             tint = SolsticePalette.Stamp,
                             modifier = Modifier.size(18.dp)
@@ -574,12 +575,13 @@ private fun Stamp(
             if (starred) {
                 // The star sticker is red everywhere (2026-11-19).
                 val gold = starTint ?: SolsticePalette.Stamp
+                val starSize = if (time != null) 14.dp else 22.dp
                 Icon(
-                    Icons.Filled.Star,
+                    SolsticeIcons.forSize(SolsticeIcons.StarFill, starSize),
                     contentDescription = stringResource(R.string.shell_starred),
                     tint = gold,
                     modifier = Modifier
-                        .size(if (time != null) 14.dp else 22.dp)
+                        .size(starSize)
                         .graphicsLayer {
                             val t = 1f
                             val sc = when {

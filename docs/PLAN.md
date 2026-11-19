@@ -674,14 +674,55 @@ Audit of every UI system and the libraries checked: [UI_SYSTEMS.md](UI_SYSTEMS.m
   Expressive controls (buttons, toggles, loading).
 - Order: tokens, Haze prototype, motion M1 to M3, catalog, swaps, motion M4 and M5.
 
-## Icons (proposed 2026-11-19, to agree)
+## Icons (decided and built 2026-11-19)
 
-Goal: one consistent icon set across the app, Google's current **Material Symbols** instead of the
-frozen Material Icons. Inventory, options and steps (I1 to I5) are in CONTINUE.md, "Pick up here".
-Decisions needed: style (Rounded suggested), weight and the fill rule (filled only for on/selected),
-delivery (vector drawables suggested; variable font only for icons that animate a state), scope
-(`ui/expressive/` first, then upstream screens). Weather condition art, shortcuts and widgets are
-not part of it.
+Decided with the user: Google's **Material Symbols**, style **Rounded**, weight 400, grade 0;
+**unfilled by default, filled only for on/selected** (starred, pinned, location in use); delivered as
+static vectors (no icon font), so it works on every Android version; the old Material Icons
+(`material-icons-extended`, frozen since 2022) are gone.
+
+Rules, following Material 3's icon guidance (m3.material.io/styles/icons, "Applying icons", read
+2026-11-19) and Google's Material Symbols guide:
+
+- **One source:** Compose code uses `ui/expressive/components/SolsticeIcons.kt` only; XML uses the
+  `ic_*.xml` drawables (upstream names, Rounded artwork). CI fails on `androidx.compose.material.icons`.
+- **Optical size follows the drawn size:** each catalog icon exists at optical size 24
+  (`SolsticeIcons.X`) and 20 (`SolsticeIcons.Small.X`, for icons drawn at 20 dp or smaller); a
+  component that takes an icon parameter calls `SolsticeIcons.forSize(icon, size)`.
+- **Fill** is a state, not decoration: `…Fill` variants exist only for star, pin and near me.
+- **Sizes** from `Sizes.IconSmall` (16), `Sizes.Icon` (20), `Sizes.IconLarge` (24) where possible.
+- **Adding an icon:** add its name to `tools/symbols.txt` (`fill` / `mirror` flags) and run
+  `python3 tools/make_symbols.py`; for an XML drawable, copy the `_24px.svg` path into an `ic_*.xml`
+  with `<group android:translateY="960">` (see any existing one). Source and license:
+  `third_party/material-symbols/README.md` (Apache-2.0).
+- **Weight:** 400 everywhere, never mixed; never below 200 at 24 dp (M3).
+
+### Gaps against M3 (found 2026-11-19, to do)
+
+1. **Grade -25 for light icons on dark backgrounds.** M3: the default grade is 0 for a dark icon on
+   a light background and **-25 for a light icon on a dark background** (it compensates for visual
+   bleed). Solstice draws light icons on the night sky, dark glass and the dark theme, so those need
+   -25. The SVGs exist (`<name>_gradN25_24px.svg`, `_gradN25_20px.svg`); add a grade variant to
+   `make_symbols.py` and pick it by the icon's background (or by dark theme where the background
+   isn't known). Positive grade is M3's option for an emphasized active state: only if agreed.
+2. **Selected toolbar tab filled.** M3's own example is navigation with filled icons for the
+   selected tab; our rule says "current tab" but the tab icons (`CalendarMonth`, `Map`, the
+   condition icons) have no `…Fill` variants yet. Add them and fill the selected tab (a swap, not an
+   animation; animating fill is motion, agree first).
+3. **Audit, then fix what fails:**
+   - **Small icons:** below 20 dp, complex icons or icons for a key action need a text label (simple
+     ones like the star are fine alone). Check the 12–16 dp icons on the postcard, Forecast ("near
+     me", schedule), the place window (flight, schedule) and the rain card.
+   - **Touch targets:** a 24 dp icon gets a **48 dp** target on a phone (40 dp for 20 dp icons is
+     only for mouse and keyboard). Check every tappable icon, including the toolbar's bud and the
+     Places swipe icons.
+   - **Icons next to text:** same size and optical weight as the text, and the icon's baseline about
+     **11.5 % of the text size** lower than the text's.
+4. **Big icons:** icons drawn at 28 dp and up (search's "no results" at 32 dp, the Places swipe icon
+   at 28 dp) should use optical size 40 (M3: 40–48 for highlighted primary actions). Add a `Large`
+   set only for the icons that need it.
+
+Later, to agree: animated fill for state changes (motion rule), weight matched to the text weight.
 
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
@@ -1962,3 +2003,17 @@ Things to try on the phone before calling any motion done (debug and release bui
   this entry). Next task: **consistent Material icons** (section "Icons"; inventory: 3 sources,
   34 distinct `Icons.*` in `ui/expressive/`, 40 Outlined vs 14 Filled, 54 upstream `ic_*.xml`).
   CONTINUE.md rewritten around it; finished ROADMAP items ticked.
+- **2026-11-19: icons on Material Symbols Rounded** (decided with the user; PR #1). `SolsticeIcons.kt`
+  is the one Compose catalog (39 symbols, optical sizes 24 and 20, 3 filled variants), generated by
+  `tools/make_symbols.py` from `tools/symbols.txt`; all 78 `Icons.*` call sites (22 files, 12 of them
+  upstream, import and name changes only) use it; icons drawn at 20 dp or smaller use optical size
+  20. The 53 `ic_*.xml` drawables keep their names with Rounded artwork (they were Symbols Outlined
+  and Pictogrammers icons). Weather conditions use the Symbols weather glyphs (`sunny`,
+  `clear_night`, `partly_cloudy_day`/`_night`, `rainy`, `weather_snowy`, `foggy`) in one mapping
+  (`hourIcon`, also used by the toolbar); the custom `RainCloud` is gone. `material-icons-extended`
+  removed; CI step "No old Material Icons". CI green; **not yet checked on the Pixel 7**.
+- **2026-11-19:** Read M3's icon guidance ("Applying icons") in the user's browser and checked the
+  icon rules against it: style, weight, fill and optical size match. Added to PLAN.md "Icons" as
+  gaps: grade -25 for light icons on dark backgrounds (an M3 default, not an extra), the selected
+  toolbar tab filled, an audit of small icons' labels, touch targets (48 dp) and icon/text
+  alignment, and optical size 40 for big icons.

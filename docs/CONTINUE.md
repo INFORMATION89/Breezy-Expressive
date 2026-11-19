@@ -39,71 +39,33 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   `shell/Toolbar.kt`, `shell/PageFrame.kt` shared with the postcard window.
 - **Library swaps:** Reorderable 3.1.0 runs `ReorderList.kt`; Material 3 controls everywhere except
   the toolbar and the postcard.
+- **Icons on Material Symbols Rounded** (2026-11-19, PR #1), CI green, not yet seen on the phone.
 - **Navigation 3: decided and started** (user, 2026-11-19). As of the last check the migration was
   not on `main` yet: pull, or ask where it lives, before touching Settings or pushed screens.
 
 ## Pick up here (next session)
 
-The focus is still **iOS-level polish with shared systems**. The current task is **consistent
-Material icons**. Background: [UI_SYSTEMS.md](UI_SYSTEMS.md), PLAN.md "Icons", "Motion framework" and
+The focus is still **iOS-level polish with shared systems**. The icon task is done (to check on
+the phone); next is M4. Background: [UI_SYSTEMS.md](UI_SYSTEMS.md), PLAN.md "Icons", "Motion framework" and
 "Design system foundations".
 
-### Icons: where things are (counted 2026-11-19)
+### Icons: done 2026-11-19 (PR #1, merged), to check on the phone
 
-Three sources that don't match:
+Material Symbols **Rounded** everywhere (rules in PLAN.md, "Icons"). What to look at on the Pixel 7:
 
-1. **`material-icons-extended`** (Compose's old Material Icons). Google froze that set in 2022 and the
-   Compose artifact stopped shipping after Compose 1.7, so it gets no new icons. Use in the whole app:
-   48 `Icons.Outlined`, 22 `Icons.Filled`, 6 `Icons.AutoMirrored`, 2 `Icons.Default`. In
-   `ui/expressive/`: 34 distinct icons, 40 Outlined and 14 Filled. Filled is used both for "selected"
-   (`Star`, `PushPin`) and just because (`Search`, `NearMe`, `Check`, `Close`, `Add`).
-2. **54 upstream `res/drawable/ic_*.xml`** (old Material Icons paths, 43 referenced from code), plus
-   `ic_drag` and `ic_close` used in `ui/expressive/`.
-3. **Our own vectors:** `components/SolsticeIcons.kt` (`RainCloud`) and the 8 moon phase drawables.
+- **Every screen:** shell pages, toolbar, search, postcard window, messages, Places swipe, reorder,
+  Settings, details, Management. The shapes changed from sharp/old Material to Rounded, and upstream's
+  Pictogrammers icons (search, location, wind, gauge, eye, delete, drag, back…) are now Symbols.
+- **Weather condition icons** changed glyphs: clear night is `clear_night` (moon and stars, was the
+  bedtime moon), partly cloudy is `partly_cloudy_day`/`_night`, rain is `rainy` (our `RainCloud` is
+  gone), snow is `weather_snowy` (was a snowflake), fog is `foggy` (was three lines).
+- **Small icons** (12 to 20 dp: postcard, Forecast "near me", rain card, messages, switch thumbs) use
+  optical size 20, so their strokes look a touch heavier than before.
+- `ic_gauge` became `speed`, `ic_uv` became `wb_sunny`, `ic_wind` became `air`, `ic_eye` became
+  `visibility`: check that they still read right in the details screens.
 
-Not icons for this task (they're artwork): the weather condition packs (`weather_*`, 99 files),
-`shortcuts_*` (30) and `widget_*` (16). Condition glyphs in the UI (`WbSunny`, `WbCloudy`,
-`Thunderstorm`, `AcUnit`, `Dehaze`, `Cloud`, `Bedtime`) **are** in scope.
-
-Sizes: 29 `Icon(` calls in `ui/expressive/`; 9 use the `Sizes.Icon*` tokens, the rest literals
-(18, 32, 28, 22, 14, 12 dp).
-
-### Icons: options to decide with the user
-
-1. **Style:** Material Symbols **Rounded** (matches Expressive's soft shapes and Google Sans Flex),
-   Outlined, or Sharp. One style app-wide.
-2. **Weight and fill rule:** one weight (400 suggested, or match the text weight); **unfilled by
-   default, filled only for "on/selected"** (starred, pinned, current tab, location in use).
-3. **Delivery:**
-   - **A. Vector drawables** downloaded from fonts.google.com/icons at the chosen style/weight
-     (filled and unfilled where a state needs both). Smallest, works on minSdk 24, no extra
-     dependency; fill changes are a crossfade, not an animation.
-   - **B. The variable font** (Material Symbols Rounded, subset to the icons used) through
-     `FontVariation`: fill, weight, grade and optical size can animate (e.g. the star filling in).
-     Variable axes need Android 8+ (minSdk is 7, so a static fallback), and icons become text
-     (accessibility labels by hand).
-   - **C. A library:** `io.github.hlcaptain:symbols-material-rounded` (Material-Icons-like API,
-     vectors or variable font; minimum AGP 9.1.1, Kotlin 2.4, compileSdk 37; very new) or
-     `dev.vicart:compose-material-symbols` (font-based, 1.1.6, 2026-09-04). Check license, size and
-     upkeep first.
-   - Suggested: **A**, plus B only for the few icons that animate a state, if the user wants that
-     (animating fill is motion: agree it first).
-4. **Scope:** `ui/expressive/` first; then upstream screens still in use (Settings rows, details),
-   keeping edits to upstream files small; widgets and shortcuts last or never.
-
-### Icons: proposed steps (after the decisions)
-
-1. **I1, catalog:** one `ui/expressive/components/SolsticeIcons.kt` object naming every icon the app
-   uses (`SolsticeIcons.Search`, `.Star(filled)`, …) so call sites never pick a source or style.
-   Sizes from `Sizes.Icon*` only (add `IconXSmall`/`IconXLarge` if the 12/14/28/32 dp ones are real).
-2. **I2, `ui/expressive/`:** replace all 34 `Icons.*` and `ic_drag`/`ic_close` with the catalog.
-   Check every screen on the Pixel 7 (screenshots before/after).
-3. **I3, upstream screens:** swap the 43 referenced `ic_*.xml` for the same style (same file names
-   where possible, so upstream merges stay easy).
-4. **I4:** drop `material-icons-extended` (big dependency; R8 strips most of it, but the build gets
-   faster and nothing old can sneak back in). Add a check (e.g. a Spotless/ktlint rule or a grep in CI)
-   that fails on `Icons.` outside the catalog.
-5. **I5 (optional, agree first):** animated fill for state icons (star, pin) with option B.
+How to add an icon: `tools/symbols.txt` + `python3 tools/make_symbols.py` (PLAN.md, "Icons").
+Navigation 3: if that migration adds icons, use `SolsticeIcons` (CI fails on the old ones).
 
 ### Still open from before
 
