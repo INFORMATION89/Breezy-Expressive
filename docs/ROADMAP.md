@@ -160,7 +160,7 @@ ship, and add new notes under the right area.
   when the data arrives, the buttons move and transform into place (uses the morph system).
 
 ### Refinement
-- [ ] A small icon before the "Visiting" text.
+- [x] A small icon before the "Visiting" text (Material FlightLand) and a clock before the local time (Material Schedule), 2026-11-19.
 - [x] Pin icon: white outline; when pinned, filled (white in dark mode, black in light mode).
 
 ## Search pane

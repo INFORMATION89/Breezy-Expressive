@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -40,7 +41,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.FlightLand
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -244,22 +247,41 @@ internal fun PlaceWindow(
                     }
                     // "Visiting" until you pin it, and its local time when it differs from yours.
                     val context = LocalContext.current
-                    val label = listOfNotNull(
-                        stringResource(R.string.shell_visiting),
-                        timeDifference(location.timeZone, now)?.let { diff ->
-                            time(context, java.util.Date(now), location.timeZone) + ", " + diff
-                        }
-                    ).joinToString(" · ")
-                    if (label.isNotEmpty()) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = sky.palette.text.copy(alpha = 0.85f),
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .statusBarsPadding()
-                                .padding(top = 8.dp)
+                    // "[landing plane] Visiting · [clock] 2:33 PM, 14 hours ahead".
+                    val localTime = timeDifference(location.timeZone, now)?.let { diff ->
+                        time(context, java.util.Date(now), location.timeZone) + ", " + diff
+                    }
+                    val ink = sky.palette.text.copy(alpha = 0.85f)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .padding(top = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.FlightLand,
+                            contentDescription = null,
+                            tint = ink,
+                            modifier = Modifier.size(16.dp)
                         )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            stringResource(R.string.shell_visiting),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ink
+                        )
+                        if (localTime != null) {
+                            Text(" · ", style = MaterialTheme.typography.labelLarge, color = ink)
+                            Icon(
+                                Icons.Outlined.Schedule,
+                                contentDescription = null,
+                                tint = ink,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(localTime, style = MaterialTheme.typography.labelLarge, color = ink)
+                        }
                     }
                 }
             }
