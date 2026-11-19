@@ -75,7 +75,9 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **Design frameworks:** spacing scale, type scale, motion tokens, component rules.
 - [x] 💬⭐ **Icon style:** Material Symbols Rounded, one catalog (`SolsticeIcons`), old Material Icons
   removed (2026-11-19, PR #1). Check on the phone (CONTINUE.md).
-- [ ] Icons later (agree first): grade -25 on dark glass, optical sizes 40/48 for big icons, animated fill.
+- [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected
+  toolbar tab filled; audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
+- [ ] Icons later (agree first): animated fill.
 
 ### Refinement
 - [x] Real blur behind the Forecast cards; moon card in the forecast's tint, dark at night (2026-11-19).
