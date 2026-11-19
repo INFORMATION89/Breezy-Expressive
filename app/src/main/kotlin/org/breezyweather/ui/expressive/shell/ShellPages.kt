@@ -66,7 +66,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -82,7 +84,6 @@ import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Thunderstorm
-import androidx.compose.material.icons.outlined.Umbrella
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.FilledTonalButton
@@ -129,6 +130,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -144,9 +146,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -159,6 +167,7 @@ import org.breezyweather.R
 import org.breezyweather.domain.location.model.getPlace
 import org.breezyweather.domain.settings.SettingsManager
 import org.breezyweather.domain.weather.model.getDescription
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyState
@@ -438,9 +447,6 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             // Dynamic: sun strength and UV by day; time left within an hour of sunrise or sunset;
             // the moon's phase at night (tap the moon).
             val middle = when {
-                // At night the moon's phase is always shown (a moon card on tap comes later).
-                night && phase != null ->
-                    listOfNotNull(phase.getDescription(context), "${(lit * 100).roundToInt()} %").joinToString(" · ")
                 !night && set.time - now in 0..3_600_000 ->
                     context.getString(R.string.shell_sunset_in, minutesText(context, set.time - now))
                 night && to - now in 0..3_600_000 ->
@@ -448,7 +454,11 @@ private fun SunPath(location: Location, now: Long, text: Color) {
                 !night -> sunStrength(context, weather.current?.uV?.index)
                 else -> null
             }
-            if (middle != null) {
+            if (night) {
+                // At night: the moon's phase, outlined so it reads as a button (opens the moon card).
+                MoonButton(location, now, text)
+                Spacer(Modifier.weight(1f))
+            } else if (middle != null) {
                 Text(
                     middle,
                     color = text.copy(alpha = 0.85f),
@@ -573,7 +583,7 @@ private fun hourIcon(weather: SkyWeather, night: Boolean): ImageVector = when (w
     SkyWeather.CLEAR -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbSunny
     SkyWeather.PARTLY_CLOUDY -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbCloudy
     SkyWeather.OVERCAST -> Icons.Outlined.Cloud
-    SkyWeather.RAIN -> Icons.Outlined.Umbrella
+    SkyWeather.RAIN -> SolsticeIcons.RainCloud
     SkyWeather.THUNDERSTORM -> Icons.Outlined.Thunderstorm
     SkyWeather.SNOW -> Icons.Outlined.AcUnit
     SkyWeather.FOG -> Icons.Outlined.Dehaze
@@ -678,7 +688,7 @@ private fun NoRainLine(hours: Int, text: Color) {
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Icon(
-            Icons.Outlined.Umbrella,
+            SolsticeIcons.RainCloud,
             contentDescription = null,
             tint = text.copy(alpha = 0.7f),
             modifier = Modifier.size(16.dp)
@@ -702,17 +712,19 @@ internal fun DaysPage(
     onPage: Color,
     page: Color,
     listState: LazyListState,
+    // Ready for per-day floating cards (a tapped pill, or a day named in the summary).
+    onDay: (Int) -> Unit = {},
     pageFade: () -> Float,
 ) {
     val context = LocalContext.current
-    val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(10)
+    val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(7)
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     // Edge to edge: the list scrolls under the status bar and the toolbar, with a progressive blur
     // at both edges (also a hint that there's more to scroll).
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 40.dp, bottom = 160.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp, strength = pageFade)
     ) {
         item {
@@ -720,47 +732,193 @@ internal fun DaysPage(
                 stringResource(R.string.shell_tab_days),
                 color = onPage,
                 style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
-                modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
             )
         }
-        items(days) { day ->
-            val sky = daySky(SkyWeather.of(day.day?.weatherCode))
-            val text = sky.palette.text
-            SkyBackground(
-                state = sky,
-                modifier = Modifier.fillMaxWidth().height(76.dp).clip(RoundedCornerShape(24.dp))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)
+        if (location != null && days.isNotEmpty()) {
+            item { WeekSummary(location, days, onPage, onDay) }
+            item { WeekPills(location, days, onPage, onDay) }
+        }
+    }
+}
+
+/** A plain-paper card (This week): a faint surface over the page. */
+@Composable
+private fun PaperCard(onPage: Color, content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(onPage.copy(alpha = 0.05f))
+            .padding(18.dp)
+    ) { Column { content() } }
+}
+
+private fun isWet(w: SkyWeather) = w == SkyWeather.RAIN || w == SkyWeather.THUNDERSTORM || w == SkyWeather.SNOW
+
+/**
+ * The week in words (agreed 2026-11-18, design B): a headline and a sentence. A condition named in
+ * the text has its small icon inline ("Expect [rain] on Saturday"); temperatures are bold and
+ * underlined, ready to become links to that day's card.
+ */
+@Composable
+private fun WeekSummary(
+    location: Location,
+    days: List<breezyweather.domain.weather.model.Daily>,
+    onPage: Color,
+    onDay: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    val highs = days.map { it.day?.temperature?.temperature }
+    val lows = days.map { it.night?.temperature?.temperature }
+    val hottest = highs.indices.filter { highs[it] != null }.maxByOrNull { highs[it]!!.inCelsius }
+    val coldest = lows.indices.filter { lows[it] != null }.minByOrNull { lows[it]!!.inCelsius }
+    val wetDays = days.indices.filter { isWet(SkyWeather.of(days[it].day?.weatherCode)) }
+    fun name(i: Int) = if (i == 0) context.getString(R.string.shell_today) else dayLong(days[i].date, location.timeZone)
+    val headline = when {
+        wetDays.isEmpty() -> context.getString(R.string.week_dry)
+        wetDays.size == 1 -> context.getString(R.string.week_one_wet, name(wetDays.first()))
+        wetDays.size >= days.size - 1 -> context.getString(R.string.week_mostly_wet)
+        else -> context.getString(R.string.week_some_wet, wetDays.size)
+    }
+    val bold = SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
+    val wetIcon = wetDays.firstOrNull()?.let { SkyWeather.of(days[it].day?.weatherCode) }
+    val body = buildAnnotatedString {
+        if (wetIcon != null) {
+            append(context.getString(R.string.week_expect) + " ")
+            appendInlineContent("cond", "[]")
+            append(" " + (days[wetDays.first()].day?.weatherText?.lowercase() ?: "") + " ")
+            append(context.getString(R.string.week_on, name(wetDays.first())))
+            append(". ")
+        }
+        if (hottest != null) {
+            append(context.getString(R.string.week_warmest, name(hottest)) + " ")
+            withStyle(bold) { append(degrees(context, highs[hottest]!!)) }
+        }
+        if (coldest != null) {
+            append(context.getString(R.string.week_coldest_night, name(coldest)) + " ")
+            withStyle(bold) { append(degrees(context, lows[coldest]!!)) }
+            append(".")
+        }
+    }
+    val inline = mapOf(
+        "cond" to InlineTextContent(
+            Placeholder(18.sp, 18.sp, PlaceholderVerticalAlign.TextCenter)
+        ) {
+            Icon(
+                hourIcon(wetIcon ?: SkyWeather.RAIN, false),
+                contentDescription = null,
+                tint = onPage.copy(alpha = 0.85f)
+            )
+        }
+    )
+    PaperCard(onPage) {
+        Text(headline, color = onPage, style = MaterialTheme.typography.titleLargeEmphasized)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            body,
+            inlineContent = inline,
+            color = onPage.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+/**
+ * The days as vertical pills (design B): each placed at its low-to-high range on a shared scale,
+ * warm at the top fading to cool, the colours following how hot or cold the day is. The condition
+ * icon and day name sit below. Wet days are tinted in the label. Tapping a day is wired for its
+ * future card.
+ */
+@Composable
+private fun WeekPills(
+    location: Location,
+    days: List<breezyweather.domain.weather.model.Daily>,
+    onPage: Color,
+    onDay: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    val highs = days.map { it.day?.temperature?.temperature?.inCelsius }
+    val lows = days.map { it.night?.temperature?.temperature?.inCelsius }
+    val top = highs.filterNotNull().maxOrNull() ?: return
+    val bottom = lows.filterNotNull().minOrNull() ?: return
+    val span = (top - bottom).coerceAtLeast(1.0)
+    val pillArea = 120.dp
+    PaperCard(onPage) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            days.forEachIndexed { i, day ->
+                val hi = highs[i] ?: return@forEachIndexed
+                val lo = lows[i] ?: hi
+                val weather = SkyWeather.of(day.day?.weatherCode)
+                val wet = isWet(weather)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onDay(i) }
+                        .padding(horizontal = 2.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        dayName(context, day.date, location!!.timeZone),
-                        color = text,
-                        style = MaterialTheme.typography.titleMediumEmphasized,
-                        modifier = Modifier.width(88.dp)
+                        day.day?.temperature?.temperature?.let { degrees(context, it) } ?: "",
+                        color = onPage,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Box(Modifier.height(pillArea).width(22.dp)) {
+                        val topFrac = ((top - hi) / span).toFloat()
+                        val heightFrac = ((hi - lo) / span).toFloat().coerceAtLeast(0.12f)
+                        Box(
+                            Modifier
+                                .padding(top = pillArea * topFrac)
+                                .fillMaxWidth()
+                                .height(pillArea * heightFrac)
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(Brush.verticalGradient(listOf(tempColor(hi), tempColor(lo))))
+                        )
+                    }
+                    Text(
+                        day.night?.temperature?.temperature?.let { degrees(context, it) } ?: "",
+                        color = onPage.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Icon(
+                        hourIcon(weather, false),
+                        contentDescription = day.day?.weatherText,
+                        tint = if (wet) Color(0xFFD85A30) else onPage.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp).size(18.dp)
                     )
                     Text(
-                        day.day?.weatherText ?: "",
-                        color = text.copy(alpha = 0.75f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        listOfNotNull(
-                            day.night?.temperature?.temperature?.let { degrees(context, it) },
-                            day.day?.temperature?.temperature?.let { degrees(context, it) }
-                        ).joinToString("  "),
-                        color = text,
-                        style = MaterialTheme.typography.titleMedium
+                        if (i == 0) stringResource(R.string.shell_today) else dayShort(day.date, location.timeZone),
+                        color = if (wet) Color(0xFFD85A30) else onPage.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
         }
     }
 }
+
+/** Cold blue to warm orange by temperature (°C). */
+private fun tempColor(c: Double): Color {
+    val stops = listOf(
+        -5.0 to Color(0xFF6C8DE0),
+        8.0 to Color(0xFF85B7EB),
+        16.0 to Color(0xFFB9CFE6),
+        22.0 to Color(0xFFF0B27B),
+        30.0 to Color(0xFFE4683A)
+    )
+    if (c <= stops.first().first) return stops.first().second
+    if (c >= stops.last().first) return stops.last().second
+    val k = stops.indexOfFirst { it.first >= c }
+    val (a, ca) = stops[k - 1]
+    val (b, cb) = stops[k]
+    return lerp(ca, cb, ((c - a) / (b - a)).toFloat())
+}
+
+private fun dayShort(date: java.util.Date, zone: java.util.TimeZone): String =
+    SimpleDateFormat("EEE", Locale.getDefault()).apply { timeZone = zone }.format(date)
+
+private fun dayLong(date: java.util.Date, zone: java.util.TimeZone): String =
+    SimpleDateFormat("EEEE", Locale.getDefault()).apply { timeZone = zone }.format(date)
 
 /** A day's weather as a mid-morning sky (sun high on the right), for cards. */
 private fun daySky(weather: SkyWeather) =

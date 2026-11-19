@@ -1368,3 +1368,113 @@ Things to try on the phone before calling any motion done (debug and release bui
     gradient, warmer orange at the top down to bluer, whose colours follow how hot or cold each day
     is; as one card like the Seoul mockup; maybe the condition icon somewhere; and a **dynamic
     summary card at the top** with the week's general conditions.
+- **2026-11-18 night (user picked): This week, design B (vertical pills).**
+  - A summary card on top, more verbose, with a small condition icon inline when a condition is
+    mentioned ("Expect [rain] on Saturday") and temperatures in **bold and underlined**, ready to
+    become links.
+  - Then one card with the days as vertical pills placed at their temperature range, warm at the
+    top fading to cool, the colours following how hot or cold each day is, with the condition icon
+    and day name under each.
+  - Ready for a future feature: tapping a day (in the pills, or a day named in the summary) opens a
+    floating card for that day.
+- **Moon card (user's design references):** a floating card like Apple's Moon panel. A large moon in
+  its phase, the phase name and the date and time, and a **dial** of days to scrub through phases
+  (Tue · Today · Thu · Fri ticks). Then rows: illumination, moonrise, moonset, next full moon, and
+  distance if we have it. Adapted to the data we have. Liked: the dark starry night of the second
+  reference.
+- **2026-11-19 (built, checked in the debug app on the Pixel):**
+  - **This week B:** a summary card (headline like "2 wet days this week"; a sentence with an inline
+    condition icon; temperatures bold and underlined), then one card with 7 day pills placed at
+    their low-to-high range on a shared scale, gradient from the day's high colour to its low
+    colour (cold blue to warm orange), with high and low values, a condition icon and the day
+    (wet days in orange). Tapping a pill calls `onDay(index)`, ready for day cards (nothing opens
+    yet).
+  - **Moon button:** always visible under the sun path, outlined: a small moon in its phase, the
+    phase name and illumination.
+  - **Moon card** (`shell/MoonCard.kt`), a floating dialog: dark starry night, a big drawn moon in
+    its phase, the phase name and date, a **dial** of days (drag to move through ±14 days, ticks
+    every 6 h), and rows for illumination, moonrise, moonset, next full moon and distance, computed
+    with suncalc for the place.
+  - To refine later: a nicer moon texture (drawn "seas" for now), and the dial's day labels
+    (Tue · Today · Thu like the reference).
+- **2026-11-19 (built, checked in the debug app on the Pixel):** The moon phase button is back between
+  the sunset and sunrise times (at night). A rain-cloud icon (`components/SolsticeIcons.RainCloud`,
+  a cloud with three slanted drops) replaces the umbrella. The moon card is **black glass**: a
+  rounded, translucent black window, with everything behind it blurred (`FLAG_BLUR_BEHIND`, radius
+  70; the window background blur didn't apply).
+- **Realistic moon research (2026-11-19):** there's no ready-made Android library. Options:
+  - **Recommended: our own renderer.** Build it on NASA SVS's **CGI Moon Kit** colour map (free, LRO
+    data, credit "NASA's Scientific Visualization Studio"; confirm NASA's usage guidelines),
+    downscaled to ~1–2k and bundled. An AGSL shader (Android 13+; a baked bitmap otherwise) maps it
+    onto a sphere, lights it by the phase angle with a soft terminator, adds faint earthshine on the
+    dark side, and could add libration and tilt later. One component for the button, the moon card
+    and the sun path.
+  - **Reference only:** akrea-at/moonphase (Android, photo-realistic from NASA maps, terminator,
+    libration, earthshine) is **GPL-3.0**, so we can't copy its code into this LGPL app; read it
+    for the approach. Lunaria (web, astronomy-engine) is a reference for the lighting maths.
+- **2026-11-19 (user notes):**
+  - **Plan: an opening animation for the moon button → moon card.** Never a simple fade-in: things
+    always **morph into other things** (the outlined pill grows into the card). Propose before
+    building.
+  - **Moon card background works like the search card:** only darken the page a bit, and blur only
+    behind the card (the shell's glass), not the whole screen. Its size and position are to check
+    with the user later.
+  - **Keep things consistent across the app** (same materials, same morph language, same components).
+  - Realistic moon: the user likes the NASA CGI Moon Kit and Lunaria directions.
+- **2026-11-19 (user notes, moon dial):** a haptic tick on the dial as each day passes; double-tap
+  the dial to go back to today; and a marker for today on the dial.
+- **2026-11-19 (built, checked in the debug app on the Pixel):** The moon card is now an overlay in the
+  shell on the **same glass as the search card**: the page is darkened 25 % and only the area behind
+  the card is blurred (the dialog window and its full-screen blur are gone). Taps on the card stay
+  on the card. Back closes it. **Dial:** a haptic tick each time a day passes the needle; dragging
+  left goes forward in time with the ticks following the finger; **double-tap goes back to today**
+  (spring); an orange dot marks today and moves with the dial. The opening morph and the card's
+  size and position are still to agree.
+
+### Next session (2 am, 2026-11-19): user's list
+**Priorities, in order:**
+1. **Rework what needs redoing and make everything consistent:** spacing, materials, components.
+2. **The collapsing animation when starring a place** (the starred place folds into a compact
+   version).
+3. **All the small fixes below,** plus the realistic moon and how to implement it (NASA CGI Moon
+   Kit 1k colour map; download approval still pending).
+4. Commit and push everything.
+
+**Foundations**
+- **Very important: unify systems.** See what can be reused, and do better with existing
+  open-source libraries, keeping the app light and performant from now on.
+- **Check that all blur materials are consistent** and come from the same system.
+- **Blur behind all card backgrounds,** including the moon button.
+- **Pick an icon style:** the user likes Google's new Material icons (Material Symbols). Find a
+  ready-made library we can properly use.
+- **A reusable "move and transform into place" system** (search for libraries or build one), used
+  everywhere, buttons included. First use: while a visited place loads, show "Visiting Tokyo ·
+  2:33 PM, 14 hours ahead" under the title; when it's loaded, the buttons move and transform into
+  their positions.
+
+**Forecast and window**
+- **Text colour rules:** in dark mode, opening a place where it's day, the "Visiting" text doesn't
+  adapt to the background. All text on the Forecast page follows the sky's rules; only the This
+  week page adapts to any background.
+- **Pin in the window:** white outline; when pinned, filled (white fill in dark mode, black fill in
+  light mode).
+- **Toolbar buttons:** a slight gradient, lighter on top and darker at the bottom, derived from each
+  button's own colour (not white/black).
+- **Moon button:** remove its small moon icon (redundant). Use a proper moon-phase icon from the
+  icon library on the Forecast page.
+
+**Moon card**
+- **Check its size:** compare a floating card with a full moon page (pros and cons).
+- **Make it consistent with our design** (it looks straight out of iOS now). The user likes the
+  direction of the This week page.
+
+**This week**
+- **Shorter pills,** with more spacing between the pills and the text above and below.
+- **Wording:** "It's raining two days this week" (instead of "2 wet days this week").
+- **Card background more obvious.**
+- Maybe a **precipitation element** for the week.
+
+**Places and search**
+- **Remove the grain paper effect** from the Places background for now, and use the same
+  background and fade-in system as This week.
+- **A button to clear recent searches.**

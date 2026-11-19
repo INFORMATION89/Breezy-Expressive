@@ -61,7 +61,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Thunderstorm
-import androidx.compose.material.icons.outlined.Umbrella
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
@@ -143,6 +142,7 @@ import org.breezyweather.domain.location.model.isDaylight
 import org.breezyweather.sources.SourceManager
 import org.breezyweather.ui.common.composables.SecondarySourcesPreference
 import org.breezyweather.ui.expressive.components.GlassSource
+import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
@@ -680,6 +680,8 @@ fun SolsticeShell(
                 it.isCurrentPosition
             } ?: location
             )?.let { it.latitude to it.longitude }
+        // The moon card, over the pages, on the same glass as the search card.
+        MoonCardOverlay(glass)
         SearchOverlay(
             open = searchOpen,
             progress = { searchProgress.value },
@@ -1172,7 +1174,7 @@ private fun conditionIcon(weather: SkyWeather, night: Boolean): ImageVector = wh
     SkyWeather.CLEAR -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbSunny
     SkyWeather.PARTLY_CLOUDY -> if (night) Icons.Outlined.Bedtime else Icons.Outlined.WbCloudy
     SkyWeather.OVERCAST -> Icons.Outlined.Cloud
-    SkyWeather.RAIN -> Icons.Outlined.Umbrella
+    SkyWeather.RAIN -> SolsticeIcons.RainCloud
     SkyWeather.THUNDERSTORM -> Icons.Outlined.Thunderstorm
     SkyWeather.SNOW -> Icons.Outlined.AcUnit
     SkyWeather.FOG -> Icons.Outlined.Dehaze
