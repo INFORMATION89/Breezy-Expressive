@@ -78,6 +78,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -117,6 +118,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.weather.model.getDescription
@@ -191,6 +193,9 @@ internal class MoonShared(val scope: SharedTransitionScope, val transition: Tran
 
 internal val LocalMoonShared = staticCompositionLocalOf<MoonShared?> { null }
 
+/** The dial's fling, slowing down. */
+private val dialDecay = FloatExponentialDecaySpec(frictionMultiplier = 1.6f)
+
 /** The dial's settle spring. */
 private val moonSettle = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
 
@@ -204,8 +209,19 @@ private fun hhmm(zone: java.util.TimeZone) = SimpleDateFormat("HH:mm", Locale.ge
 private const val MOON_SPAN = 1000
 private val moonBounds = BoundsTransform { _, _ -> tween(MOON_SPAN, easing = LinearEasing) }
 
-/** The pill's own border and "· 71 %" go in the first tenth of the way out, and come back last. */
-private val pillExit = fadeOut(tween(MOON_SPAN / 10, easing = LinearEasing))
+/**
+ * The pill's own look (outline, "· 71 %") fades over the first 30 % of the way while the sheet's
+ * glass fades in over the same stretch: the material changes with the shape, and back on closing.
+ */
+private const val MATERIAL_SPAN = 0.3f
+private val pillExit = fadeOut(tween((MOON_SPAN * MATERIAL_SPAN).toInt(), easing = LinearEasing))
+
+/**
+ * The label hands over to the heading in the first 15 % of the way, while both are still about the
+ * button's size and in the same place (a longer cross-over showed two labels).
+ */
+private val labelIn = fadeIn(tween(MOON_SPAN * 15 / 100, easing = LinearEasing))
+private val labelOut = fadeOut(tween(MOON_SPAN * 15 / 100, easing = LinearEasing))
 private val pillEnter = fadeIn(tween(MOON_SPAN / 10, delayMillis = MOON_SPAN * 9 / 10, easing = LinearEasing))
 
 /**
@@ -237,6 +253,10 @@ internal fun MoonButton(
     val pageGlass = org.breezyweather.ui.expressive.components.LocalPageGlass.current
     val shared = LocalMoonShared.current
     val key = "moon-${location.formattedId}"
+    // Get the moon's texture ready in the background, so opening the card doesn't wait for it.
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { MoonRenderer.prewarm(context) }
+    }
 
     @Composable
     fun Pill(modifier: Modifier, label: Modifier) {
@@ -277,11 +297,16 @@ internal fun MoonButton(
                         enter = pillEnter,
                         exit = pillExit,
                         boundsTransform = moonBounds,
+                        // The pill's own content keeps its layout and scales with the shape, so the
+                        // "· 71 %" never drifts while it fades.
+                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
                         clipInOverlayDuringTransition = OverlayClip(CircleShape)
                     ),
                     Modifier.sharedBounds(
                         rememberSharedContentState("$key-label"),
                         this@AnimatedVisibility,
+                        enter = labelIn,
+                        exit = labelOut,
                         boundsTransform = moonBounds,
                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                     )
@@ -349,40 +374,32 @@ internal fun MoonCardOverlay(glass: GlassSource) {
     val drive = remember(request) { Animatable(0f) }
     val progress = remember(drive) { androidx.compose.runtime.derivedStateOf { drive.value.coerceIn(0f, 1f) } }
     val range = with(density) { 420.dp.toPx() }
-    // Keep the transition on the drive's position, in order (snapshotFlow skips stale values).
-    LaunchedEffect(request) {
-        snapshotFlow { drive.value.coerceIn(0f, 1f) }.collect { f ->
-            MoonCardState.progress = f
-            when {
-                seek.currentState && seek.targetState -> if (f < 1f) seek.seekTo(1f - f, targetState = false)
-                seek.currentState -> if (f <=
-                    0f
-                ) {
-                    seek.snapTo(false)
-                } else if (f >= 1f) {
-                    seek.snapTo(true)
-                } else {
-                    seek.seekTo(1f - f, false)
-                }
-                else -> if (f >= 1f) {
-                    seek.snapTo(true)
-                } else if (f > 0f) {
-                    seek.seekTo(f, targetState = true)
-                }
-            }
+
+    // Keep the transition on the drive's position in the same frame (started undispatched, so the
+    // seek lands before the frame draws). It stays one continuous seek towards "open" for the whole
+    // life of the card (2026-11-19): settling it at the top of the spring's bounce, or turning it
+    // round to close, rebuilt the button and the sheet mid-animation and dropped frames.
+    fun sync(value: Float) {
+        val f = value.coerceIn(0f, 1f)
+        MoonCardState.progress = f
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            runCatching { seek.seekTo(f.coerceIn(0.0001f, 0.9999f), targetState = true) }
         }
     }
     // Opening: the container's spring from the button.
     LaunchedEffect(request) {
-        drive.animateTo(1f, SolsticeMotion.container)
-        seek.snapTo(true)
+        drive.animateTo(1f, SolsticeMotion.container) { sync(value) }
     }
     fun finish(open: Boolean, velocity: Float = 0f) {
         scope.launch {
-            drive.animateTo(if (open) 1f else 0f, SolsticeMotion.container, initialVelocity = velocity)
-            if (open) {
-                seek.snapTo(true)
-            } else {
+            drive.animateTo(
+                if (open) 1f else 0f,
+                if (open) SolsticeMotion.container else SolsticeMotion.dismiss,
+                initialVelocity = velocity
+            ) {
+                sync(value)
+            }
+            if (!open) {
                 seek.snapTo(false)
                 MoonCardState.progress = 0f
                 MoonCardState.request = null
@@ -400,7 +417,10 @@ internal fun MoonCardOverlay(glass: GlassSource) {
         } else {
             1f + SolsticeMotion.rubberBand(-raw, range) / range * 0.25f
         }
-        scope.launch { drive.snapTo(to.coerceAtLeast(0f)) }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            drive.snapTo(to.coerceAtLeast(0f))
+            sync(drive.value)
+        }
     }
     fun release(velocity: Float) {
         // Down is positive for the finger, negative for the morph's position.
@@ -445,6 +465,7 @@ internal fun MoonCardOverlay(glass: GlassSource) {
     }
     val status = WindowInsets.statusBars
     val key = "moon-${location.formattedId}"
+    val finalWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
     // Gestures on the whole screen (the sheet itself shrinks under the finger while a pull scrubs
     // it, so a drag measured on it would run ahead): vertical pulls scrub the morph back, and a tap
     // above the sheet closes it.
@@ -510,10 +531,24 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                                 scaleY = 1f + over * 0.5f
                             }
                             // The search card's glass, in the forecast's tint.
-                            .glass(MoonCardState.glass ?: glass, cardShape, tint)
+                            .glass(MoonCardState.glass ?: glass, cardShape, tint, alpha = {
+                                val t = (progress.value / MATERIAL_SPAN).coerceIn(0f, 1f)
+                                t * t * (3 - 2 * t)
+                            })
                             .clip(cardShape)
                     ) {
-                        Column(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true)) {
+                        // Laid out once at the sheet's final width and centred, so nothing reflows
+                        // while the glass grows around it (the glass clips it).
+                        Column(
+                            Modifier.layout { measurable, constraints ->
+                                val placeable = measurable.measure(
+                                    Constraints(minWidth = finalWidth, maxWidth = finalWidth)
+                                )
+                                layout(constraints.maxWidth, constraints.maxHeight) {
+                                    placeable.place((constraints.maxWidth - finalWidth) / 2, 0)
+                                }
+                            }
+                        ) {
                             Spacer(Modifier.height(24.dp)) // room for the handle, drawn on top
                             MoonCard(
                                 location,
@@ -522,9 +557,16 @@ internal fun MoonCardOverlay(glass: GlassSource) {
                                 headingModifier = Modifier.sharedBounds(
                                     rememberSharedContentState("$key-label"),
                                     this@AnimatedVisibility,
+                                    enter = labelIn,
+                                    exit = labelOut,
                                     boundsTransform = moonBounds,
                                     resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                                 ),
+                                dateModifier = Modifier.graphicsLayer {
+                                    // Last in, first out: only once the heading has landed.
+                                    alpha = ((progress.value - 0.85f) / 0.15f).coerceIn(0f, 1f)
+                                },
+                                deferRest = true,
                                 restModifier = Modifier.graphicsLayer {
                                     // Choreographed (agreed): the content fades and scales in from
                                     // 92 % as the glass reaches ~70 % of its size, and leaves first
@@ -571,31 +613,46 @@ private fun MoonCard(
     now: Long,
     ink: Color,
     headingModifier: Modifier = Modifier,
+    dateModifier: Modifier = Modifier,
     restModifier: Modifier = Modifier,
+    // Built a frame after the heading when opening (it's invisible until a third of the way in), so
+    // the morph's first frame only has the glass and the heading to build.
+    deferRest: Boolean = false,
 ) {
+    var restReady by remember { mutableStateOf(!deferRest) }
+    if (!restReady) {
+        LaunchedEffect(Unit) {
+            androidx.compose.runtime.withFrameNanos { }
+            restReady = true
+        }
+    }
     val context = LocalContext.current
     // Scrubbing offset in days (fractional while dragging).
     var offset by remember { mutableFloatStateOf(0f) }
     val haptics = LocalHapticFeedback.current
     val phaseIcons = rememberMoonPhaseIcons()
-    // The principal phases within the dial's range, and their angles.
-    val phaseMarks = remember(now) {
-        val start = Date(now - 15 * DAY)
-        listOf(
-            MoonPhase.Phase.NEW_MOON to 0,
-            MoonPhase.Phase.FIRST_QUARTER to 90,
-            MoonPhase.Phase.FULL_MOON to 180,
-            MoonPhase.Phase.LAST_QUARTER to 270
-        ).flatMap { (phase, a) ->
-            buildList {
-                var from = start
-                repeat(2) {
-                    val t = MoonPhase.compute().phase(phase).on(from).execute().time
-                    add(t.time to a)
-                    from = Date(t.time + DAY)
+    // The principal phases within the dial's range, and their angles. Worked out in the background
+    // (2026-11-19): on the main thread they held up the first frame of the card's opening, and the
+    // dial's marks are only seen once the content has faded in.
+    val phaseMarks by androidx.compose.runtime.produceState(emptyList<Pair<Long, Int>>(), now) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val start = Date(now - 15 * DAY)
+            listOf(
+                MoonPhase.Phase.NEW_MOON to 0,
+                MoonPhase.Phase.FIRST_QUARTER to 90,
+                MoonPhase.Phase.FULL_MOON to 180,
+                MoonPhase.Phase.LAST_QUARTER to 270
+            ).flatMap { (phase, a) ->
+                buildList {
+                    var from = start
+                    repeat(2) {
+                        val t = MoonPhase.compute().phase(phase).on(from).execute().time
+                        add(t.time to a)
+                        from = Date(t.time + DAY)
+                    }
                 }
-            }
-        }.filter { abs(it.first - now) <= 15 * DAY }
+            }.filter { abs(it.first - now) <= 15 * DAY }
+        }
     }
     var fling by remember { androidx.compose.runtime.mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
@@ -613,11 +670,19 @@ private fun MoonCard(
     val at = Date(now + (offset * DAY).toLong())
     val (angle, lit) = moonAt(at)
     val zone = location.timeZone
-    val times = MoonTimes.compute().on(
-        at
-    ).timezone(zone).at(location.latitude, location.longitude).fullCycle().execute()
-    val full = MoonPhase.compute().phase(MoonPhase.Phase.FULL_MOON).on(at).execute().time
-    val position = MoonPosition.compute().on(at).at(location.latitude, location.longitude).execute()
+    // Rise and set, the next full moon and the distance only change by the minute: worked out per
+    // 15 minutes of dial time, not on every frame of a scrub.
+    val quarterHour = (at.time / 900_000L) * 900_000L
+    val times = remember(quarterHour, zone, location.latitude, location.longitude) {
+        MoonTimes.compute().on(Date(quarterHour)).timezone(zone).at(location.latitude, location.longitude)
+            .fullCycle().execute()
+    }
+    val full = remember(quarterHour) {
+        MoonPhase.compute().phase(MoonPhase.Phase.FULL_MOON).on(Date(quarterHour)).execute().time
+    }
+    val position = remember(quarterHour, location.latitude, location.longitude) {
+        MoonPosition.compute().on(Date(quarterHour)).at(location.latitude, location.longitude).execute()
+    }
     val distance = position.distance
     // How the moon is turned in this place's sky at the shown time: the real parallactic angle while
     // the moon is up, easing to upright as it nears and drops below the horizon (where its true
@@ -660,231 +725,242 @@ private fun MoonCard(
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
                 modifier = headingModifier
             )
-            Column(restModifier) {
-                Text(
-                    SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).apply { timeZone = zone }.format(at),
-                    color = ink.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                // The moon (on a starry night when the glass is dark).
-                val dark = ink.luminance() > 0.5f
-                Canvas(Modifier.fillMaxWidth().height(200.dp)) {
-                    if (dark) {
-                        val rnd = Random(11)
-                        repeat(70) {
-                            drawCircle(
-                                Color.White.copy(alpha = 0.2f + rnd.nextFloat() * 0.5f),
-                                radius = 0.6f + rnd.nextFloat() * 1.4f,
-                                center = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
-                            )
-                        }
-                    }
-                    // A soft glow, then the real moon.
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
-                            center = center,
-                            radius = size.minDimension * 0.6f
-                        ),
-                        radius = size.minDimension * 0.6f,
-                        center = center
+            if (restReady) {
+                Column(restModifier) {
+                    Text(
+                        SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).apply { timeZone = zone }.format(at),
+                        color = ink.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = dateModifier
                     )
-                    moon.draw(
-                        this,
-                        center,
-                        size.minDimension * 0.36f,
-                        angle,
-                        Color(0xFF050509),
-                        limbAngle = limbAngle,
-                        parallactic = parallactic.toDouble()
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                // The dial: ticks every 6 hours, a longer one per day; drag to move through the days.
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .pointerInput(Unit) {
-                            val perDay = size.width / 4f
-                            val tracker = VelocityTracker()
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    fling?.cancel()
-                                    tracker.resetTracking()
-                                },
-                                onDragEnd = {
-                                    // Inertia: a flick keeps the dial turning, slowing down, then it
-                                    // settles on the nearest 6-hour tick.
-                                    val v = -tracker.calculateVelocity().x / perDay
-                                    fling = scope.launch {
-                                        var last = offset
-                                        animateDecay(offset, v, FloatExponentialDecaySpec(frictionMultiplier = 1.6f)) {
-                                                value,
-                                                _,
-                                            ->
-                                            offset = value.coerceIn(-14f, 14f)
-                                            tick(last, offset)
-                                            last = offset
-                                        }
-                                        val snapped = (kotlin.math.round(offset * 4f) / 4f).coerceIn(-14f, 14f)
-                                        animate(
-                                            offset,
-                                            snapped,
-                                            animationSpec = spring(
-                                                dampingRatio = 0.9f,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        ) {
-                                                value,
-                                                _,
-                                            ->
-                                            offset = value
-                                        }
-                                    }
-                                }
-                            ) { change, dx ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                val before = offset
-                                // Drag left to go forward in time (the ticks follow the finger).
-                                offset = (offset - dx / perDay).coerceIn(-14f, 14f)
-                                tick(before, offset)
+                    // The moon (on a starry night when the glass is dark).
+                    val dark = ink.luminance() > 0.5f
+                    Canvas(Modifier.fillMaxWidth().height(200.dp)) {
+                        if (dark) {
+                            val rnd = Random(11)
+                            repeat(70) {
+                                drawCircle(
+                                    Color.White.copy(alpha = 0.2f + rnd.nextFloat() * 0.5f),
+                                    radius = 0.6f + rnd.nextFloat() * 1.4f,
+                                    center = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
+                                )
                             }
                         }
-                        // Double-tap: back to today.
-                        .pointerInput(Unit) {
-                            detectTapGestures(onDoubleTap = {
-                                scope.launch {
-                                    animate(
-                                        offset,
-                                        0f,
-                                        animationSpec = moonSettle
-                                    ) {
-                                            v,
-                                            _,
-                                        ->
-                                        offset = v
+                        // A soft glow, then the real moon.
+                        drawCircle(
+                            Brush.radialGradient(
+                                listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                                center = center,
+                                radius = size.minDimension * 0.6f
+                            ),
+                            radius = size.minDimension * 0.6f,
+                            center = center
+                        )
+                        moon.draw(
+                            this,
+                            center,
+                            size.minDimension * 0.36f,
+                            angle,
+                            Color(0xFF050509),
+                            limbAngle = limbAngle,
+                            parallactic = parallactic.toDouble()
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    // The dial: ticks every 6 hours, a longer one per day; drag to move through the days.
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .pointerInput(Unit) {
+                                val perDay = size.width / 4f
+                                val tracker = VelocityTracker()
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        fling?.cancel()
+                                        tracker.resetTracking()
+                                    },
+                                    onDragEnd = {
+                                        // Inertia: a flick keeps the dial turning, slowing down, then it
+                                        // settles on the nearest 6-hour tick.
+                                        val v = -tracker.calculateVelocity().x / perDay
+                                        fling = scope.launch {
+                                            var last = offset
+                                            animateDecay(offset, v, dialDecay) {
+                                                    value,
+                                                    _,
+                                                ->
+                                                offset = value.coerceIn(-14f, 14f)
+                                                tick(last, offset)
+                                                last = offset
+                                            }
+                                            val snapped = (kotlin.math.round(offset * 4f) / 4f).coerceIn(-14f, 14f)
+                                            animate(
+                                                offset,
+                                                snapped,
+                                                animationSpec = spring(
+                                                    dampingRatio = 0.9f,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
+                                            ) {
+                                                    value,
+                                                    _,
+                                                ->
+                                                offset = value
+                                            }
+                                        }
                                     }
-                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                ) { change, dx ->
+                                    change.consume()
+                                    tracker.addPosition(change.uptimeMillis, change.position)
+                                    val before = offset
+                                    // Drag left to go forward in time (the ticks follow the finger).
+                                    offset = (offset - dx / perDay).coerceIn(-14f, 14f)
+                                    tick(before, offset)
                                 }
-                            })
-                        }
-                ) {
-                    Canvas(Modifier.fillMaxWidth().padding(top = 16.dp).height(28.dp)) {
-                        val perDay = size.width / 4f
-                        val mid = size.width / 2
-                        for (q in -40..40) {
-                            val d = q / 4f - (offset - offset.toInt())
-                            val x = mid + d * perDay
-                            if (x < 0 || x > size.width) continue
-                            val major = (q + (offset.toInt() * 4)) % 4 == 0
-                            val fade = 1f - (abs(x - mid) / mid).coerceIn(0f, 1f) * 0.8f
-                            drawLine(
-                                ink.copy(alpha = (if (major) 0.9f else 0.35f) * fade),
-                                Offset(x, if (major) 2f else 8f),
-                                Offset(x, size.height - 2f),
-                                strokeWidth = if (major) 2f else 1.2f
-                            )
-                        }
-                        // Where a new phase begins (new, first quarter, full, last quarter): its little moon
-                        // icon above the tick.
-                        for ((t, a) in phaseMarks) {
-                            val x = mid + ((t - now).toFloat() / DAY - offset) * perDay
-                            if (x < 0f || x > size.width) continue
-                            val markFade = 1f - (abs(x - mid) / mid).coerceIn(0f, 1f) * 0.8f
-                            drawMoonPhaseIcon(phaseIcons, Offset(x, -9f * density), 7f * density, a, ink, markFade)
-                        }
-                        // Today: a small dot under its tick (moves with the dial); out of view, an arrow
-                        // at that edge points the way back.
-                        val todayX = mid - offset * perDay
-                        if (todayX !in 0f..size.width) {
-                            val left = todayX < 0f
-                            val ax = if (left) 6f * density else size.width - 6f * density
-                            val ay = size.height + 6f * density
-                            val dir = if (left) 1f else -1f
-                            drawPath(
-                                Path().apply {
-                                    moveTo(ax - dir * 4f * density, ay)
-                                    lineTo(ax + dir * 3f * density, ay - 4f * density)
-                                    lineTo(ax + dir * 3f * density, ay + 4f * density)
-                                    close()
-                                },
-                                Color(0xFFF6B04A)
-                            )
-                        }
-                        if (todayX in 0f..size.width) {
-                            drawCircle(
-                                Color(0xFFF6B04A),
-                                radius = 3.5f * density,
-                                center = Offset(
-                                    todayX,
-                                    size.height + 6f * density
-                                )
-                            )
-                        }
-                        drawLine(Color(0xFF6FB7F0), Offset(mid, 0f), Offset(mid, size.height), strokeWidth = 3f)
-                    }
-                }
-                Text(
-                    if (abs(offset) <
-                        0.5f
+                            }
+                            // Double-tap: back to today.
+                            .pointerInput(Unit) {
+                                detectTapGestures(onDoubleTap = {
+                                    scope.launch {
+                                        animate(
+                                            offset,
+                                            0f,
+                                            animationSpec = moonSettle
+                                        ) {
+                                                v,
+                                                _,
+                                            ->
+                                            offset = v
+                                        }
+                                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    }
+                                })
+                            }
                     ) {
-                        stringResource(R.string.shell_today)
-                    } else {
-                        SimpleDateFormat("EEE", Locale.getDefault()).apply {
-                            timeZone =
-                                zone
-                        }.format(at)
-                    },
-                    color = ink.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-                Spacer(Modifier.height(16.dp))
-                fun hm(d: Date?) =
-                    d?.let { hhmm(zone).format(it) } ?: "–"
-                // The details in a sentence (design A), values bold and underlined like This week.
-                val days = ((full.time - at.time) / DAY.toDouble()).roundToInt().coerceAtLeast(0)
-                val km = "%,d km".format(distance.roundToInt())
-                val growing = angle < 180
-                val sentences = listOf(
-                    stringResource(
-                        if (growing) R.string.moon_lit_growing else R.string.moon_lit_shrinking
-                    ) to listOf("${(lit * 100).roundToInt()} %"),
-                    if (times.rise != null && times.set != null && times.set!!.before(times.rise)) {
-                        stringResource(R.string.moon_sets_then_rises) to listOf(hm(times.set), hm(times.rise))
-                    } else {
-                        stringResource(R.string.moon_rises_then_sets) to listOf(hm(times.rise), hm(times.set))
-                    },
-                    if (days == 0) {
-                        stringResource(R.string.moon_full_today) to listOf(km)
-                    } else {
-                        stringResource(R.string.moon_full_in) to listOf(context.getString(R.string.moon_days, days), km)
-                    }
-                )
-                val bold = SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
-                val body = buildAnnotatedString {
-                    sentences.forEachIndexed { i, (template, args) ->
-                        if (i > 0) append(" ")
-                        var last = 0
-                        Regex("%(\\d)\\\$s").findAll(template).forEach { m ->
-                            append(template.substring(last, m.range.first))
-                            withStyle(bold) { append(args[m.groupValues[1].toInt() - 1]) }
-                            last = m.range.last + 1
+                        Canvas(Modifier.fillMaxWidth().padding(top = 16.dp).height(28.dp)) {
+                            val perDay = size.width / 4f
+                            val mid = size.width / 2
+                            for (q in -40..40) {
+                                val d = q / 4f - (offset - offset.toInt())
+                                val x = mid + d * perDay
+                                if (x < 0 || x > size.width) continue
+                                val major = (q + (offset.toInt() * 4)) % 4 == 0
+                                val fade = 1f - (abs(x - mid) / mid).coerceIn(0f, 1f) * 0.8f
+                                drawLine(
+                                    ink.copy(alpha = (if (major) 0.9f else 0.35f) * fade),
+                                    Offset(x, if (major) 2f else 8f),
+                                    Offset(x, size.height - 2f),
+                                    strokeWidth = if (major) 2f else 1.2f
+                                )
+                            }
+                            // Where a new phase begins (new, first quarter, full, last quarter): its little moon
+                            // icon above the tick.
+                            for ((t, a) in phaseMarks) {
+                                val x = mid + ((t - now).toFloat() / DAY - offset) * perDay
+                                if (x < 0f || x > size.width) continue
+                                val markFade = 1f - (abs(x - mid) / mid).coerceIn(0f, 1f) * 0.8f
+                                drawMoonPhaseIcon(
+                                    phaseIcons,
+                                    Offset(x, -9f * density),
+                                    7f * density,
+                                    a,
+                                    ink,
+                                    markFade
+                                )
+                            }
+                            // Today: a small dot under its tick (moves with the dial); out of view, an arrow
+                            // at that edge points the way back.
+                            val todayX = mid - offset * perDay
+                            if (todayX !in 0f..size.width) {
+                                val left = todayX < 0f
+                                val ax = if (left) 6f * density else size.width - 6f * density
+                                val ay = size.height + 6f * density
+                                val dir = if (left) 1f else -1f
+                                drawPath(
+                                    Path().apply {
+                                        moveTo(ax - dir * 4f * density, ay)
+                                        lineTo(ax + dir * 3f * density, ay - 4f * density)
+                                        lineTo(ax + dir * 3f * density, ay + 4f * density)
+                                        close()
+                                    },
+                                    Color(0xFFF6B04A)
+                                )
+                            }
+                            if (todayX in 0f..size.width) {
+                                drawCircle(
+                                    Color(0xFFF6B04A),
+                                    radius = 3.5f * density,
+                                    center = Offset(
+                                        todayX,
+                                        size.height + 6f * density
+                                    )
+                                )
+                            }
+                            drawLine(Color(0xFF6FB7F0), Offset(mid, 0f), Offset(mid, size.height), strokeWidth = 3f)
                         }
-                        append(template.substring(last))
                     }
-                }
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(ink.copy(alpha = 0.09f))
-                        .border(0.5.dp, ink.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
-                        .padding(18.dp)
-                ) {
-                    Text(body, color = ink, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (abs(offset) <
+                            0.5f
+                        ) {
+                            stringResource(R.string.shell_today)
+                        } else {
+                            SimpleDateFormat("EEE", Locale.getDefault()).apply {
+                                timeZone =
+                                    zone
+                            }.format(at)
+                        },
+                        color = ink.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    fun hm(d: Date?) =
+                        d?.let { hhmm(zone).format(it) } ?: "–"
+                    // The details in a sentence (design A), values bold and underlined like This week.
+                    val days = ((full.time - at.time) / DAY.toDouble()).roundToInt().coerceAtLeast(0)
+                    val km = "%,d km".format(distance.roundToInt())
+                    val growing = angle < 180
+                    val sentences = listOf(
+                        stringResource(
+                            if (growing) R.string.moon_lit_growing else R.string.moon_lit_shrinking
+                        ) to listOf("${(lit * 100).roundToInt()} %"),
+                        if (times.rise != null && times.set != null && times.set!!.before(times.rise)) {
+                            stringResource(R.string.moon_sets_then_rises) to listOf(hm(times.set), hm(times.rise))
+                        } else {
+                            stringResource(R.string.moon_rises_then_sets) to listOf(hm(times.rise), hm(times.set))
+                        },
+                        if (days == 0) {
+                            stringResource(R.string.moon_full_today) to listOf(km)
+                        } else {
+                            stringResource(R.string.moon_full_in) to
+                                listOf(context.getString(R.string.moon_days, days), km)
+                        }
+                    )
+                    val bold = SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
+                    val body = buildAnnotatedString {
+                        sentences.forEachIndexed { i, (template, args) ->
+                            if (i > 0) append(" ")
+                            var last = 0
+                            Regex("%(\\d)\\\$s").findAll(template).forEach { m ->
+                                append(template.substring(last, m.range.first))
+                                withStyle(bold) { append(args[m.groupValues[1].toInt() - 1]) }
+                                last = m.range.last + 1
+                            }
+                            append(template.substring(last))
+                        }
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(ink.copy(alpha = 0.09f))
+                            .border(0.5.dp, ink.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
+                            .padding(18.dp)
+                    ) {
+                        Text(body, color = ink, style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
         }

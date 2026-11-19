@@ -97,7 +97,8 @@ private fun DrawScope.band(
     blurPx: Float,
     fadeDown: Boolean,
 ) {
-    layer.renderEffect = BlurEffect(blurPx, blurPx, TileMode.Clamp)
+    // Set once (2026-11-19): a new RenderEffect every frame made the GPU rebuild the blur each time.
+    if (layer.renderEffect == null) layer.renderEffect = BlurEffect(blurPx, blurPx, TileMode.Clamp)
     layer.record(IntSize(size.width.toInt(), height.toInt())) {
         translate(top = -offsetY) { drawLayer(content) }
         val mask = if (fadeDown) {

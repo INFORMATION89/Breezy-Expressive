@@ -1623,4 +1623,29 @@ Things to try on the phone before calling any motion done (debug and release bui
   - Content is choreographed: it fades and scales from 0.92 between 35 % and 70 % of the morph,
     and leaves first when closing.
   - Known: while scrubbing, the shrinking heading can overlap the date line for a moment.
+- **2026-11-19 (performance and polish, measured on a release build on the Pixel):**
+  - **Jank fixes:**
+    - The home sky stops drifting while it's covered (Places, This week, a postcard window).
+      Places went from 80 redraws in 3 s while idle to none.
+    - The edge blur no longer creates a new blur effect every frame.
+    - Glass blurs a quarter-size backdrop.
+    - The moon map is decoded once, in the background.
+    - The dial's phase marks are worked out off the main thread, and rise, set and full moon
+      per 15 minutes of dial time.
+    - The card's body is built a frame after the heading.
+    - The morph stays one continuous seek, never settled at the bounce or turned round to close.
+    - Result: moon open and close went from 51 % to about 10 % janky frames, with no spikes during
+      the motion.
+  - **Polish:**
+    - The sheet's content is laid out once at its final width (no reflow while the glass grows).
+    - The date line shows only once the heading has landed.
+    - The sheet's glass fades in over the first 30 % while the pill's outline and "· 71 %" fade
+      out, and the reverse on closing.
+    - The label hands over to the heading in the first 15 %.
+    - The pill's own content scales with the shape.
+    - Closing uses a no-bounce dismiss spring (`SolsticeMotion.dismiss`).
+  - **Still to check:**
+    - A dark pill-sized frame at the very start of the open.
+    - A slight drift of "· 71 %" at the end of the close.
+    - A hitch after the close has finished, while the card is taken down.
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -101,6 +102,9 @@ fun Modifier.glassSource(source: GlassSource): Modifier = this
         drawLayer(source.layer)
     }
 
+/** How much smaller the backdrop is blurred than it's shown. */
+private const val GLASS_DOWNSCALE = 4f
+
 /** A frosted-glass background in [shape]: blurred backdrop + [tint] + a hairline light edge. */
 @Composable
 fun Modifier.glass(
@@ -109,6 +113,8 @@ fun Modifier.glass(
     tint: Color,
     blur: Dp = 28.dp,
     edge: Color = Color.White.copy(alpha = 0.22f),
+    // How much of the glass shows (read while drawing), e.g. while a button's look becomes a sheet's.
+    alpha: () -> Float = { 1f },
 ): Modifier {
     if (source == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return this.clip(shape).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(0.5.dp, edge, shape)
@@ -116,8 +122,14 @@ fun Modifier.glass(
     val blurLayer = rememberGraphicsLayer()
     val placed = remember { Placed() }
     val radius = with(LocalDensity.current) { blur.toPx() }
+    // The backdrop is blurred at a quarter of its size, then scaled back up (2026-11-19): 1/16 of
+    // the pixels for the GPU, and the same look, since a blur throws that detail away anyway. At
+    // full size every glass re-rendered the whole animated sky each frame and frames were missed.
     // Set once per radius: a new RenderEffect every frame makes the GPU rebuild the blur each time.
-    remember(blurLayer, radius) { blurLayer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp) }
+    remember(blurLayer, radius) {
+        val r = radius / GLASS_DOWNSCALE
+        blurLayer.renderEffect = BlurEffect(r, r, TileMode.Clamp)
+    }
     val outline = remember { Path() }
     return this
         .onGloballyPositioned {
@@ -129,21 +141,31 @@ fun Modifier.glass(
         .drawBehind {
             outline.reset()
             outline.addOutline(shape.createOutline(size, layoutDirection, this@drawBehind))
-            blurLayer.record(size = IntSize(size.width.toInt(), size.height.toInt())) {
+            val small = IntSize(
+                (size.width / GLASS_DOWNSCALE).toInt().coerceAtLeast(1),
+                (size.height / GLASS_DOWNSCALE).toInt().coerceAtLeast(1)
+            )
+            blurLayer.record(size = small) {
                 // Only this element's rectangle of the backdrop goes through the blur. Positions are
                 // read now, not from last frame's layout, so a resize never shows a shifted backdrop.
                 source.moved // subscribe: redraw when either side moves
                 placed.moved
                 val from = source.coordinates?.takeIf { it.isAttached }?.positionInRoot() ?: Offset.Zero
                 val to = placed.coordinates?.takeIf { it.isAttached }?.positionInRoot() ?: Offset.Zero
-                translate(from.x - to.x, from.y - to.y) {
-                    drawLayer(source.layer)
+                scale(1f / GLASS_DOWNSCALE, pivot = Offset.Zero) {
+                    translate(from.x - to.x, from.y - to.y) {
+                        drawLayer(source.layer)
+                    }
                 }
             }
-            clipPath(outline) {
-                drawLayer(blurLayer)
-                drawRect(tint)
+            val a = alpha().coerceIn(0f, 1f)
+            if (a > 0f) {
+                blurLayer.alpha = a
+                clipPath(outline) {
+                    scale(GLASS_DOWNSCALE, pivot = Offset.Zero) { drawLayer(blurLayer) }
+                    drawRect(tint.copy(alpha = tint.alpha * a))
+                }
+                drawPath(outline, edge.copy(alpha = edge.alpha * a), style = Stroke(0.5.dp.toPx()))
             }
-            drawPath(outline, edge, style = Stroke(0.5.dp.toPx()))
         }
 }

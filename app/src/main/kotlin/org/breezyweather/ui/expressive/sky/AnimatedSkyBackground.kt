@@ -64,6 +64,9 @@ fun AnimatedSkyBackground(
     skyGlass: GlassSource? = null,
     // The glass the whole screen is recorded in, provided to the content as [LocalPageGlass].
     pageGlass: GlassSource? = null,
+    // Whether the sky can be seen right now (read every frame): covered, it stops drifting, so the
+    // whole screen isn't redrawn 30 times a second for nothing.
+    visible: () -> Boolean = { true },
     content: @Composable () -> Unit = {},
 ) {
     val inner: @Composable () -> Unit = if (skyGlass == null) {
@@ -76,7 +79,7 @@ fun AnimatedSkyBackground(
         }
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && rememberSkyMotionAllowed()) {
-        ShaderSky(state, modifier, skyGlass, inner)
+        ShaderSky(state, modifier, skyGlass, visible, inner)
     } else if (skyGlass != null) {
         Box(modifier) {
             SkyBackground(state, Modifier.fillMaxSize().glassSource(skyGlass))
@@ -99,7 +102,13 @@ private fun rememberSkyMotionAllowed(): Boolean {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-private fun ShaderSky(state: SkyState, modifier: Modifier, skyGlass: GlassSource?, content: @Composable () -> Unit) {
+private fun ShaderSky(
+    state: SkyState,
+    modifier: Modifier,
+    skyGlass: GlassSource?,
+    visible: () -> Boolean,
+    content: @Composable () -> Unit,
+) {
     val shader = remember { RuntimeShader(SKY_AGSL) }
     val brush = remember(shader) { ShaderBrush(shader) }
     // Seconds on a wall-clock base, so the drift continues where it was when coming back.
@@ -110,7 +119,7 @@ private fun ShaderSky(state: SkyState, modifier: Modifier, skyGlass: GlassSource
             var last = 0L
             while (true) {
                 withFrameNanos { now ->
-                    if (now - last >= FRAME_NANOS) {
+                    if (now - last >= FRAME_NANOS && visible()) {
                         last = now
                         seconds = clockSeconds()
                     }

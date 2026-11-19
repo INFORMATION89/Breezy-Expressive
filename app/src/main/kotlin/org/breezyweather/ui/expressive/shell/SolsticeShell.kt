@@ -480,7 +480,12 @@ fun SolsticeShell(
                 sky,
                 Modifier.fillMaxSize().glassSource(glass),
                 skyGlass = skyGlass,
-                pageGlass = glass
+                pageGlass = glass,
+                // Only while the Forecast page shows some of it and no postcard window covers it.
+                visible = {
+                    abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_FORECAST) < 0.999f &&
+                        windowProgress.value < 0.999f
+                }
             ) {
                 Box(
                     Modifier

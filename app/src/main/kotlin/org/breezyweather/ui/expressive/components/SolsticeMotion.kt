@@ -33,6 +33,9 @@ object SolsticeMotion {
     /** Morphing containers (sheets, menus, pills): start immediately, subtle elasticity. */
     val container = spring<Float>(dampingRatio = 0.78f, stiffness = 380f)
 
+    /** Dismissing a container (a sheet back into its button): no bounce, a touch slower, like iOS. */
+    val dismiss = spring<Float>(dampingRatio = 1f, stiffness = 260f)
+
     /** Responsive controls (buttons, toggles, sliders): no bounce. */
     val control = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 

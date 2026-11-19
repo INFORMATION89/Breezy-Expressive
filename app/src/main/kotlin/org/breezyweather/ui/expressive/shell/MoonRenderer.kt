@@ -68,15 +68,29 @@ internal class MoonRenderer private constructor(private val shader: Any?) {
     }
 
     companion object {
+        // The moon map, decoded once per process (2026-11-19): decoding it while the card opened
+        // cost the morph's first frames.
+        @Volatile
+        private var map: android.graphics.Bitmap? = null
+
+        private fun map(context: android.content.Context): android.graphics.Bitmap? =
+            map ?: synchronized(this) {
+                map ?: runCatching { BitmapFactory.decodeResource(context.resources, R.drawable.moon_map) }
+                    .getOrNull()
+                    ?.also { map = it }
+            }
+
+        /** Decodes the moon map off the main thread ahead of time (called where the moon button shows). */
+        fun prewarm(context: android.content.Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) map(context.applicationContext)
+        }
+
         @Composable
         fun remember(): MoonRenderer {
             val context = LocalContext.current
             return remember {
                 val shader = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    runCatching {
-                        val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.moon_map)
-                        MoonShader(bitmap)
-                    }.getOrNull()
+                    runCatching { map(context)?.let { MoonShader(it) } }.getOrNull()
                 } else {
                     null
                 }
