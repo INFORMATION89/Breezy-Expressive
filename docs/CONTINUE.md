@@ -28,6 +28,15 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 - **Open on the moon sheet:** a dark pill-sized frame at the start of opening, "· 71 %" drifting at
   the end of closing, a hitch after closing.
 
+## Done since the last handoff (2026-11-19, without the phone)
+
+Design tokens (`theme/Tokens.kt`, used in 12 files), the `:motion` module (M1 core + M2 morphs,
+Apache-2.0, 14 tests), and the Haze glass prototype behind Settings › Debug. Not checked on the
+phone yet. Details in the PLAN.md log. **First thing with the phone:** install a debug build, look at
+every page for the ~40 spacings that snapped to the 4 dp grid, then try the Haze switch on a release
+build and compare frame times. Then M3. Open decision: the Solstice `MotionScheme` mapping (PLAN.md,
+"Motion framework").
+
 ## Pick up here (next session)
 
 The current focus is **refining the UI to iOS-level polish with shared systems**, not new features.
@@ -42,10 +51,7 @@ Read these three, in order:
 3. PLAN.md, **"Design system foundations"**: tokens first, then the Haze prototype, the component
    catalog and the library swaps.
 
-Still to decide with the user (M0), before writing motion code:
-
-- the spring tokens (the five current ones, plus maybe `snappy`, `gentle`, `press`);
-- the module's name (`:motion` for now) and license (Apache-2.0 for reuse, or LGPL like Solstice).
+M0 is decided (2026-11-19): only the five current springs; `:motion`, Apache-2.0.
 
 Suggested first task, since it changes no motion: **design tokens** (spacing on a 4 dp grid, named
 sizes, shape tokens, a palette file for non-dynamic colours, named hero type styles), replacing

@@ -620,14 +620,31 @@ Added after the library research (2026-11-19, [UI_SYSTEMS.md](UI_SYSTEMS.md)):
   predictive back instead of `ScreenPush`. Compose's own shared elements fit those; our `Morph` is
   only for overlays opened from a control.
 
+### Solstice `MotionScheme`: proposal (to agree, not built)
+
+Material's expressive scheme has three spatial springs (fast ≈ 0.17 s, default ≈ 0.31 s, slow
+≈ 0.48 s, all bouncy) and three effects springs (no bounce). With only our five tokens, the closest
+mapping is below. Our fastest token is 0.31 s, so **switches, ripples and small Material controls
+would get slower** than today. Options: accept it, or allow one more token (e.g. `snappy`, 0.2 s /
+0.9) only for the scheme's fast springs. Needs a decision and a phone check.
+
+| `MotionScheme` | Material expressive now | Proposed token |
+|---|---|---|
+| `fastSpatialSpec` | ≈ 0.17 s / 0.6 | `control` (0.31 s / 1) |
+| `defaultSpatialSpec` | ≈ 0.31 s / 0.8 | `container` (0.32 s / 0.78) |
+| `slowSpatialSpec` | ≈ 0.48 s / 0.8 | `dismiss` (0.39 s / 1) |
+| `fastEffectsSpec` | ≈ 0.11 s / 1 | `control` |
+| `defaultEffectsSpec` | ≈ 0.16 s / 1 | `settle` |
+| `slowEffectsSpec` | ≈ 0.26 s / 1 | `settle` |
+
 ### Steps
 
 1. **M0, agreed 2026-11-19:** springs are the five current tokens only (`container`, `dismiss`,
    `control`, `content`, `settle`; no `snappy`/`gentle`/`press`); the module is `:motion`,
    licensed Apache-2.0 (our own code, for reuse). First task: design tokens, then Haze.
-2. **M1, core:** tokens, `MotionValue`, drag/release with the rules above, unit tests for the
+2. **M1, done 2026-11-19 (`ceae727`):** tokens, `MotionValue`, drag/release with the rules above, unit tests for the
    maths (spring conversion, projection, rubber-band, target choice).
-3. **M2, morph:** anchors, overlay, geometry and text morph, choreography windows, reduced motion.
+3. **M2, done 2026-11-19 (`e0310e9`, not yet used in the app):** anchors, overlay, geometry and text morph, choreography windows, reduced motion.
 4. **M3, moon card on it:** remove `MoonSharedLayout`, the seek and the fake tweens; it must look the
    same or better, with the three open moon issues fixed (dark frame at the start, "· 71 %" drift,
    hitch after closing). Measure janky frames on a release build against today's ~10 %.
@@ -1343,6 +1360,20 @@ Things to try on the phone before calling any motion done (debug and release bui
   icon/touch sizes, the two hero temperature styles. ~40 off-grid values snapped to the grid
   (mostly 6 → 8 dp, 10 → 12 dp). ~150 one-off layout dimensions (chart heights, widths) stay as
   literals. Compiles; not yet checked on the phone. Next: continuous corners, then the Haze prototype.
+
+- **2026-11-19:** Without the phone (nothing below checked on it yet):
+  - **`:motion` module (M1, `ceae727`):** `MotionSpring` (response + damping) and the five tokens at
+    the same values as before; `MotionPhysics` (rubber-band, resistance, UIKit projection, release
+    target with slow/fast flick rules); `MotionValue` (drag, release with velocity, interrupt,
+    windows) and `Modifier.motionDrag`. `SolsticeMotion` reads its values from it.
+  - **Morphs (M2, `e0310e9`):** `MorphHost`, `morphAnchor`, `Morph` (lerped geometry, content
+    measured once at the target size), `reveal`/`handOff`, reduced motion. 14 unit tests pass.
+  - **Haze prototype (`96b022b`):** Haze 2.1.0 draws `glass` when Settings › Debug › "Glass: Haze
+    (prototype)" is on (off by default, not saved). Gaps: glass alpha isn't per-frame on Haze yet;
+    edge blur still uses `EdgeBlur.kt`. Decide on the Pixel 7 release build.
+  - **Solstice `MotionScheme`:** not built; mapping and the trade-off written above, to agree.
+  - **Next (needs the phone):** check the tokens pass and the Haze switch on the Pixel, then M3
+    (moon card on `Morph`/`MotionValue`, fixing its three open issues).
 
 ## Backlog (user notes, 2026-11-18)
 
