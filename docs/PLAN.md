@@ -1847,3 +1847,8 @@ Things to try on the phone before calling any motion done (debug and release bui
   swipes, predictive back everywhere, Navigation 3 for pushed screens).
 - **2026-11-19:** CONTINUE.md brought up to date (state as of 2026-11-19, "Pick up here" for the next
   session); status line updated. Plan branch merged into main.
+- **2026-11-19 (review, not fixed):** code review of `98647ef`…`563f57c`. Two `MotionValue` bugs to fix
+  before M3: catching an overshoot jumps back (rubber-band applied twice after `stop()`), and
+  `motionDrag` doesn't catch a moving surface until the touch slop. Plus smaller notes (Morph content
+  alignment, per-frame shape, reduced motion is a snap, `control` = `settle`) and what the token pass
+  left. Details and next steps in CONTINUE.md, "Code review of those commits".

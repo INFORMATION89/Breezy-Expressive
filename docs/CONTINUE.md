@@ -53,10 +53,57 @@ Read these three, in order:
 
 M0 is decided (2026-11-19): only the five current springs; `:motion`, Apache-2.0.
 
-Suggested first task, since it changes no motion: **design tokens** (spacing on a 4 dp grid, named
-sizes, shape tokens, a palette file for non-dynamic colours, named hero type styles), replacing
-literals file by file in `ui/expressive/`. Then the **Haze prototype** for glass and edge blur behind
-a debug switch, measured on the Pixel 7 release build against `Glass.kt`.
+Tokens (`98647ef`), `:motion` M1 (`ceae727`) and M2 (`e0310e9`) and the Haze prototype (`96b022b`)
+are done; see "Done since the last handoff" above.
+
+### Code review of those commits (2026-11-19, not yet fixed)
+
+Unit tests weren't run in the review (no Android SDK there); run `./gradlew :motion:test` first.
+
+**Fix before M3 (bugs in `motion/…/MotionValue.kt`):**
+
+1. **Catching an overshoot jumps back.** `stop()` sets `raw = animatable.value`, but past an end the
+   value is already rubber-banded, so the next `drag()` resists it twice. On a 600 dp range: ~6 dp
+   jump when caught 2 % past open, ~17 dp at 5 %, ~30 dp at 8 % (the container spring overshoots
+   ~2 % even from rest). Fix: in `stop()`, set `raw` to the inverse of `MotionPhysics.resist` (add an
+   `unresist(shown, min, max, overMin, overMax)` to `MotionPhysics`, unit-tested as the inverse).
+2. **Can't catch it mid-flight right away.** `Modifier.motionDrag` uses `draggable` without
+   `startDragImmediately`, so a moving surface keeps going under the finger until the touch slop,
+   then jumps. Fix: `startDragImmediately = value.isRunning`.
+3. Add unit tests for `MotionValue` (drag, stop mid-flight, release past an end, fast/slow flick);
+   today only `MotionPhysics` and `MorphGeometry` are tested.
+
+These are bug fixes, not new motion, but confirm with the user before pushing (motion rule).
+
+**Smaller, when touching the code:**
+
+- `Morph` content is laid out at the target size and placed at the moving surface's **top-left**, so
+  a pill near the bottom reveals the sheet's top corner first. Add a content alignment (e.g. align to
+  the source's edge), and decide it with the user for the moon card.
+- `Morph` returns early (draws nothing) until both anchors are measured. Keep in mind for the moon
+  card's "dark frame at the start of opening".
+- `Morph` creates a `RoundedCornerShape` every frame in `graphicsLayer`; reuse one shape object.
+- Haze glass reads `alpha` only when composed (already noted in the log).
+- **Reduced motion:** with "Remove animations" on, Compose finishes animations instantly, so
+  `Morph`'s "short fade" is really a snap. Fine, but say so in MOTION.md / PLAN.md.
+- `Motion.control` and `Motion.settle` are the same spring (0.31 s / 1): merge or tell them apart.
+- `rememberMotionValue` ignores later changes to `restPoints`/`overMin`/`overMax` (not keys);
+  `motionDrag` writes `slowFlick`/`fastFlick` during composition. Harmless today.
+
+**Tokens pass:** it rounded off-grid values (6 → 4/8, 10 → 8/12, 14 → 12/16), so some spacing moved
+by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals (most common: 10 dp
+×10, 6 dp ×6, 18 dp ×6, 7 dp ×4, 22 dp ×4), 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`. The 28
+`spring(…)` and 12 `tween(…)` move in M4.
+
+### Next, in order
+
+1. Fix the two `MotionValue` bugs + tests (after the user agrees).
+2. On the Pixel 7 (release build): check the token pass, then compare glass with the Haze switch
+   (Settings › Debug › "Glass: Haze (prototype)") and decide.
+3. Decide the Solstice `MotionScheme` (PLAN.md, "Motion framework": switches get slower with only
+   five tokens; accept or allow a `snappy` token).
+4. M3: the moon card on `Morph`/`MotionValue`, fixing its three open issues.
+5. Finish the tokens (remaining literals) alongside M4.
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the
 PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`.
