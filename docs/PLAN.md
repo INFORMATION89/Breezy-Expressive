@@ -1478,3 +1478,13 @@ Things to try on the phone before calling any motion done (debug and release bui
 - **Remove the grain paper effect** from the Places background for now, and use the same
   background and fade-in system as This week.
 - **A button to clear recent searches.**
+- **Later fixes (user notes, 2026-11-19):**
+  - **Rendering past the edges when the page recedes.** Opening search scales the page down a little
+    (keep that animation), and you can see that the page background and the progressive edge blur
+    don't render outside their original bounds; the postcards do. Extend the background and edge
+    blur a bit beyond the visible area (e.g. draw them with overscan), so nothing looks cut while
+    receding. The same receding animation will be used when opening floating cards, so it has to
+    work everywhere.
+  - **Tab tap speeds:** tapping a neighbouring tab still looks faster than the edge-to-edge jump.
+    Use the average of the two speeds for both, only for icon taps (swipes are unaffected), and add
+    a little spring to the edge-to-edge jump.
