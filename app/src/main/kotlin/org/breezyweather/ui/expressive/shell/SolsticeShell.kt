@@ -31,6 +31,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -111,6 +112,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -121,6 +123,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -1074,7 +1077,9 @@ private fun ToolbarTabs(
                             scaleX = squeeze.value
                             scaleY = squeeze.value
                         }
-                        .padding(start = 14.dp)
+                        .padding(horizontal = 6.dp),
+                    // Icon and label centred in the tab, whatever the label's length.
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(8.dp * shown[i]))
@@ -1084,7 +1089,18 @@ private fun ToolbarTabs(
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         softWrap = false,
-                        modifier = Modifier.graphicsLayer { alpha = shown[i] }
+                        modifier = Modifier
+                            // Takes only as much width as it has unfolded, so the icon stays centred
+                            // in a folded tab.
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(
+                                    constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
+                                )
+                                layout((placeable.width * shown[i]).roundToInt(), placeable.height) {
+                                    placeable.place(0, 0)
+                                }
+                            }
+                            .graphicsLayer { alpha = shown[i] }
                     )
                 }
             }

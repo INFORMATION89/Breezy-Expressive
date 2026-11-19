@@ -349,6 +349,7 @@ private fun SunPath(location: Location, now: Long, text: Color) {
     // 0/360 = new, 180 = full; waxing below 180 (lit on the right).
     val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
     var showPhase by remember { mutableStateOf(false) }
+    val phaseIcons = rememberMoonPhaseIcons()
     val warm = Color(0xFFF2A33A)
     val cool = Color(0xFF8FA3E8)
     val accent = if (night) cool else warm
@@ -420,14 +421,27 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             }
             drawPath(done, accent, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
             drawRect(fade, blendMode = BlendMode.DstIn)
-            drawContext.canvas.restore()
             val c = point(sunX)
+            // The lines fade out around the sun or moon instead of running underneath it.
+            val clear = (if (night) 10.dp else 7.dp).toPx() + 8.dp.toPx()
+            drawCircle(
+                Brush.radialGradient(
+                    0f to Color.Black,
+                    0.6f to Color.Black,
+                    1f to Color.Transparent,
+                    center = c,
+                    radius = clear
+                ),
+                radius = clear,
+                center = c,
+                blendMode = BlendMode.DstOut
+            )
+            drawContext.canvas.restore()
             if (!night) {
                 drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
             } else {
-                // The plain moon icon in its phase (the realistic moon is for the moon card).
-                val r = 8.dp.toPx()
-                drawMoon(c, r, angle, lit, Color(0xFF2B2A3A).copy(alpha = 0.8f))
+                // The plain outline phase icon (the realistic moon is for the moon card).
+                drawMoonPhaseIcon(phaseIcons, c, 10.dp.toPx(), angle, text)
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1003,8 +1017,14 @@ internal fun PlacesPage(
 
     LazyColumn(
         state = listState,
-        // Top padding chosen so the heading sits at the same height as This week's.
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 34.dp, bottom = 132.dp),
+        // Edge to edge like This week: the list scrolls under a transparent status bar. Top padding
+        // chosen so the heading sits at the same height as This week's.
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 34.dp,
+            bottom = 132.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         // The same plain page and progressive edge blur as This week (the grain paper is off for now).
         modifier = Modifier.fillMaxSize()
@@ -1013,7 +1033,6 @@ internal fun PlacesPage(
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 56.dp,
                 strength = pageFade
             )
-            .statusBarsPadding()
     ) {
         item(key = "header") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
@@ -1114,7 +1133,12 @@ internal fun PlacesPage(
                             visiting = id in visiting,
                             // The current location folds into a one-line strip when another place is
                             // the main place.
-                            folded = location.isCurrentPosition && id !in starred && starred.isNotEmpty(),
+                            // The starred place folds into a strip under the current location (it's the
+                            // main screen anyway); with no current location it stays a full card.
+                            // The current location is always a strip on top; the starred place folds into a
+                            // strip under it (with no current location it stays a full card).
+                            folded = location.isCurrentPosition ||
+                                (id in starred && locations.any { it.isCurrentPosition }),
                             now = now,
                             context = context,
                             // The starred place is the main screen itself: it doesn't open as a postcard.
@@ -1389,7 +1413,8 @@ private fun PlaceCard(
         spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
         label = "fold"
     )
-    val stripHeight = with(LocalDensity.current) { 52.dp.toPx() }
+    // Tall enough for the star stamp.
+    val stripHeight = with(LocalDensity.current) { 64.dp.toPx() }
     Box(
         modifier
             .fillMaxWidth()
@@ -1436,11 +1461,14 @@ private fun PlaceCard(
             // Top caption, on the picture: the place, and its weather.
             val topCaption: @Composable (Modifier) -> Unit = { captionModifier ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = captionModifier) {
+                    // The current location's name is red, like a "you are here" mark on a map.
+                    val here = Color(0xFFFF5A4E)
+                    val nameColor = if (location.isCurrentPosition) here else sky.palette.text
                     if (location.isCurrentPosition) {
                         Icon(
                             Icons.Filled.NearMe,
                             contentDescription = stringResource(R.string.location_current),
-                            tint = sky.palette.text,
+                            tint = nameColor,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(Modifier.width(4.dp))
@@ -1448,18 +1476,22 @@ private fun PlaceCard(
                     Text(
                         title.uppercase(),
                         style = caption,
-                        color = sky.palette.text,
+                        color = nameColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        listOfNotNull(
-                            if (visiting && selected) context.getString(R.string.shell_visiting) else null,
-                            current?.weatherText
-                        ).joinToString(" · ").uppercase(),
+                        if (location.isCurrentPosition && starred) {
+                            stringResource(R.string.shell_you_are_here)
+                        } else {
+                            listOfNotNull(
+                                if (visiting && selected) context.getString(R.string.shell_visiting) else null,
+                                current?.weatherText
+                            ).joinToString(" · ")
+                        }.uppercase(),
                         style = caption,
-                        color = sky.palette.text,
+                        color = if (location.isCurrentPosition && starred) here else sky.palette.text,
                         maxLines = 1,
                         modifier = Modifier.padding(start = 8.dp)
                     )
@@ -1542,7 +1574,9 @@ private fun PlaceCard(
                 ink = ink,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 36.dp, end = 16.dp)
+                    // In the strip it sits centred at the end.
+                    // Centred vertically on the strip.
+                    .padding(top = (36f - 32f * fold).dp, end = (16f - 6f * fold).dp)
                     .graphicsLayer {
                         val t = peel.value
                         val lower = (t / 0.6f).coerceIn(0f, 1f)
@@ -1575,7 +1609,7 @@ private fun PlaceCard(
                 .padding(bottom = 26.dp, end = 12.dp)
                 .graphicsLayer { alpha = 1f - fold }
         )
-        // Folded: one line on the paper (name, weather, temperature).
+        // Folded: one line on the paper (the starred place's name; its stamp sits at the end).
         if (fold > 0.01f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1585,28 +1619,49 @@ private fun PlaceCard(
                     .padding(horizontal = 6.dp)
                     .graphicsLayer { alpha = ((fold - 0.4f) / 0.6f).coerceIn(0f, 1f) }
             ) {
-                Icon(Icons.Filled.NearMe, contentDescription = null, tint = ink, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                if (location.isCurrentPosition) {
+                    Icon(
+                        Icons.Filled.NearMe,
+                        contentDescription = stringResource(R.string.location_current),
+                        tint = Color(0xFFE5483C),
+                        modifier = Modifier.padding(start = 8.dp).size(14.dp)
+                    )
+                }
                 Text(
                     placeName(context, location).first,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = ink,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (location.isCurrentPosition) Color(0xFFE5483C) else ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).padding(start = 8.dp, end = 8.dp)
                 )
-                Icon(
-                    hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
-                    contentDescription = current?.weatherText,
-                    tint = ink,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ink
-                )
+                // The current location: "you are here" when it's the main place, its weather otherwise.
+                if (location.isCurrentPosition) {
+                    if (starred) {
+                        Text(
+                            stringResource(R.string.shell_you_are_here).uppercase(),
+                            style = caption,
+                            color = Color(0xFFE5483C),
+                            modifier = Modifier.padding(end = 56.dp)
+                        )
+                    } else {
+                        Icon(
+                            hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
+                            contentDescription = current?.weatherText,
+                            tint = ink,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ink,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.width(48.dp))
+                }
             }
         }
     }

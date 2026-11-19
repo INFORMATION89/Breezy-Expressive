@@ -79,4 +79,5 @@
         <item>seven</item>
     </string-array>
     <string name="search_clear_recents">Clear</string>
+    <string name="shell_you_are_here">You are here</string>
 </resources>

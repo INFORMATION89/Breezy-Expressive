@@ -21,6 +21,7 @@ import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -101,7 +102,15 @@ private fun moonAt(date: Date): Pair<Int, Float> {
  * A moon in its phase: a pale disc with soft grey "seas", and the shadow sliding across it; lit on
  * the right while waxing (angle < 180).
  */
-internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float, shadow: Color) {
+internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float, shadow: Color, alpha: Float = 1f) {
+    if (alpha < 0.999f) {
+        // Faded as a whole (e.g. towards a dial's edges).
+        val paint = androidx.compose.ui.graphics.Paint().apply { this.alpha = alpha }
+        drawContext.canvas.saveLayer(Rect(center, r * 1.1f), paint)
+        drawMoon(center, r, angle, lit, shadow, 1f)
+        drawContext.canvas.restore()
+        return
+    }
     drawCircle(
         Brush.radialGradient(
             listOf(Color(0xFFF4F1E8), Color(0xFFCFCBC0)),
@@ -199,6 +208,26 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
     // Scrubbing offset in days (fractional while dragging).
     var offset by remember { mutableFloatStateOf(0f) }
     val haptics = LocalHapticFeedback.current
+    val phaseIcons = rememberMoonPhaseIcons()
+    // The principal phases within the dial's range, and their angles.
+    val phaseMarks = remember(now) {
+        val start = Date(now - 15 * DAY)
+        listOf(
+            MoonPhase.Phase.NEW_MOON to 0,
+            MoonPhase.Phase.FIRST_QUARTER to 90,
+            MoonPhase.Phase.FULL_MOON to 180,
+            MoonPhase.Phase.LAST_QUARTER to 270
+        ).flatMap { (phase, a) ->
+            buildList {
+                var from = start
+                repeat(2) {
+                    val t = MoonPhase.compute().phase(phase).on(from).execute().time
+                    add(t.time to a)
+                    from = Date(t.time + DAY)
+                }
+            }
+        }.filter { abs(it.first - now) <= 15 * DAY }
+    }
     var fling by remember { androidx.compose.runtime.mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     // Haptics: a firm tick per day, a lighter one per 6-hour step.
@@ -221,9 +250,22 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
     val full = MoonPhase.compute().phase(MoonPhase.Phase.FULL_MOON).on(at).execute().time
     val position = MoonPosition.compute().on(at).at(location.latitude, location.longitude).execute()
     val distance = position.distance
-    // How the moon is turned in this place's sky at this time.
+    // How the moon is turned in this place's sky at the shown time: the real parallactic angle while
+    // the moon is up, easing to upright as it nears and drops below the horizon (where its true
+    // tilt would look wild). Both inputs change continuously with time, and a spring smooths the
+    // rest, so scrubbing turns it gently instead of jumping.
     val limbAngle = MoonIllumination.compute().on(at).execute().angle
-    val parallactic = position.parallacticAngle
+    val up = ((position.altitude + 5.0) / 20.0).coerceIn(0.0, 1.0)
+    val rest = if (location.latitude < 0) 180.0 else 0.0
+    var q = position.parallacticAngle
+    if (q - rest > 180) q -= 360
+    if (q - rest < -180) q += 360
+    val targetParallactic = rest + (q - rest) * up * up * (3 - 2 * up)
+    val parallactic by animateFloatAsState(
+        targetParallactic.toFloat(),
+        spring(dampingRatio = 1f, stiffness = Spring.StiffnessLow),
+        label = "moonTilt"
+    )
     val ink = Color(0xFFEDEBF5)
     run {
         Column(
@@ -263,7 +305,7 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                     angle,
                     Color(0xFF050509),
                     limbAngle = limbAngle,
-                    parallactic = parallactic
+                    parallactic = parallactic.toDouble()
                 )
             }
             Text(
@@ -281,7 +323,7 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(60.dp)
                     .pointerInput(Unit) {
                         val perDay = size.width / 4f
                         val tracker = VelocityTracker()
@@ -348,7 +390,7 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                         })
                     }
             ) {
-                Canvas(Modifier.fillMaxWidth().height(28.dp)) {
+                Canvas(Modifier.fillMaxWidth().padding(top = 16.dp).height(28.dp)) {
                     val perDay = size.width / 4f
                     val mid = size.width / 2
                     for (q in -40..40) {
@@ -363,6 +405,14 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                             Offset(x, size.height - 2f),
                             strokeWidth = if (major) 2f else 1.2f
                         )
+                    }
+                    // Where a new phase begins (new, first quarter, full, last quarter): its little moon
+                    // icon above the tick.
+                    for ((t, a) in phaseMarks) {
+                        val x = mid + ((t - now).toFloat() / DAY - offset) * perDay
+                        if (x < 0f || x > size.width) continue
+                        val markFade = 1f - (abs(x - mid) / mid).coerceIn(0f, 1f) * 0.8f
+                        drawMoonPhaseIcon(phaseIcons, Offset(x, -9f * density), 7f * density, a, ink, markFade)
                     }
                     // Today: a small dot under its tick (moves with the dial); out of view, an arrow
                     // at that edge points the way back.

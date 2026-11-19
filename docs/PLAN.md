@@ -1516,3 +1516,28 @@ Things to try on the phone before calling any motion done (debug and release bui
   from, and the parallactic angle at the place and time turns the whole disc (texture and light),
   so it rotates through the night and flips in the southern hemisphere. Its shadow is 80 % dark.
   **`docs/WRITING.md`** is the worksheet for tomorrow's conditional-text writing session.
+- **2026-11-19 (built, checked in the debug app on the Pixel):**
+  - **Moon rotation calmer.** The orientation is taken when the moon is highest in the sky within
+    ±12 h of the shown time (not at that exact moment, which spun it and showed its tilt below the
+    horizon), so it changes gently day to day.
+  - **Phase icons on the dial:** a small moon icon above the tick where each principal phase
+    begins (new, first quarter, full, last quarter), within ±15 days.
+  - **Places:** the current location's name is red. When it's the starred place, its weather
+    caption reads "YOU ARE HERE". A different starred place **folds into a 64 dp strip under the
+    current location** with just its name and the star stamp, which slides into the strip; with no
+    current location it stays a full card.
+- **2026-11-19 (built, checked in the debug app on the Pixel):**
+  - **Moon rotation, smooth and real:** the real parallactic angle at the shown time while the moon
+    is up, easing to upright as it nears and drops below the horizon (smoothstep on altitude −5°…15°),
+    then a no-bounce spring. Both inputs are continuous in time, so scrubbing turns it gently.
+  - **Outline moon-phase icons** from Weather Icons (`wi-moon-alt-*`, SIL OFL 1.1, credited in
+    `third_party/weather-icons`), as `moon_phase_0..7` vector drawables. Used on the dial where a
+    phase begins (fading towards the edges like the ticks) and for the moon on the Forecast sun path.
+  - **Sun path:** the curve and horizon fade out in a soft circle around the sun or moon, so the
+    line never runs underneath it.
+  - **Places:** the current location is always a strip on top (red arrow and name; "YOU ARE HERE"
+    plus the star stamp when it's the main place; otherwise its weather and temperature). A different
+    starred place folds into a strip under it with just its name and stamp. The stamp is centred
+    on the strip.
+  - **Places scrolls under a transparent status bar** like This week.
+  - **Toolbar labels centred** in their tabs; a folding label only takes the width it has unfolded.

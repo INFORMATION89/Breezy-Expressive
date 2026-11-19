@@ -53,6 +53,7 @@ ship, and add new notes under the right area.
   average of the two speeds for both (icon taps only; swipes stay as they are).
 
 ### Refinement
+- [x] Toolbar labels centred in their tabs (2026-11-19).
 - [ ] A little spring on the edge-to-edge jump.
 - [ ] A slight gradient on toolbar buttons: lighter on top, darker at the bottom, derived from each
   button's own colour.
@@ -95,6 +96,10 @@ ship, and add new notes under the right area.
 
 ## Moon
 
+- [x] Smooth rotation (real parallactic angle eased by altitude, plus a spring); outline phase icons from Weather Icons on the dial (fading at the edges) and the sun path; the sun path line fades around the sun and moon (2026-11-19).
+
+- [x] Calmer rotation (orientation at the moon's highest); phase icons on the dial where phases begin (2026-11-19).
+
 - [x] Realistic moon turns with the sky (bright-limb angle + parallactic angle), shadow 80 %; Forecast keeps the plain moon icon, no halo (2026-11-19).
 
 ### Functionality
@@ -129,7 +134,13 @@ ship, and add new notes under the right area.
 
 ## Places
 
+- [x] Starred place folds into a stamp-sized strip under the current location; current location in red; "YOU ARE HERE" when it's starred (2026-11-19).
+
 - [x] The current location always stays at the top (2026-11-19).
+
+- [x] The current location is always a strip; stamp centred on the strip; Places scrolls under a transparent status bar (2026-11-19).
+
+
 
 ### Functionality
 - [x] ⭐💬 **The starred place folds into a compact version.**
