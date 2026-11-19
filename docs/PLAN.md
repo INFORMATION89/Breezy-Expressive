@@ -1473,6 +1473,11 @@ Things to try on the phone before calling any motion done (debug and release bui
     elements between screens; it costs rewriting upstream's `SettingsActivity` (harder merges).
     Waiting for the user's decision.
 
+- **2026-11-19: postcards** (user's requests, checked on the Pixel 7): rounder corners (24 dp, the
+  deckle kept on the straight edges); an even paper border all round (one caption line with its
+  margins, ~28 dp) with the place and its weather on the top border and the country on the bottom;
+  the window morph and its paper frame follow.
+
 ## Backlog (user notes, 2026-11-18)
 
 ### Foundations
