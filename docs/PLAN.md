@@ -646,7 +646,7 @@ would get slower** than today. Options: accept it, or allow one more token (e.g.
 2. **M1, done 2026-11-19 (`ceae727`):** tokens, `MotionValue`, drag/release with the rules above, unit tests for the
    maths (spring conversion, projection, rubber-band, target choice).
 3. **M2, done 2026-11-19 (`e0310e9`, not yet used in the app):** anchors, overlay, geometry and text morph, choreography windows, reduced motion.
-4. **M3, moon card on it:** remove `MoonSharedLayout`, the seek and the fake tweens; it must look the
+4. **M3, done 2026-11-19 (checked on the Pixel 7, profile build):** remove `MoonSharedLayout`, the seek and the fake tweens; it must look the
    same or better, with the three open moon issues fixed (dark frame at the start, "· 71 %" drift,
    hitch after closing). Measure janky frames on a release build against today's ~10 %.
 5. **M4, move everything over:** search sheet, postcard window, floating button budding from the
@@ -1416,6 +1416,24 @@ Things to try on the phone before calling any motion done (debug and release bui
     | Haze glass + our edge blur | 1.8–3.2 % | 13–15 ms | 22–24 ms | 31–36 ms |
 
     So `EdgeBlur.kt` keeps our band blur (the plan's rule: keep ours where Haze is slower).
+
+- **2026-11-19: M3, the moon card on `:motion`** (agreed: UIKit release rules, iOS rubber-band up
+  to 100 dp past open). `MoonSharedLayout` is a `MorphHost`; the pill and its label are anchors and
+  fade in place through their windows (material 0–30 %, label 0–15 %); the sheet is a `Morph` with
+  its docked geometry given up front (draws from the first frame), a shape whose bottom corners
+  square off as it docks, centred content laid out once, Haze glass on the moving surface, and the
+  heading flying from the label (`morphFrom`). One `MotionValue` drives it all; `motionDrag` on the
+  whole screen; back and a tap above close it. No `SharedTransitionLayout`, seek, `runCatching` or
+  fake tweens left. `:motion` gained: target geometry given directly, `shape`, `surface`,
+  `contentAlignment`, `morphFrom`, shape reuse without in-place changes.
+  - **On the phone:** opening and closing look right (screen recordings); back closes; a short
+    slow pull springs back open; a fast flick closes (a flick just under 1000 dp/s that projects to
+    about half way stays open: the rule as specified, borderline). Three open/close cycles:
+    **3.3 % janky** (was ~10 %), median 18 ms, 99th 38 ms.
+  - **The three open issues:** "· 71 %" can't drift any more (the pill no longer moves, it fades
+    in place); nothing is rebuilt mid-motion (no shared transition), which was behind the hitch;
+    the first frames show the glass fading in from the pill, not an empty dark frame. To confirm by
+    feel on the phone.
 
 ## Backlog (user notes, 2026-11-18)
 

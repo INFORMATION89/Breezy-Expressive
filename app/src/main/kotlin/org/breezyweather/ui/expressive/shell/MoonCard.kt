@@ -91,9 +91,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
@@ -116,8 +119,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.Morph
+import io.github.information89.motion.MorphAnchor
+import io.github.information89.motion.MorphHost
+import io.github.information89.motion.MotionValue
+import io.github.information89.motion.morphAnchor
+import io.github.information89.motion.morphFrom
+import io.github.information89.motion.motionDrag
+import io.github.information89.motion.rememberMotionValue
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import org.breezyweather.R
@@ -191,11 +204,6 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
     }
 }
 
-/** The moon card's shared transition: Compose's container transform between the button and the sheet. */
-internal class MoonShared(val scope: SharedTransitionScope, val transition: Transition<Boolean>)
-
-internal val LocalMoonShared = staticCompositionLocalOf<MoonShared?> { null }
-
 /** The dial's fling, slowing down. */
 private val dialDecay = FloatExponentialDecaySpec(frictionMultiplier = 1.6f)
 
@@ -204,39 +212,33 @@ private val moonSettle = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.S
 
 private fun hhmm(zone: java.util.TimeZone) = SimpleDateFormat("HH:mm", Locale.getDefault()).apply { timeZone = zone }
 
-/**
- * The moon morph is always seeked: a gesture-driven spring (SolsticeMotion.container, with the
- * finger's velocity) sets the transition's fraction, and every shared part follows that fraction
- * linearly, so there's one physical curve, not two stacked.
- */
-private const val MOON_SPAN = 1000
-private val moonBounds = BoundsTransform { _, _ -> tween(MOON_SPAN, easing = LinearEasing) }
+/** Morph keys for a place's moon button and its label. */
+private fun pillKey(location: Location) = "moon-pill-${location.formattedId}"
+private fun labelKey(location: Location) = "moon-label-${location.formattedId}"
 
 /**
- * The pill's own look (outline, "· 71 %") fades over the first 30 % of the way while the sheet's
- * glass fades in over the same stretch: the material changes with the shape, and back on closing.
+ * Choreography on the morph's value (M3, 2026-11-19): the pill's own look (outline, "· 71 %") fades
+ * over the first 30 % while the sheet's glass fades in over the same stretch; the label hands over to
+ * the heading in the first 15 %. Closing plays the same windows backwards.
  */
 private const val MATERIAL_SPAN = 0.3f
-private val pillExit = fadeOut(tween((MOON_SPAN * MATERIAL_SPAN).toInt(), easing = LinearEasing))
+private const val LABEL_SPAN = 0.15f
+
+/** How far the sheet travels between the pill and open, for the drag (finger distance per unit). */
+private val MOON_RANGE = 420.dp
+
+/** iOS: a sheet pulled past open travels up to about 100 pt. */
+private val MOON_OVER_PULL = 100.dp
+
+private fun smooth(t: Float) = t * t * (3 - 2 * t)
 
 /**
- * The label hands over to the heading in the first 15 % of the way, while both are still about the
- * button's size and in the same place (a longer cross-over showed two labels).
- */
-private val labelIn = fadeIn(tween(MOON_SPAN * 15 / 100, easing = LinearEasing))
-private val labelOut = fadeOut(tween(MOON_SPAN * 15 / 100, easing = LinearEasing))
-private val pillEnter = fadeIn(tween(MOON_SPAN / 10, delayMillis = MOON_SPAN * 9 / 10, easing = LinearEasing))
-
-/**
- * Wraps the shell so the moon button (deep in a page) and the moon sheet (over everything) share
- * one transition (agreed 2026-11-19: Compose's shared bounds, seekable so a pull scrubs it).
+ * Wraps the shell so the moon button (deep in a page) and the moon sheet (over everything) share one
+ * morph space: the :motion module draws the morph from their anchors (M3, no shared transition).
  */
 @Composable
 internal fun MoonSharedLayout(content: @Composable () -> Unit) {
-    SharedTransitionLayout(Modifier.fillMaxSize()) {
-        val transition = rememberTransition(MoonCardState.seek, label = "moon")
-        CompositionLocalProvider(LocalMoonShared provides MoonShared(this, transition)) { content() }
-    }
+    MorphHost(Modifier.fillMaxSize()) { content() }
 }
 
 /** The moon phase button under the sun path: always visible, outlined so it reads as a button. */
@@ -254,68 +256,38 @@ internal fun MoonButton(
     val suffix = " · ${(lit * 100).roundToInt()} %"
     // The screen it's on (home, or a postcard window): the card blurs that.
     val pageGlass = org.breezyweather.ui.expressive.components.LocalPageGlass.current
-    val shared = LocalMoonShared.current
-    val key = "moon-${location.formattedId}"
     // Get the moon's texture ready in the background, so opening the card doesn't wait for it.
     LaunchedEffect(Unit) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { MoonRenderer.prewarm(context) }
     }
-
-    @Composable
-    fun Pill(modifier: Modifier, label: Modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-                .clip(CircleShape)
-                .border(1.dp, text.copy(alpha = 0.35f), CircleShape)
-                .clickable {
-                    MoonCardState.glass = pageGlass
-                    MoonCardState.buttonInk = text
-                    MoonCardState.show(location, now, null, phase + suffix, palette, night)
-                }
-                .padding(horizontal = Space.S3, vertical = Space.S2)
-        ) {
-            Text(phase, color = text, style = MaterialTheme.typography.labelLarge, modifier = label)
-            Text(suffix, color = text, style = MaterialTheme.typography.labelLarge)
-        }
-    }
-    if (shared == null) {
-        Pill(Modifier, Modifier)
-        return
-    }
-    // A placeholder keeps the button's space while the button itself is the card.
-    Box {
-        Pill(Modifier.graphicsLayer { alpha = 0f }, Modifier)
-        shared.transition.AnimatedVisibility(
-            visible = { open -> !(open && MoonCardState.request?.first?.formattedId == location.formattedId) },
-            enter = EnterTransition.None,
-            exit = ExitTransition.None
-        ) {
-            with(shared.scope) {
-                Pill(
-                    // The pill's shape morphs into the sheet (no crossfade of the containers).
-                    Modifier.sharedBounds(
-                        rememberSharedContentState(key),
-                        this@AnimatedVisibility,
-                        enter = pillEnter,
-                        exit = pillExit,
-                        boundsTransform = moonBounds,
-                        // The pill's own content keeps its layout and scales with the shape, so the
-                        // "· 71 %" never drifts while it fades.
-                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
-                        clipInOverlayDuringTransition = OverlayClip(CircleShape)
-                    ),
-                    Modifier.sharedBounds(
-                        rememberSharedContentState("$key-label"),
-                        this@AnimatedVisibility,
-                        enter = labelIn,
-                        exit = labelOut,
-                        boundsTransform = moonBounds,
-                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
-                    )
-                )
+    // While this place's card is open, the pill fades in place as the sheet grows out of it (it
+    // doesn't move, so the "· 71 %" never drifts).
+    val open = MoonCardState.request?.first?.formattedId == location.formattedId
+    val motion = MoonCardState.motion
+    fun fade(span: Float): Float = if (open && motion != null) 1f - motion.window(0f, span) else 1f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .morphAnchor(pillKey(location), cornerRadius = 100.dp)
+            .graphicsLayer { alpha = smooth(fade(MATERIAL_SPAN)) }
+            .clip(CircleShape)
+            .border(1.dp, text.copy(alpha = 0.35f), CircleShape)
+            .clickable {
+                MoonCardState.glass = pageGlass
+                MoonCardState.buttonInk = text
+                MoonCardState.show(location, now, null, phase + suffix, palette, night)
             }
-        }
+            .padding(horizontal = Space.S3, vertical = Space.S2)
+    ) {
+        Text(
+            phase,
+            color = text,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier
+                .morphAnchor(labelKey(location))
+                .graphicsLayer { alpha = fade(LABEL_SPAN) }
+        )
+        Text(suffix, color = text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -323,8 +295,8 @@ internal fun MoonButton(
 internal object MoonCardState {
     var request by androidx.compose.runtime.mutableStateOf<Pair<Location, Long>?>(null)
 
-    /** Closed (false) or open (true); seekable, so pulling the sheet scrubs it. */
-    val seek = SeekableTransitionState(false)
+    /** The open card's morph value (0 closed … 1 open), while it's on screen. */
+    var motion by androidx.compose.runtime.mutableStateOf<MotionValue?>(null)
 
     /** The button's label. */
     var label: String = ""
@@ -358,102 +330,75 @@ internal object MoonCardState {
 }
 
 /**
+ * The sheet's shape: round on top (as the button), and the bottom corners square off as it docks.
+ * Reads the morph's value when the outline is built (every size change, i.e. every frame of the
+ * morph).
+ */
+private class MoonSheetShape(private val motion: MotionValue, private val radius: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val top = minOf(radius, size.minDimension / 2)
+        val bottom = top * (1f - motion.value.coerceIn(0f, 1f))
+        return Outline.Rounded(
+            RoundRect(
+                0f,
+                0f,
+                size.width,
+                size.height,
+                topLeftCornerRadius = CornerRadius(top),
+                topRightCornerRadius = CornerRadius(top),
+                bottomRightCornerRadius = CornerRadius(bottom),
+                bottomLeftCornerRadius = CornerRadius(bottom)
+            )
+        )
+    }
+}
+
+/**
  * The moon card as a sheet, like the search card (agreed 2026-11-19): the same glass, docked at the
- * bottom at full screen height, a handle on top. It's the button grown (Compose's shared bounds):
- * the button's shape and its phase name turn into the sheet and its heading, and back. Pull it
- * down and the morph runs backwards under the finger; let go past a quarter (or flick) to close.
+ * bottom at full screen height, a handle on top. It's the button grown: one morph value (M3,
+ * `:motion`) drives the shape, the glass, the heading flying from the button's label and the
+ * content. Pull it down and the morph runs backwards under the finger; let go and UIKit's rules pick
+ * open or closed (agreed 2026-11-19); pulling up past open rubber-bands like iOS.
  */
 @Composable
 internal fun MoonCardOverlay(glass: GlassSource) {
     val request = MoonCardState.request ?: return
-    val (location, now) = request
-    val shared = LocalMoonShared.current ?: return
-    val seek = MoonCardState.seek
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
-    // The morph's position: 0 closed … 1 open, above 1 while rubber-banding or overshooting. It's an
-    // Animatable driven by the gesture (agreed 2026-11-19), and the shared transition is seeked to
-    // it, so the finger's velocity carries into the springs.
-    val drive = remember(request) { Animatable(0f) }
-    val progress = remember(drive) { androidx.compose.runtime.derivedStateOf { drive.value.coerceIn(0f, 1f) } }
-    val range = with(density) { 420.dp.toPx() }
+    // A fresh morph value per opening.
+    androidx.compose.runtime.key(request) { MoonSheet(request.first, request.second, glass) }
+}
 
-    // Keep the transition on the drive's position in the same frame (started undispatched, so the
-    // seek lands before the frame draws). It stays one continuous seek towards "open" for the whole
-    // life of the card (2026-11-19): settling it at the top of the spring's bounce, or turning it
-    // round to close, rebuilt the button and the sheet mid-animation and dropped frames.
-    fun sync(value: Float) {
-        val f = value.coerceIn(0f, 1f)
-        MoonCardState.progress = f
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            runCatching { seek.seekTo(f.coerceIn(0.0001f, 0.9999f), targetState = true) }
-        }
+@Composable
+private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
+    val density = LocalDensity.current
+    val motion = rememberMotionValue(
+        initial = 0f,
+        overMin = 0.02f,
+        overMax = MOON_OVER_PULL / MOON_RANGE
+    )
+    androidx.compose.runtime.DisposableEffect(motion) {
+        MoonCardState.motion = motion
+        onDispose { if (MoonCardState.motion === motion) MoonCardState.motion = null }
     }
     // Opening: the container's spring from the button.
-    LaunchedEffect(request) {
-        drive.animateTo(1f, SolsticeMotion.container) { sync(value) }
-    }
-    fun finish(open: Boolean, velocity: Float = 0f) {
-        scope.launch {
-            drive.animateTo(
-                if (open) 1f else 0f,
-                if (open) SolsticeMotion.container else SolsticeMotion.dismiss,
-                initialVelocity = velocity
-            ) {
-                sync(value)
+    LaunchedEffect(motion) { motion.animateTo(1f, velocity = 0f) }
+    // Tell the shell how far it is (the page recedes), and finish once it has closed.
+    LaunchedEffect(motion) {
+        var opening = false
+        androidx.compose.runtime.snapshotFlow { Triple(motion.value, motion.target, motion.isRunning) }
+            .collect { (v, target, running) ->
+                MoonCardState.progress = v.coerceIn(0f, 1f)
+                if (target == 1f) opening = true
+                if (opening && target == 0f && !running && v <= 0.001f) {
+                    MoonCardState.progress = 0f
+                    MoonCardState.request = null
+                }
             }
-            if (!open) {
-                seek.snapTo(false)
-                MoonCardState.progress = 0f
-                MoonCardState.request = null
-            }
-        }
     }
-    fun close() = finish(open = false)
-    BackHandler(enabled = MoonCardState.request != null) { close() }
-    // The drag: down scrubs the morph back towards the pill; up past open rubber-bands.
-    var raw by remember(request) { mutableFloatStateOf(0f) }
-    fun pull(d: Float) {
-        raw += d
-        val to = if (raw >= 0f) {
-            1f - raw / range
-        } else {
-            1f + SolsticeMotion.rubberBand(-raw, range) / range * 0.25f
-        }
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            drive.snapTo(to.coerceAtLeast(0f))
-            sync(drive.value)
-        }
-    }
-    fun release(velocity: Float) {
-        // Down is positive for the finger, negative for the morph's position.
-        val v = -velocity / range
-        val p = drive.value
-        val rest = SolsticeMotion.project(p.coerceAtMost(1f), v, decelerationRate = 0.99f)
-        raw = 0f
-        finish(open = rest > 0.6f && p > 0.08f, velocity = v)
-    }
-    // Round as the button; docked, only the top corners stay round.
-    val cardShape = remember {
-        GenericShape { size, _ ->
-            val top = minOf(32.dp.value * density.density, size.minDimension / 2)
-            val bottom = top * (1f - progress.value.coerceIn(0f, 1f))
-            addRoundRect(
-                RoundRect(
-                    0f,
-                    0f,
-                    size.width,
-                    size.height,
-                    topLeftCornerRadius = CornerRadius(top),
-                    topRightCornerRadius = CornerRadius(top),
-                    bottomRightCornerRadius = CornerRadius(bottom),
-                    bottomLeftCornerRadius = CornerRadius(bottom)
-                )
-            )
-        }
-    }
-    // The card takes the forecast's tint: the sky's base colour, darkened at night (the card goes
-    // dark mode when it's night at the place) and lightened by day.
+    fun close() = motion.animateTo(0f)
+    BackHandler { close() }
+
+    // The forecast's tint: the sky's base colour, darkened at night (the card goes dark mode when it's
+    // night at the place) and lightened by day.
     val sky = MoonCardState.palette
     val night = MoonCardState.night
     val tint = when {
@@ -467,25 +412,22 @@ internal fun MoonCardOverlay(glass: GlassSource) {
         else -> sky.text
     }
     val status = WindowInsets.statusBars
-    val key = "moon-${location.formattedId}"
-    val finalWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
-    // Gestures on the whole screen (the sheet itself shrinks under the finger while a pull scrubs
-    // it, so a drag measured on it would run ahead): vertical pulls scrub the morph back, and a tap
-    // above the sheet closes it.
+    // Where the sheet rests: full width, docked at the bottom, at full screen height below the status
+    // bar (agreed 2026-11-19). Known up front, so the morph draws from its first frame.
+    val window = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val radius = with(density) { 32.dp.toPx() }
+    val top = status.getTop(density) + with(density) { 12.dp.toPx() }
+    val target = remember(window, top, radius) {
+        MorphAnchor(Rect(0f, top, window.width.toFloat(), window.height.toFloat()), radius)
+    }
+    val shape = remember(motion, radius) { MoonSheetShape(motion, radius) }
+
+    // Gestures on the whole screen (the sheet shrinks under the finger while a pull scrubs it, so a
+    // drag measured on it would run ahead): vertical pulls drive the morph, a tap above it closes.
     Box(
         Modifier
             .fillMaxSize()
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { d -> pull(d) },
-                onDragStarted = {
-                    // Catch it mid-flight: stop the spring where it is, and carry on from there.
-                    drive.stop()
-                    val p = drive.value
-                    raw = if (p >= 1f) 0f else (1f - p) * range
-                },
-                onDragStopped = { v -> release(v) }
-            )
+            .motionDrag(motion, Orientation.Vertical, MOON_RANGE, reverseDirection = true)
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
                     if (tap.y < status.getTop(this) + 12.dp.toPx()) close()
@@ -496,110 +438,60 @@ internal fun MoonCardOverlay(glass: GlassSource) {
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = progress.value.coerceIn(0f, 1f) }
+                .graphicsLayer { alpha = motion.value.coerceIn(0f, 1f) }
                 .background(Color.Black.copy(alpha = 0.25f))
         )
-        shared.transition.AnimatedVisibility(
-            visible = { it },
-            enter = EnterTransition.None,
-            exit = ExitTransition.None,
-            modifier = Modifier.fillMaxSize()
+        Morph(
+            from = pillKey(location),
+            target = target,
+            value = motion,
+            modifier = Modifier.fillMaxSize(),
+            // Laid out once at the sheet's final size and centred, so nothing reflows while the glass
+            // grows around it.
+            contentAlignment = Alignment.TopCenter,
+            shape = { _, _ -> shape },
+            // The search card's glass, in the forecast's tint, fading in with the shape.
+            surface = Modifier.glass(MoonCardState.glass ?: glass, shape, tint, alpha = {
+                smooth(motion.window(0f, MATERIAL_SPAN))
+            })
         ) {
-            with(shared.scope) {
-                Box(Modifier.fillMaxSize()) {
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            // Full screen height (agreed 2026-11-19), like search's tall state.
-                            .layout { measurable, constraints ->
-                                val h = (constraints.maxHeight - status.getTop(this) - 12.dp.toPx()).roundToInt()
-                                val placeable = measurable.measure(Constraints.fixed(constraints.maxWidth, h))
-                                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-                            }
-                            .sharedBounds(
-                                rememberSharedContentState(key),
-                                this@AnimatedVisibility,
-                                // The glass is the pill grown: no fade, from the first frame.
-                                enter = EnterTransition.None,
-                                exit = ExitTransition.None,
-                                boundsTransform = moonBounds,
-                                clipInOverlayDuringTransition = OverlayClip(cardShape)
-                            )
-                            // Past open (the spring's overshoot, or pulling up), the sheet stretches
-                            // up a little from the bottom.
-                            .graphicsLayer {
-                                val over = (drive.value - 1f).coerceAtLeast(0f)
-                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-                                scaleY = 1f + over * 0.5f
-                            }
-                            // The search card's glass, in the forecast's tint.
-                            .glass(MoonCardState.glass ?: glass, cardShape, tint, alpha = {
-                                val t = (progress.value / MATERIAL_SPAN).coerceIn(0f, 1f)
-                                t * t * (3 - 2 * t)
-                            })
-                            .clip(cardShape)
-                    ) {
-                        // Laid out once at the sheet's final width and centred, so nothing reflows
-                        // while the glass grows around it (the glass clips it).
-                        Column(
-                            Modifier.layout { measurable, constraints ->
-                                val placeable = measurable.measure(
-                                    Constraints(minWidth = finalWidth, maxWidth = finalWidth)
-                                )
-                                layout(constraints.maxWidth, constraints.maxHeight) {
-                                    placeable.place((constraints.maxWidth - finalWidth) / 2, 0)
-                                }
-                            }
-                        ) {
-                            Spacer(Modifier.height(Space.S6)) // room for the handle, drawn on top
-                            MoonCard(
-                                location,
-                                now,
-                                ink,
-                                headingModifier = Modifier.sharedBounds(
-                                    rememberSharedContentState("$key-label"),
-                                    this@AnimatedVisibility,
-                                    enter = labelIn,
-                                    exit = labelOut,
-                                    boundsTransform = moonBounds,
-                                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
-                                ),
-                                dateModifier = Modifier.graphicsLayer {
-                                    // Last in, first out: only once the heading has landed.
-                                    alpha = ((progress.value - 0.85f) / 0.15f).coerceIn(0f, 1f)
-                                },
-                                deferRest = true,
-                                restModifier = Modifier.graphicsLayer {
-                                    // Choreographed (agreed): the content fades and scales in from
-                                    // 92 % as the glass reaches ~70 % of its size, and leaves first
-                                    // when it closes. Tied to the morph, so a pull scrubs it too.
-                                    val t = (
-                                        (progress.value - SolsticeMotion.CONTENT_FROM) /
-                                            (SolsticeMotion.CONTENT_TO - SolsticeMotion.CONTENT_FROM)
-                                        ).coerceIn(0f, 1f)
-                                    val e = t * t * (3 - 2 * t)
-                                    alpha = e
-                                    val k =
-                                        SolsticeMotion.CONTENT_START_SCALE +
-                                            (1f - SolsticeMotion.CONTENT_START_SCALE) * e
-                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
-                                    scaleX = k
-                                    scaleY = k
-                                }
-                            )
+            Box(Modifier.fillMaxSize()) {
+                Column {
+                    Spacer(Modifier.height(Space.S6)) // room for the handle, drawn on top
+                    MoonCard(
+                        location,
+                        now,
+                        ink,
+                        // The button's label flies to the heading and hands over in the first 15 %.
+                        headingModifier = Modifier
+                            .morphFrom(labelKey(location))
+                            .graphicsLayer { alpha = motion.window(0f, LABEL_SPAN) },
+                        dateModifier = Modifier.graphicsLayer {
+                            // Last in, first out: only once the heading has landed.
+                            alpha = motion.window(0.85f, 1f)
+                        },
+                        deferRest = true,
+                        restModifier = Modifier.graphicsLayer {
+                            // Choreographed (agreed): the content fades and scales in from 92 % as the
+                            // glass reaches ~70 % of its size, and leaves first when it closes.
+                            val e = smooth(motion.window(SolsticeMotion.CONTENT_FROM, SolsticeMotion.CONTENT_TO))
+                            alpha = e
+                            val k = SolsticeMotion.CONTENT_START_SCALE + (1f - SolsticeMotion.CONTENT_START_SCALE) * e
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                            scaleX = k
+                            scaleY = k
                         }
-                        // The handle, like search's.
-                        Box(
-                            Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = Space.S3)
-                                .width(36.dp)
-                                .height(4.dp)
-                                .background(ink.copy(alpha = 0.4f), CircleShape)
-                        )
-                    }
+                    )
                 }
+                // The handle, like search's.
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = Space.S3)
+                        .width(36.dp)
+                        .height(4.dp)
+                        .background(ink.copy(alpha = 0.4f), CircleShape)
+                )
             }
         }
     }

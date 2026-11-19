@@ -25,8 +25,8 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   AccuWeather is disabled as a source.
 - **Motion rules:** [MOTION.md](MOTION.md) (agreed 2026-11-19); values in
   `ui/expressive/components/SolsticeMotion.kt`. Only the moon card uses them so far.
-- **Open on the moon sheet:** a dark pill-sized frame at the start of opening, "· 71 %" drifting at
-  the end of closing, a hitch after closing.
+- **Moon sheet:** rebuilt on `:motion` (M3, 2026-11-19); its three earlier issues should be gone,
+  to confirm by feel.
 
 ## Done since the last handoff (2026-11-19, without the phone)
 
@@ -114,7 +114,8 @@ by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals 
    reinstalling.
 3. ~~Decide the Solstice `MotionScheme`~~ (done 2026-11-19: built, with a sixth token `snappy`).
    Glass is now Haze for good; edge blur stays ours (Haze measured slower there). See the PLAN.md log.
-4. M3: the moon card on `Morph`/`MotionValue`, fixing its three open issues.
+4. ~~M3: the moon card on `Morph`/`MotionValue`~~ (done 2026-11-19, see the PLAN.md log; confirm the
+   feel on the phone). Next in the plan: the component catalog, then library swaps, then M4/M5.
 5. Finish the tokens (remaining literals) alongside M4.
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the
