@@ -739,14 +739,19 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
         RainKind.STARTS -> stringResource(R.string.shell_rain_starts_in, strength, rain.value)
         RainKind.STARTS_HOURS -> pluralStringResource(R.plurals.shell_rain_in_hours, rain.value, strength, rain.value)
     }
-    var showChance by remember { mutableStateOf(false) }
     val chances = rain.chances
-    val values = if (showChance && chances != null) {
+    // When the amount rounds to nothing (a likely drizzle), probability says more: start there.
+    val dryAmount = rain.total < 0.1
+    var showChance by remember(rain.minutely) { mutableStateOf(dryAmount && chances != null) }
+    val coarse = if (showChance && chances != null) {
         chances
     } else {
         val max = rain.amounts.max().coerceAtLeast(if (rain.minutely) 0.2f else 1f)
         rain.amounts.map { (it / max).coerceIn(0f, 1f) }
     }
+    // Finer than the data, Apple-style: one bar a minute for the next hour, one every 5 minutes
+    // over 6 hours, eased between the source's steps.
+    val values = finer(coarse, if (rain.minutely) 5 else 12)
     GlassCard(text, tint = if (rain.soon) Color(0xFF8CCBFF) else null) {
         // No separate title: the sentence is the header.
         Text(sentence, color = text, style = MaterialTheme.typography.titleMediumEmphasized)
@@ -755,6 +760,8 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
             // The amount in the window, or the highest chance.
             val caption = if (showChance && chances != null) {
                 stringResource(R.string.shell_rain_chance_up_to, (chances.max() * 100).roundToInt())
+            } else if (dryAmount) {
+                stringResource(R.string.shell_rain_barely)
             } else {
                 stringResource(
                     if (rain.minutely) R.string.shell_rain_total_hour else R.string.shell_rain_total_hours,
@@ -765,7 +772,7 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
                 caption,
                 color = text.copy(alpha = 0.72f),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             if (chances != null) {
                 RainSwitch(showChance, text) { showChance = it }
@@ -775,12 +782,12 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
         // Rounded bars, no marker lines: a dot where it's dry, a pill as tall as the rain.
         Row(
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(if (rain.minutely) 5.dp else 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(1.5.dp),
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             values.forEach { v ->
                 BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.BottomCenter) {
-                    val h = (maxHeight * v).coerceAtLeast(maxWidth.coerceAtMost(maxHeight))
+                    val h = (maxHeight * v).coerceAtLeast(maxWidth.coerceAtMost(4.dp))
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -797,19 +804,35 @@ private fun RainCard(rain: RainOutlook.Coming, location: Location, text: Color) 
                 }
             }
         }
-        // Times under the bars: every other bar for the minutes (Now, 10m, …), each hour otherwise.
+        // Times under the bars, each at the start of its stretch (Now, 10m, … or the hours).
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             rain.labels.forEach {
                 Text(
                     it,
                     color = text.copy(alpha = 0.65f),
                     style = MaterialTheme.typography.labelSmall,
-                    textAlign = if (rain.minutely) TextAlign.Start else TextAlign.Center,
+                    textAlign = TextAlign.Start,
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
+    }
+}
+
+/**
+ * [per] bars for each step of [steps], eased (smoothstep) between the steps' middles, so the chart
+ * reads as a continuous curve rather than blocks. Dry stays dry between two dry steps.
+ */
+private fun finer(steps: List<Float>, per: Int): List<Float> {
+    if (steps.isEmpty()) return steps
+    return List(steps.size * per) { i ->
+        val x = (i + 0.5f) / per - 0.5f
+        val a = kotlin.math.floor(x).toInt().coerceIn(0, steps.size - 1)
+        val b = (a + 1).coerceAtMost(steps.size - 1)
+        val t = (x - a).coerceIn(0f, 1f)
+        val e = t * t * (3 - 2 * t)
+        steps[a] + (steps[b] - steps[a]) * e
     }
 }
 

@@ -60,6 +60,7 @@
     <string name="shell_rain_total_hour">%1$s in the next hour</string>
     <string name="shell_rain_total_hours">%1$s in the next 6 hours</string>
     <string name="shell_rain_chance_up_to">Up to %1$d %% chance</string>
+    <string name="shell_rain_barely">Barely any rain to measure</string>
     <string name="shell_rain_amount">Amount</string>
     <string name="shell_rain_probability">Probability</string>
     <string name="shell_no_rain">No rain expected in the next %1$d hours</string>

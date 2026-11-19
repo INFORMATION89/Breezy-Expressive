@@ -216,6 +216,12 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 
 - [ ] 🗓 **Writing session for the conditional texts** (tomorrow): fill in `docs/WRITING.md`.
 
+## Developer tools
+
+- [ ] **Simulation tools** that are easy to reach (e.g. a hidden debug panel): fake the time of day
+  and date, and the weather (rain now, rain in 15 minutes, heavy rain, snow, storms, clear night,
+  different time zones), so every state can be checked on the phone without waiting for it.
+
 ## Settings
 
 - [ ] Simplify settings (fewer trend options).

@@ -1558,4 +1558,9 @@ Things to try on the phone before calling any motion done (debug and release bui
     already switches to rain once it's raining.
   - **Search:** with the keyboard hidden, swiping the card up until it hits the top brings the
     keyboard back.
+- **2026-11-19 (8 AM, checked in the debug app on the Pixel with Paris):** the rain card is finer,
+  Apple-style: one thin pill a minute for the next hour, or one every 5 minutes over 6 hours,
+  eased between the source's steps (dots where dry). It opens on Probability when the amount rounds
+  to nothing ("Barely any rain to measure" on the Amount side). Red star on the current-location
+  strip confirmed.
 
