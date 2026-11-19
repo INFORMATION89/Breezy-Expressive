@@ -111,7 +111,7 @@ class SourceManager @Inject constructor(
     // with the exception of MET Norway
     private val worldwideWeatherSourceList = persistentListOf(
         openMeteoService,
-        accuService,
+        // Solstice: AccuWeather is disabled for now (it needs an API key and showed errors).
         fpasService,
         metNoService,
         nceiService,
@@ -334,21 +334,14 @@ class SourceManager @Inject constructor(
 
             SourceFeature.POLLEN -> getWeatherSource("openmeteo")?.let {
                 if (it.isFeatureSupportedForLocation(location, feature)) it else null
-            } ?: getWeatherSource("accu")?.takeIf {
-                it.isFeatureSupportedForLocation(location, feature) && BuildConfig.FLAVOR != "freenet"
             }
 
             // Solstice: official WMO alerts by default (no key needed); AccuWeather stays selectable.
             SourceFeature.ALERT -> getWeatherSource("wmosevereweather")?.takeIf {
                 it.isFeatureSupportedForLocation(location, feature)
-            } ?: if (BuildConfig.FLAVOR != "freenet") getWeatherSource("accu") else null
-            SourceFeature.NORMALS -> if (!location.countryCode.equals("CN", ignoreCase = true) &&
-                BuildConfig.FLAVOR != "freenet"
-            ) {
-                getWeatherSource("accu")
-            } else {
-                null
             }
+            // Solstice: no normals source while AccuWeather is disabled.
+            SourceFeature.NORMALS -> null
 
             // Solstice: the phone's own geocoder first (no key, local names), Nominatim otherwise.
             SourceFeature.REVERSE_GEOCODING -> if (BuildConfig.FLAVOR != "freenet" && Geocoder.isPresent()) {

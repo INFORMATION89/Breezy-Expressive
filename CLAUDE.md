@@ -7,3 +7,4 @@ Unofficial fork of Breezy Weather, redesigned in Material You Expressive.
 - Keep upstream syncable: put new code in `ui/expressive/` where possible; keep edits to upstream files small.
 - Never push upstream's git history to this repo; never build with `-Pbreezy`.
 - Animations: always propose options to the user and agree on them before building any new or changed motion.
+- To-do list: `docs/ROADMAP.md` (by app area and Functionality / Fix / Refinement). Keep it updated as items ship or come in.

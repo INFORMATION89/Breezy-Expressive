@@ -1488,3 +1488,6 @@ Things to try on the phone before calling any motion done (debug and release bui
   - **Tab tap speeds:** tapping a neighbouring tab still looks faster than the edge-to-edge jump.
     Use the average of the two speeds for both, only for icon taps (swipes are unaffected), and add
     a little spring to the edge-to-edge jump.
+- **2026-11-19:** **AccuWeather disabled** (no longer a selectable or default source; places that still
+  name it skip it quietly). The to-do list now lives in **`docs/ROADMAP.md`**, sorted by app area and
+  by Functionality / Fix / Refinement; this file keeps decisions and the log.

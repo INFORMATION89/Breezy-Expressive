@@ -597,6 +597,10 @@ class RefreshHelper @Inject constructor(
                             async {
                                 semaphore.withPermit {
                                     val service = sourceManager.getWeatherSource(entry.key)
+                                    // Solstice: AccuWeather is disabled; places that still name it skip it quietly.
+                                    if (service == null && entry.key == "accu") {
+                                        return@withPermit
+                                    }
                                     if (service == null) {
                                         errors.add(RefreshError(RefreshErrorType.SOURCE_NOT_INSTALLED, entry.key))
                                     } else {
