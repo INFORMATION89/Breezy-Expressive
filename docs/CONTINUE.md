@@ -60,6 +60,10 @@ are done; see "Done since the last handoff" above.
 
 Unit tests weren't run in the review (no Android SDK there); run `./gradlew :motion:test` first.
 
+**Fixed 2026-11-19 (user agreed), items 1–3 below:** `MotionPhysics.unresist` (+ `unRubberBand`),
+used by `MotionValue.stop()`; `motionDrag` starts at once while moving; 7 `MotionValue` tests
+(22 in the module; the overshoot test fails on the old code).
+
 **Fix before M3 (bugs in `motion/…/MotionValue.kt`):**
 
 1. **Catching an overshoot jumps back.** `stop()` sets `raw = animatable.value`, but past an end the
@@ -97,7 +101,7 @@ by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals 
 
 ### Next, in order
 
-1. Fix the two `MotionValue` bugs + tests (after the user agrees).
+1. ~~Fix the two `MotionValue` bugs + tests~~ (done 2026-11-19).
 2. On the Pixel 7 (release build): check the token pass, then compare glass with the Haze switch
    (Settings › Debug › "Glass: Haze (prototype)") and decide.
 3. Decide the Solstice `MotionScheme` (PLAN.md, "Motion framework": switches get slower with only

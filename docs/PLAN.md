@@ -1375,6 +1375,11 @@ Things to try on the phone before calling any motion done (debug and release bui
   - **Next (needs the phone):** check the tokens pass and the Haze switch on the Pixel, then M3
     (moon card on `Morph`/`MotionValue`, fixing its three open issues).
 
+- **2026-11-19:** Review fixes in `:motion` (agreed with the user): catching an overshoot no longer
+  jumps back (`stop()` maps the shown value back to the finger position with
+  `MotionPhysics.unresist`); `motionDrag` catches a moving surface at once (`startDragImmediately`
+  while running). Added `MotionValue` tests with a step frame clock (22 tests in the module).
+
 ## Backlog (user notes, 2026-11-18)
 
 ### Foundations
