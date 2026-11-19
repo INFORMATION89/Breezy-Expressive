@@ -467,6 +467,7 @@ dependencies {
     implementation(projects.motion)
     implementation(libs.haze)
     implementation(libs.haze.blur)
+    implementation(libs.reorderable)
     implementation(projects.uiWeatherView)
     implementation(projects.weatherUnit)
     implementation(libs.breezy.datasharing.lib)
