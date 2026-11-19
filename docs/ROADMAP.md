@@ -60,21 +60,21 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **A reusable "move and transform into place" system** (morphs, for buttons too). Search for
   libraries first. First use: a visited place's loading state (see Postcard window).
 - [x] Motion tokens: `SolsticeMotion.kt` and `docs/MOTION.md` (2026-11-19), first used by the moon sheet.
-- [ ] Apply the motion system to search, the postcard window, Places drag and the toolbar.
-- [ ] **Fix:** `MotionValue` jumps back when an overshoot is caught; `motionDrag` doesn't catch a moving
+- [ ] Apply the motion system to search, the postcard window, Places drag and the toolbar (M4; the moon card is done).
+- [x] **Fix:** `MotionValue` jumps back when an overshoot is caught; `motionDrag` doesn't catch a moving
   surface until the touch slop. Add `MotionValue` tests. (CONTINUE.md, code review.)
-- [ ] 💬⭐ **Design tokens:** spacing (4 dp grid), sizes, shapes with continuous corners, palette file,
+- [x] 💬⭐ **Design tokens:** spacing (4 dp grid), sizes, shapes with continuous corners, palette file,
   hero type styles, Solstice `MotionScheme`. See `docs/UI_SYSTEMS.md`.
-- [ ] 💬 **Haze prototype** for glass and edge blur, measured on the Pixel 7 against `Glass.kt`.
-- [ ] **Component catalog:** split `ShellPages.kt`; one Card / Sheet / Toolbar / Message / PageScaffold;
+- [x] 💬 **Haze prototype** for glass and edge blur, measured on the Pixel 7 against `Glass.kt`.
+- [x] **Component catalog** (first pass; one Sheet and PageScaffold come with M4): split `ShellPages.kt`; one Card / Sheet / Toolbar / Message / PageScaffold;
   `PlaceWindow` reuses them.
-- [ ] Swap `ReorderList.kt` for the Reorderable library; pushed screens to Navigation 3.
+- [x] Swap `ReorderList.kt` for the Reorderable library. Pushed screens to Navigation 3: decided, migration started (2026-11-19).
 - [ ] 💬⭐ **Motion framework** (`:motion` module, reusable in other projects): one motion value per
   interaction, morphs from anchors instead of a seeked `SharedTransitionLayout`, iOS-style springs and
   release rules. Plan in PLAN.md, "Motion framework" (M0 to M5); M0 = agree it.
 - [ ] **Design frameworks:** spacing scale, type scale, motion tokens, component rules.
-- [ ] **Icon style:** Google's new Material icons (Material Symbols). Find a library we can use
-  properly.
+- [ ] 💬⭐ **Icon style (current task):** Google's Material Symbols, one style, one catalog. Inventory,
+  options and steps I1 to I5 in CONTINUE.md; decisions in PLAN.md "Icons".
 
 ### Refinement
 - [x] Real blur behind the Forecast cards; moon card in the forecast's tint, dark at night (2026-11-19).

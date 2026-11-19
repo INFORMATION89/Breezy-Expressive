@@ -674,6 +674,15 @@ Audit of every UI system and the libraries checked: [UI_SYSTEMS.md](UI_SYSTEMS.m
   Expressive controls (buttons, toggles, loading).
 - Order: tokens, Haze prototype, motion M1 to M3, catalog, swaps, motion M4 and M5.
 
+## Icons (proposed 2026-11-19, to agree)
+
+Goal: one consistent icon set across the app, Google's current **Material Symbols** instead of the
+frozen Material Icons. Inventory, options and steps (I1 to I5) are in CONTINUE.md, "Pick up here".
+Decisions needed: style (Rounded suggested), weight and the fill rule (filled only for on/selected),
+delivery (vector drawables suggested; variable font only for icons that animate a state), scope
+(`ui/expressive/` first, then upstream screens). Weather condition art, shortcuts and widgets are
+not part of it.
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -1458,7 +1467,7 @@ Things to try on the phone before calling any motion done (debug and release bui
     checked); the moon pill is an `OutlinedButton` (still the morph's anchor). Kept custom, like the
     toolbar: the postcard (its press sinks the card, part of the artwork) and the search scrim's
     tap-to-close (not a control).
-  - **Navigation 3: not done, open.** Settings already pushes with `ScreenPush` and predictive back
+  - **Navigation 3: decided 2026-11-19 (user), migration started** (was: not done, open). Settings already pushes with `ScreenPush` and predictive back
     through upstream's `NavHost`. Navigation 3 would bring an owned back stack, tablet two-pane
     layouts, folding the reorder/About/details activities into one Compose navigation, and shared
     elements between screens; it costs rewriting upstream's `SettingsActivity` (harder merges).
@@ -1944,3 +1953,7 @@ Things to try on the phone before calling any motion done (debug and release bui
 - **2026-11-19:** Safe review leftovers: CI runs `:motion:test`; reduced motion documented as a jump
   (Compose finishes animations instantly with "Remove animations"); `motionDrag` sets its flick
   thresholds in a `SideEffect`. Still for the user: `Morph` content alignment, `control` vs `settle`.
+- **2026-11-19:** Navigation 3 decided by the user; migration started (not on `main` at the time of
+  this entry). Next task: **consistent Material icons** (section "Icons"; inventory: 3 sources,
+  34 distinct `Icons.*` in `ui/expressive/`, 40 Outlined vs 14 Filled, 54 upstream `ic_*.xml`).
+  CONTINUE.md rewritten around it; finished ROADMAP items ticked.

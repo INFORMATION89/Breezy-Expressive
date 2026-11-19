@@ -23,112 +23,111 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
   postcard window for visiting a place, messages, the moon card as a sheet that morphs out of its
   pill, frosted glass (`components/Glass.kt`) and progressive edge blur (`components/EdgeBlur.kt`).
   AccuWeather is disabled as a source.
-- **Motion rules:** [MOTION.md](MOTION.md) (agreed 2026-11-19); values in
-  `ui/expressive/components/SolsticeMotion.kt`. Only the moon card uses them so far.
-- **Moon sheet:** rebuilt on `:motion` (M3, 2026-11-19); its three earlier issues should be gone,
-  to confirm by feel.
+- **Motion rules:** [MOTION.md](MOTION.md) (agreed 2026-11-19). Values come from the `:motion`
+  module (`motion/`, Apache-2.0, 22 tests run in CI); `ui/expressive/components/SolsticeMotion.kt`
+  forwards to it. Only the moon card runs on `:motion` so far.
 
-## Done since the last handoff (2026-11-19, without the phone)
+## Done on 2026-11-19 (details in the PLAN.md log)
 
-Design tokens (`theme/Tokens.kt`, used in 12 files), the `:motion` module (M1 core + M2 morphs,
-Apache-2.0, 14 tests), and the Haze glass prototype behind Settings › Debug. Not checked on the
-phone yet. Details in the PLAN.md log. **First thing with the phone:** install a debug build, look at
-every page for the ~40 spacings that snapped to the 4 dp grid, then try the Haze switch on a release
-build and compare frame times. Then M3. Open decision: the Solstice `MotionScheme` mapping (PLAN.md,
-"Motion framework").
+- **Design tokens** (`theme/Tokens.kt`), checked on the Pixel 7.
+- **`:motion` M1 to M3:** tokens with response + damping and a sixth `snappy`, `MotionValue` with the
+  UIKit release rules, `Morph` and anchors, the **Solstice `MotionScheme`**, and the **moon card on
+  `:motion`** (janky frames ~10 % to 3.3 %). The review's bugs are fixed (catching an overshoot,
+  catching mid-flight).
+- **Glass on Haze 2.1.0** for good; **edge blur stays ours** (Haze measured slower there).
+- **Component catalog, first pass:** pages split out of `ShellPages.kt`, `SolsticeCard`,
+  `shell/Toolbar.kt`, `shell/PageFrame.kt` shared with the postcard window.
+- **Library swaps:** Reorderable 3.1.0 runs `ReorderList.kt`; Material 3 controls everywhere except
+  the toolbar and the postcard.
+- **Navigation 3: decided and started** (user, 2026-11-19). As of the last check the migration was
+  not on `main` yet: pull, or ask where it lives, before touching Settings or pushed screens.
 
 ## Pick up here (next session)
 
-The current focus is **refining the UI to iOS-level polish with shared systems**, not new features.
-Read these three, in order:
+The focus is still **iOS-level polish with shared systems**. The current task is **consistent
+Material icons**. Background: [UI_SYSTEMS.md](UI_SYSTEMS.md), PLAN.md "Icons", "Motion framework" and
+"Design system foundations".
 
-1. [UI_SYSTEMS.md](UI_SYSTEMS.md): audit of every UI system (counts of hand-typed spacing, corners,
-   colours, springs, gestures) and the libraries checked (Haze, Reorderable, Navigation 3,
-   `AnchoredDraggable`, Material 3 `MotionScheme`, graphics-shapes, Backdrop, Glasmio).
-2. PLAN.md, **"Motion framework"**: one motion value per interaction, morphs drawn from anchors
-   instead of a seeked `SharedTransitionLayout`, choreography windows, iOS-style springs (response +
-   damping) and release rules, a standalone `:motion` module. Steps M0 to M5.
-3. PLAN.md, **"Design system foundations"**: tokens first, then the Haze prototype, the component
-   catalog and the library swaps.
+### Icons: where things are (counted 2026-11-19)
 
-M0 is decided (2026-11-19): only the five current springs; `:motion`, Apache-2.0.
+Three sources that don't match:
 
-Tokens (`98647ef`), `:motion` M1 (`ceae727`) and M2 (`e0310e9`) and the Haze prototype (`96b022b`)
-are done; see "Done since the last handoff" above.
+1. **`material-icons-extended`** (Compose's old Material Icons). Google froze that set in 2022 and the
+   Compose artifact stopped shipping after Compose 1.7, so it gets no new icons. Use in the whole app:
+   48 `Icons.Outlined`, 22 `Icons.Filled`, 6 `Icons.AutoMirrored`, 2 `Icons.Default`. In
+   `ui/expressive/`: 34 distinct icons, 40 Outlined and 14 Filled. Filled is used both for "selected"
+   (`Star`, `PushPin`) and just because (`Search`, `NearMe`, `Check`, `Close`, `Add`).
+2. **54 upstream `res/drawable/ic_*.xml`** (old Material Icons paths, 43 referenced from code), plus
+   `ic_drag` and `ic_close` used in `ui/expressive/`.
+3. **Our own vectors:** `components/SolsticeIcons.kt` (`RainCloud`) and the 8 moon phase drawables.
 
-### Code review of those commits (2026-11-19, not yet fixed)
+Not icons for this task (they're artwork): the weather condition packs (`weather_*`, 99 files),
+`shortcuts_*` (30) and `widget_*` (16). Condition glyphs in the UI (`WbSunny`, `WbCloudy`,
+`Thunderstorm`, `AcUnit`, `Dehaze`, `Cloud`, `Bedtime`) **are** in scope.
 
-Unit tests run in CI (`:motion:test`), since the cloud sessions have no Android SDK.
+Sizes: 29 `Icon(` calls in `ui/expressive/`; 9 use the `Sizes.Icon*` tokens, the rest literals
+(18, 32, 28, 22, 14, 12 dp).
 
-**Fixed 2026-11-19 (user agreed), items 1–3 below:** `MotionPhysics.unresist` (+ `unRubberBand`),
-used by `MotionValue.stop()`; `motionDrag` starts at once while moving; 7 `MotionValue` tests
-(22 in the module; the overshoot test fails on the old code).
+### Icons: options to decide with the user
 
-**Fix before M3 (bugs in `motion/…/MotionValue.kt`):**
+1. **Style:** Material Symbols **Rounded** (matches Expressive's soft shapes and Google Sans Flex),
+   Outlined, or Sharp. One style app-wide.
+2. **Weight and fill rule:** one weight (400 suggested, or match the text weight); **unfilled by
+   default, filled only for "on/selected"** (starred, pinned, current tab, location in use).
+3. **Delivery:**
+   - **A. Vector drawables** downloaded from fonts.google.com/icons at the chosen style/weight
+     (filled and unfilled where a state needs both). Smallest, works on minSdk 24, no extra
+     dependency; fill changes are a crossfade, not an animation.
+   - **B. The variable font** (Material Symbols Rounded, subset to the icons used) through
+     `FontVariation`: fill, weight, grade and optical size can animate (e.g. the star filling in).
+     Variable axes need Android 8+ (minSdk is 7, so a static fallback), and icons become text
+     (accessibility labels by hand).
+   - **C. A library:** `io.github.hlcaptain:symbols-material-rounded` (Material-Icons-like API,
+     vectors or variable font; minimum AGP 9.1.1, Kotlin 2.4, compileSdk 37; very new) or
+     `dev.vicart:compose-material-symbols` (font-based, 1.1.6, 2026-09-04). Check license, size and
+     upkeep first.
+   - Suggested: **A**, plus B only for the few icons that animate a state, if the user wants that
+     (animating fill is motion: agree it first).
+4. **Scope:** `ui/expressive/` first; then upstream screens still in use (Settings rows, details),
+   keeping edits to upstream files small; widgets and shortcuts last or never.
 
-1. **Catching an overshoot jumps back.** `stop()` sets `raw = animatable.value`, but past an end the
-   value is already rubber-banded, so the next `drag()` resists it twice. On a 600 dp range: ~6 dp
-   jump when caught 2 % past open, ~17 dp at 5 %, ~30 dp at 8 % (the container spring overshoots
-   ~2 % even from rest). Fix: in `stop()`, set `raw` to the inverse of `MotionPhysics.resist` (add an
-   `unresist(shown, min, max, overMin, overMax)` to `MotionPhysics`, unit-tested as the inverse).
-2. **Can't catch it mid-flight right away.** `Modifier.motionDrag` uses `draggable` without
-   `startDragImmediately`, so a moving surface keeps going under the finger until the touch slop,
-   then jumps. Fix: `startDragImmediately = value.isRunning`.
-3. Add unit tests for `MotionValue` (drag, stop mid-flight, release past an end, fast/slow flick);
-   today only `MotionPhysics` and `MorphGeometry` are tested.
+### Icons: proposed steps (after the decisions)
 
-These are bug fixes, not new motion, but confirm with the user before pushing (motion rule).
+1. **I1, catalog:** one `ui/expressive/components/SolsticeIcons.kt` object naming every icon the app
+   uses (`SolsticeIcons.Search`, `.Star(filled)`, …) so call sites never pick a source or style.
+   Sizes from `Sizes.Icon*` only (add `IconXSmall`/`IconXLarge` if the 12/14/28/32 dp ones are real).
+2. **I2, `ui/expressive/`:** replace all 34 `Icons.*` and `ic_drag`/`ic_close` with the catalog.
+   Check every screen on the Pixel 7 (screenshots before/after).
+3. **I3, upstream screens:** swap the 43 referenced `ic_*.xml` for the same style (same file names
+   where possible, so upstream merges stay easy).
+4. **I4:** drop `material-icons-extended` (big dependency; R8 strips most of it, but the build gets
+   faster and nothing old can sneak back in). Add a check (e.g. a Spotless/ktlint rule or a grep in CI)
+   that fails on `Icons.` outside the catalog.
+5. **I5 (optional, agree first):** animated fill for state icons (star, pin) with option B.
 
-**Smaller, when touching the code:**
+### Still open from before
 
-- `Morph` content is laid out at the target size and placed at the moving surface's **top-left**, so
-  a pill near the bottom reveals the sheet's top corner first. Add a content alignment (e.g. align to
-  the source's edge), and decide it with the user for the moon card.
-- `Morph` returns early (draws nothing) until both anchors are measured. Keep in mind for the moon
-  card's "dark frame at the start of opening".
-- `Morph` creates a `RoundedCornerShape` every frame in `graphicsLayer`; reuse one shape object.
-- Haze glass reads `alpha` only when composed (already noted in the log).
-- ~~Reduced motion is really a snap~~: PLAN.md and `Morph`'s KDoc now say so (2026-11-19).
-- `Motion.control` and `Motion.settle` are the same spring (0.31 s / 1): merge or tell them apart.
-- `rememberMotionValue` ignores later changes to `restPoints`/`overMin`/`overMax` (not keys);
-  ~~`motionDrag` writes `slowFlick`/`fastFlick` during composition~~ (now in a `SideEffect`).
-- Edge case: `unresist` caps at 99.9 % of the over-pull limit, so an overshoot past `overMax` (a very
-  hard fling) still snaps back to just under the limit when caught. Raise `overMax` for that surface
-  if it shows.
-- `RoundedCornerShape` per frame in `Morph`: left as is (the radius changes every frame anyway, so
-  the outline is rebuilt regardless).
-- CI now runs `./gradlew :motion:test` on every push.
-
-**Tokens pass:** it rounded off-grid values (6 → 4/8, 10 → 8/12, 14 → 12/16), so some spacing moved
-by 2 dp. Check on the phone. Still left in `ui/expressive/`: 175 `.dp` literals (most common: 10 dp
-×10, 6 dp ×6, 18 dp ×6, 7 dp ×4, 22 dp ×4), 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`. The 28
-`spring(…)` and 12 `tween(…)` move in M4.
-
-### Next, in order
-
-1. ~~Fix the two `MotionValue` bugs + tests~~ (done 2026-11-19).
-2. ~~On the Pixel 7: token pass and Haze comparison~~ (done 2026-11-19: tokens fine; Haze ties on
-   speed and looks the same, see the PLAN.md log). Smoothness checks: `./gradlew assembleBasicProfile`
-   installs as `io.github.information89.solstice.profile`. Debug builds from different computers
-   are signed with different keys: copy `~/.android/debug.keystore` between them to avoid
-   reinstalling.
-3. ~~Decide the Solstice `MotionScheme`~~ (done 2026-11-19: built, with a sixth token `snappy`).
-   Glass is now Haze for good; edge blur stays ours (Haze measured slower there). See the PLAN.md log.
-4. ~~M3: the moon card on `Morph`/`MotionValue`~~ (done 2026-11-19, see the PLAN.md log; confirm the
-   feel on the phone).
-5. ~~Component catalog, first pass~~ (done 2026-11-19: pages split into files, `SolsticeCard`,
-   `Toolbar.kt`, `PageFrame.kt`; see the PLAN.md log).
-6. ~~Library swaps~~ (done 2026-11-19: Reorderable, M3 controls everywhere but the toolbar). Open:
-   Navigation 3 (pros and cons in the PLAN.md log; the user hasn't decided). Next: M4 (search and the
-   rest onto `:motion`, which also brings `SolsticeSheet` and the page scaffold), then M5.
-7. Finish the tokens (remaining literals) alongside M4.
+- **M4:** search (`search/SearchOverlay.kt`, 906 lines) and the rest onto `:motion`; brings one
+  `SolsticeSheet` and a page scaffold. Propose search's open/close options first (motion rule).
+  27 `spring(…)`, 7 `tween(…)` and 12 `animate*AsState` left in `ui/expressive/`.
+- **Moon card by feel:** a flick just under 1000 dp/s that projects to about half way stays open
+  (the UIKit rule as specified). Lower the fast-flick speed for it if it feels wrong.
+- **Tokens left:** 174 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`; finish alongside
+  M4 and I2.
+- Smaller: `Motion.control` and `Motion.settle` are the same spring (merge or tell apart);
+  `rememberMotionValue` ignores later changes to its rest points; `Modifier.searchBlur` in
+  `SolsticeShell.kt` is unused; `unresist` caps at 99.9 % of the over-pull limit (a very hard fling
+  past `overMax` snaps back slightly when caught).
+- **M5:** the motion lab screen and the `:motion` README for other projects.
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the
-PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`.
+PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`; check on the
+Pixel 7, smoothness on the `profile` build (`./gradlew assembleBasicProfile`, installs as
+`io.github.information89.solstice.profile`). Debug builds from different computers are signed with
+different keys: copy `~/.android/debug.keystore` between them to avoid reinstalling.
 
-Reference used for the iOS behaviour: `NEORUAA/Glasmio` (Apache-2.0), especially
-`docs/ios-sheet-motion.md` and `docs/dropdown-motion.md`. Use it as research, not as a dependency
-(it needs Android 12+ and bundles Apple artwork).
+Reference for iOS behaviour: `NEORUAA/Glasmio` (Apache-2.0), `docs/ios-sheet-motion.md` and
+`docs/dropdown-motion.md`. Research only, not a dependency.
 
 - **Performance:** judge smoothness on a release build; debug is much slower. Release builds take
   a long time the first time (R8).
