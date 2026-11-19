@@ -51,6 +51,23 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazePerformanceMode
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+
+/**
+ * Which glass renderer draws [glass] (prototype, 2026-11-19): our own backdrop recorder, or Haze.
+ * Off by default; switched in Settings › Debug to compare looks and frame times on a release build
+ * before deciding (docs/UI_SYSTEMS.md). Not saved: resets when the app restarts.
+ */
+object GlassBackend {
+    var useHaze by mutableStateOf(false)
+}
 
 /**
  * Frosted glass for overlays (toolbar, sheets later): the content behind is blurred, tinted and
@@ -59,10 +76,10 @@ import androidx.compose.ui.unit.dp
  * How: the content area records itself into a [GraphicsLayer] once per frame ([glassSource]); each
  * glass element re-draws just its own rectangle of that layer through a GPU blur
  * ([RenderEffect][BlurEffect]), so only the small glass area is blurred. Android 12+ only; older
- * versions get a more opaque tint instead of blur.
+ * versions get a more opaque tint instead of blur. With [GlassBackend.useHaze], Haze does both.
  */
 @Stable
-class GlassSource internal constructor(internal val layer: GraphicsLayer) {
+class GlassSource internal constructor(internal val layer: GraphicsLayer, internal val haze: HazeState) {
     // Plain field, read at draw time: a state read here would lag a frame behind layout changes.
     internal var coordinates: LayoutCoordinates? = null
 
@@ -79,7 +96,8 @@ private class Placed {
 @Composable
 fun rememberGlassSource(): GlassSource {
     val layer = rememberGraphicsLayer()
-    return remember(layer) { GlassSource(layer) }
+    val haze = rememberHazeState()
+    return remember(layer, haze) { GlassSource(layer, haze) }
 }
 
 /**
@@ -92,7 +110,13 @@ val LocalSkyGlass = compositionLocalOf<GlassSource?> { null }
 val LocalPageGlass = compositionLocalOf<GlassSource?> { null }
 
 /** Marks the content that glass elements should show, blurred, behind them. */
-fun Modifier.glassSource(source: GlassSource): Modifier = this
+fun Modifier.glassSource(source: GlassSource): Modifier = if (GlassBackend.useHaze) {
+    this.hazeSource(source.haze)
+} else {
+    glassSourceRecorder(source)
+}
+
+private fun Modifier.glassSourceRecorder(source: GlassSource): Modifier = this
     .onGloballyPositioned {
         source.coordinates = it
         source.moved = it.positionInRoot()
@@ -119,6 +143,7 @@ fun Modifier.glass(
     if (source == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return this.clip(shape).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(0.5.dp, edge, shape)
     }
+    if (GlassBackend.useHaze) return hazeGlass(source, shape, tint, blur, edge, alpha)
     val blurLayer = rememberGraphicsLayer()
     val placed = remember { Placed() }
     val radius = with(LocalDensity.current) { blur.toPx() }
@@ -168,4 +193,33 @@ fun Modifier.glass(
                 drawPath(outline, edge.copy(alpha = edge.alpha * a), style = Stroke(0.5.dp.toPx()))
             }
         }
+}
+
+/**
+ * The Haze version of [glass] (prototype). Same look: blurred backdrop at [blur], [tint], hairline
+ * [edge]. Known gap: [alpha] is read when composed, not every frame, so a morph that fades the glass
+ * (the moon card) won't fade it smoothly yet.
+ */
+@Composable
+private fun Modifier.hazeGlass(
+    source: GlassSource,
+    shape: Shape,
+    tint: Color,
+    blur: Dp,
+    edge: Color,
+    alpha: () -> Float,
+): Modifier {
+    val a = alpha().coerceIn(0f, 1f)
+    val style = remember(tint, blur, a) {
+        HazeBlurStyle {
+            blurRadius(blur)
+            colorEffects(listOf(HazeColorEffect.tint(tint)))
+            fallbackColorEffect(HazeColorEffect.tint(tint.copy(alpha = maxOf(tint.alpha, 0.92f))))
+            alpha(a)
+        }
+    }
+    return this
+        .clip(shape)
+        .hazeBlur(HazeInput.Sources(source.haze), style, performanceMode = HazePerformanceMode.Balanced)
+        .border(0.5.dp, edge.copy(alpha = edge.alpha * a), shape)
 }

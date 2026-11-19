@@ -724,6 +724,10 @@ Things to try on the phone before calling any motion done (debug and release bui
   otherwise).
 - `gradle.properties`: fork links filled in (`app.report_issue`, source, releases, install, privacy,
   GitHub org/repo/prefix).
+- `ui/settings/compose/DebugSettingsScreen.kt`: "Glass: Haze (prototype)" switch (2026-11-19).
+- `settings.gradle.kts`, `app/build.gradle.kts`, `gradle/libs.versions.toml`: `:motion` module and
+  the Haze dependency (2026-11-19).
+- Added: `motion/` (Apache-2.0 module, 2026-11-19).
 - Added: `res/values/strings_expressive.xml` (new strings kept out of upstream's `strings.xml`;
   English only so far).
 - Added (no upstream equivalent): `.gitattributes` (LF, so Spotless passes on Windows),

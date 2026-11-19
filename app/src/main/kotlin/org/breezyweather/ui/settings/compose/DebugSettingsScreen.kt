@@ -39,6 +39,7 @@ import org.breezyweather.ui.common.composables.AnimatedVisibilitySlideVertically
 import org.breezyweather.ui.common.widgets.Material3Scaffold
 import org.breezyweather.ui.common.widgets.generateCollapsedScrollBehavior
 import org.breezyweather.ui.common.widgets.insets.FitStatusBarTopAppBar
+import org.breezyweather.ui.expressive.components.GlassBackend
 import org.breezyweather.ui.main.utils.RefreshErrorType
 import org.breezyweather.ui.settings.activities.SettingsActivity
 import org.breezyweather.ui.settings.preference.bottomInsetItem
@@ -130,6 +131,21 @@ fun DebugSettingsScreen(
                     ) {
                         WeatherUpdateJob.startNow(context)
                     }
+                }
+
+                largeSeparatorItem()
+
+                // Solstice: compare glass renderers (prototype, not saved).
+                switchPreferenceItem(R.string.settings_debug_haze_glass) { id ->
+                    SwitchPreferenceView(
+                        titleId = id,
+                        summaryOnId = R.string.settings_debug_haze_glass_on,
+                        summaryOffId = R.string.settings_debug_haze_glass_off,
+                        checked = GlassBackend.useHaze,
+                        isFirst = true,
+                        isLast = true,
+                        onValueChanged = { GlassBackend.useHaze = it }
+                    )
                 }
 
                 largeSeparatorItem()
