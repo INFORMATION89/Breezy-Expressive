@@ -1491,3 +1491,22 @@ Things to try on the phone before calling any motion done (debug and release bui
 - **2026-11-19:** **AccuWeather disabled** (no longer a selectable or default source; places that still
   name it skip it quietly). The to-do list now lives in **`docs/ROADMAP.md`**, sorted by app area and
   by Functionality / Fix / Refinement; this file keeps decisions and the log.
+- **2026-11-19 (2 am session, built, checked in the debug app on the Pixel):**
+  - **Realistic moon:** NASA SVS CGI Moon Kit colour map (1k, WebP 82 KB, credit in
+    `third_party/nasa-moon`) on a sphere via an AGSL shader (`shell/MoonRenderer.kt`), lit by the
+    phase with a soft terminator, limb darkening and faint earthshine. Used in the moon card and
+    on the night sun path; the drawn moon stays as the fallback below Android 13.
+  - **Moon button:** no icon (it was redundant). **Moon card** opens over a postcard window too.
+  - **Dial:** a firm tick per day and a light tick per 6-hour step; **inertia** (decay, then it
+    settles on the nearest 6-hour tick); an **arrow** at the edge points to today when it's out of
+    view.
+  - **Places:** the plain page (no grain), the same as This week, with its edge blur.
+  - **This week:** shorter pills (84 dp) with 8 dp space above and below; "It's raining two days
+    this week"; a more visible card (9 % tint plus a hairline).
+  - **Window:** the "Visiting" text follows the sky (checked: Paris by day in dark mode). The pin
+    is an outline, filled once pinned, in the toolbar's text colour.
+  - **Search:** a "Clear" button next to Recent. Hiding the keyboard expands the card to full
+    height and runs it behind the navigation bar. Back already closes it after the keyboard.
+  - **Fold like paper (agreed):** when another place is starred, the current location's picture
+    folds up about its top edge and the card shrinks to a one-line strip ("➤ Miguel Hidalgo ☁ 12°");
+    starring it again unfolds it.

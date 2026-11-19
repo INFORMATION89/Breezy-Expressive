@@ -22,10 +22,12 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -126,6 +128,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -138,6 +141,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -155,6 +159,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -344,6 +349,7 @@ private fun SunPath(location: Location, now: Long, text: Color) {
     // 0/360 = new, 180 = full; waxing below 180 (lit on the right).
     val lit = ((1 - kotlin.math.cos(Math.toRadians(angle.toDouble()))) / 2).toFloat()
     var showPhase by remember { mutableStateOf(false) }
+    val moon = MoonRenderer.remember()
     val warm = Color(0xFFF2A33A)
     val cool = Color(0xFF8FA3E8)
     val accent = if (night) cool else warm
@@ -420,14 +426,10 @@ private fun SunPath(location: Location, now: Long, text: Color) {
             if (!night) {
                 drawCircle(Color(0xFFF6B04A), radius = 7.dp.toPx(), center = c)
             } else {
-                // The moon in its phase: a pale disc with the shadow sliding across it.
-                val r = 8.dp.toPx()
-                drawCircle(Color(0xFFF1EEE4), radius = r, center = c)
-                val waxing = angle < 180
-                val shift = 2f * r * lit * if (waxing) -1f else 1f
-                clipPath(Path().apply { addOval(Rect(c, r)) }) {
-                    drawCircle(Color(0xFF2B2A3A).copy(alpha = 0.85f), radius = r, center = c + Offset(shift, 0f))
-                }
+                // The real moon in its phase (NASA map, lit by the phase).
+                val r = 9.dp.toPx()
+                drawCircle(Color.White.copy(alpha = 0.08f), radius = r * 1.9f, center = c)
+                moon.draw(this, c, r, angle, Color(0xFF2B2A3A))
                 drawCircle(
                     Color.White.copy(alpha = 0.18f),
                     radius = r + 3.dp.toPx(),
@@ -749,7 +751,8 @@ private fun PaperCard(onPage: Color, content: @Composable () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(onPage.copy(alpha = 0.05f))
+            .background(onPage.copy(alpha = 0.09f))
+            .border(0.5.dp, onPage.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
             .padding(18.dp)
     ) { Column { content() } }
 }
@@ -779,7 +782,7 @@ private fun WeekSummary(
         wetDays.isEmpty() -> context.getString(R.string.week_dry)
         wetDays.size == 1 -> context.getString(R.string.week_one_wet, name(wetDays.first()))
         wetDays.size >= days.size - 1 -> context.getString(R.string.week_mostly_wet)
-        else -> context.getString(R.string.week_some_wet, wetDays.size)
+        else -> context.getString(R.string.week_some_wet, countWord(context, wetDays.size))
     }
     val bold = SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
     val wetIcon = wetDays.firstOrNull()?.let { SkyWeather.of(days[it].day?.weatherCode) }
@@ -843,7 +846,7 @@ private fun WeekPills(
     val top = highs.filterNotNull().maxOrNull() ?: return
     val bottom = lows.filterNotNull().minOrNull() ?: return
     val span = (top - bottom).coerceAtLeast(1.0)
-    val pillArea = 120.dp
+    val pillArea = 84.dp
     PaperCard(onPage) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             days.forEachIndexed { i, day ->
@@ -861,7 +864,8 @@ private fun WeekPills(
                     Text(
                         day.day?.temperature?.temperature?.let { degrees(context, it) } ?: "",
                         color = onPage,
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                     Box(Modifier.height(pillArea).width(22.dp)) {
                         val topFrac = ((top - hi) / span).toFloat()
@@ -878,7 +882,8 @@ private fun WeekPills(
                     Text(
                         day.night?.temperature?.temperature?.let { degrees(context, it) } ?: "",
                         color = onPage.copy(alpha = 0.6f),
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                     Icon(
                         hourIcon(weather, false),
@@ -1008,10 +1013,10 @@ internal fun PlacesPage(
         // Top padding chosen so the heading sits at the same height as This week's.
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 34.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize().grainyPaper(onPage)
-            // The same progressive edge blur as This week.
+        // The same plain page and progressive edge blur as This week (the grain paper is off for now).
+        modifier = Modifier.fillMaxSize()
             .edgeBlur(
-                if (onPage.luminance() < 0.5f) Color(0xFFF7F3EA) else Color(0xFF1D1C19),
+                if (onPage.luminance() < 0.5f) Color.White else Color.Black,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 56.dp,
                 strength = pageFade
             )
@@ -1114,6 +1119,9 @@ internal fun PlacesPage(
                             selected = id == currentId,
                             starred = id in starred,
                             visiting = id in visiting,
+                            // The current location folds into a one-line strip when another place is
+                            // the main place.
+                            folded = location.isCurrentPosition && id !in starred && starred.isNotEmpty(),
                             now = now,
                             context = context,
                             // The starred place is the main screen itself: it doesn't open as a postcard.
@@ -1338,6 +1346,7 @@ private fun PlaceCard(
     selected: Boolean,
     starred: Boolean,
     visiting: Boolean,
+    folded: Boolean,
     now: Long,
     context: Context,
     onClick: () -> Unit,
@@ -1382,10 +1391,23 @@ private fun PlaceCard(
     )
     val (title, city) = placeName(context, location)
     val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
+    val fold by animateFloatAsState(
+        if (folded) 1f else 0f,
+        spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        label = "fold"
+    )
+    val stripHeight = with(LocalDensity.current) { 52.dp.toPx() }
     Box(
         modifier
             .fillMaxWidth()
-            .aspectRatio(1.5f)
+            // Postcard proportions, folding down to a one-line strip.
+            .layout { measurable, constraints ->
+                val w = constraints.maxWidth
+                val full = w / 1.5f
+                val h = (full + (stripHeight - full) * fold).roundToInt()
+                val placeable = measurable.measure(Constraints.fixed(w, h))
+                layout(w, h) { placeable.place(0, 0) }
+            }
             .graphicsLayer {
                 scaleX = sink.value
                 scaleY = sink.value
@@ -1450,12 +1472,19 @@ private fun PlaceCard(
                     )
                 }
             }
-            // The picture: the place's sky, linen-textured, with the temperature.
+            // The picture: the place's sky, linen-textured, with the temperature. Folding, it turns
+            // up and away about its top edge like paper.
             SkyBackground(
                 state = sky,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0.5f, 0f)
+                        rotationX = 80f * fold
+                        cameraDistance = 12f * density
+                        alpha = 1f - fold
+                    }
                     .drawWithContent {
                         drawContent()
                         drawRect(linen, blendMode = BlendMode.Multiply)
@@ -1482,7 +1511,10 @@ private fun PlaceCard(
                 }
             }
             // Bottom caption: the region, and the local time when it differs from yours.
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 5.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 5.dp).graphicsLayer { alpha = 1f - fold }
+            ) {
                 Text(
                     location.country.uppercase(),
                     style = caption,
@@ -1545,8 +1577,45 @@ private fun PlaceCard(
         Postmark(
             country = location.countryCode,
             ink = sky.palette.text,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 26.dp, end = 12.dp)
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 26.dp, end = 12.dp)
+                .graphicsLayer { alpha = 1f - fold }
         )
+        // Folded: one line on the paper (name, weather, temperature).
+        if (fold > 0.01f) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp)
+                    .graphicsLayer { alpha = ((fold - 0.4f) / 0.6f).coerceIn(0f, 1f) }
+            ) {
+                Icon(Icons.Filled.NearMe, contentDescription = null, tint = ink, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    placeName(context, location).first,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
+                    contentDescription = current?.weatherText,
+                    tint = ink,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    current?.temperature?.temperature?.let { degrees(context, it) } ?: "–",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ink
+                )
+            }
+        }
     }
 }
 
@@ -1845,3 +1914,7 @@ internal fun time(
 
 private fun dayName(context: Context, date: Date, zone: TimeZone): String =
     SimpleDateFormat("EEE d", context.resources.configuration.locales[0]).apply { timeZone = zone }.format(date)
+
+/** "two", "three"… for small counts in sentences; digits otherwise. */
+private fun countWord(context: Context, n: Int): String =
+    context.resources.getStringArray(R.array.count_words).getOrNull(n) ?: n.toString()

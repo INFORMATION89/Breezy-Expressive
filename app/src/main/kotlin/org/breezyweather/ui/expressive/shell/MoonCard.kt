@@ -17,8 +17,10 @@
 package org.breezyweather.ui.expressive.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -61,6 +63,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -140,8 +143,6 @@ internal fun MoonButton(location: Location, now: Long, text: Color) {
             .clickable { MoonCardState.request = location to now }
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Canvas(Modifier.size(16.dp)) { drawMoon(center, size.minDimension / 2, angle, lit, Color(0xFF2B2A3A)) }
-        Spacer(Modifier.width(8.dp))
         Text(
             listOfNotNull(
                 breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context),
@@ -198,6 +199,18 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
     // Scrubbing offset in days (fractional while dragging).
     var offset by remember { mutableFloatStateOf(0f) }
     val haptics = LocalHapticFeedback.current
+    var fling by remember { androidx.compose.runtime.mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    // Haptics: a firm tick per day, a lighter one per 6-hour step.
+    fun tick(before: Float, after: Float) {
+        when {
+            kotlin.math.floor(before + 0.5f) != kotlin.math.floor(after + 0.5f) ->
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            kotlin.math.floor(before * 4f + 0.5f) != kotlin.math.floor(after * 4f + 0.5f) ->
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        }
+    }
+    val moon = MoonRenderer.remember()
     val scope = rememberCoroutineScope()
     val at = Date(now + (offset * DAY).toLong())
     val (angle, lit) = moonAt(at)
@@ -229,7 +242,17 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                         center = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
                     )
                 }
-                drawMoon(center, size.minDimension * 0.36f, angle, lit, Color(0xFF050509))
+                // A soft glow, then the real moon.
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                        center = center,
+                        radius = size.minDimension * 0.6f
+                    ),
+                    radius = size.minDimension * 0.6f,
+                    center = center
+                )
+                moon.draw(this, center, size.minDimension * 0.36f, angle, Color(0xFF050509))
             }
             Text(
                 breezyweather.domain.weather.model.MoonPhase(angle).getDescription(context) ?: "",
@@ -248,15 +271,50 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                     .fillMaxWidth()
                     .height(44.dp)
                     .pointerInput(Unit) {
-                        detectHorizontalDragGestures { change, dx ->
+                        val perDay = size.width / 4f
+                        val tracker = VelocityTracker()
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                fling?.cancel()
+                                tracker.resetTracking()
+                            },
+                            onDragEnd = {
+                                // Inertia: a flick keeps the dial turning, slowing down, then it
+                                // settles on the nearest 6-hour tick.
+                                val v = -tracker.calculateVelocity().x / perDay
+                                fling = scope.launch {
+                                    var last = offset
+                                    animateDecay(offset, v, FloatExponentialDecaySpec(frictionMultiplier = 1.6f)) {
+                                            value,
+                                            _,
+                                        ->
+                                        offset = value.coerceIn(-14f, 14f)
+                                        tick(last, offset)
+                                        last = offset
+                                    }
+                                    val snapped = (kotlin.math.round(offset * 4f) / 4f).coerceIn(-14f, 14f)
+                                    animate(
+                                        offset,
+                                        snapped,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.9f,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ) {
+                                            value,
+                                            _,
+                                        ->
+                                        offset = value
+                                    }
+                                }
+                            }
+                        ) { change, dx ->
                             change.consume()
+                            tracker.addPosition(change.uptimeMillis, change.position)
                             val before = offset
                             // Drag left to go forward in time (the ticks follow the finger).
-                            offset = (offset - dx / (size.width / 4f)).coerceIn(-14f, 14f)
-                            // A haptic tick each time a new day passes the needle.
-                            if (kotlin.math.floor(before + 0.5f) != kotlin.math.floor(offset + 0.5f)) {
-                                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            }
+                            offset = (offset - dx / perDay).coerceIn(-14f, 14f)
+                            tick(before, offset)
                         }
                     }
                     // Double-tap: back to today.
@@ -294,8 +352,24 @@ private fun MoonCard(location: Location, now: Long, glass: GlassSource) {
                             strokeWidth = if (major) 2f else 1.2f
                         )
                     }
-                    // Today: a small dot under its tick (moves with the dial).
+                    // Today: a small dot under its tick (moves with the dial); out of view, an arrow
+                    // at that edge points the way back.
                     val todayX = mid - offset * perDay
+                    if (todayX !in 0f..size.width) {
+                        val left = todayX < 0f
+                        val ax = if (left) 6f * density else size.width - 6f * density
+                        val ay = size.height + 6f * density
+                        val dir = if (left) 1f else -1f
+                        drawPath(
+                            Path().apply {
+                                moveTo(ax - dir * 4f * density, ay)
+                                lineTo(ax + dir * 3f * density, ay - 4f * density)
+                                lineTo(ax + dir * 3f * density, ay + 4f * density)
+                                close()
+                            },
+                            Color(0xFFF6B04A)
+                        )
+                    }
                     if (todayX in 0f..size.width) {
                         drawCircle(
                             Color(0xFFF6B04A),

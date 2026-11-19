@@ -284,7 +284,8 @@ internal fun PlaceWindow(
                     onSearch = onPin,
                     onSearchBounds = {},
                     withPlaces = false,
-                    budIcon = Icons.Outlined.PushPin,
+                    // Outline when it's a visit; filled once pinned.
+                    budIcon = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                     budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
                     budChecked = pinned
                 )

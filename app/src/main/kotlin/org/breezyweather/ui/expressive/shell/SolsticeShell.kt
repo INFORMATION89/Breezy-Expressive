@@ -680,8 +680,6 @@ fun SolsticeShell(
                 it.isCurrentPosition
             } ?: location
             )?.let { it.latitude to it.longitude }
-        // The moon card, over the pages, on the same glass as the search card.
-        MoonCardOverlay(glass)
         SearchOverlay(
             open = searchOpen,
             progress = { searchProgress.value },
@@ -721,6 +719,8 @@ fun SolsticeShell(
                 }
             )
         }
+        // The moon card, over everything (also over a postcard window), on the search card's glass.
+        MoonCardOverlay(glass)
     }
 }
 
@@ -947,7 +947,8 @@ internal fun ShellToolbar(
                 }
                 wasChecked = budChecked
             }
-            val tintColor by animateColorAsState(if (budChecked) primary else onSurface, label = "bud")
+            // White in dark mode, black in light mode (the outline or the fill carries the state).
+            val tintColor by animateColorAsState(onSurface, label = "bud")
             Icon(
                 budIcon,
                 contentDescription = if (bud > 0.5f) budDescription else null,

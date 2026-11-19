@@ -15,13 +15,13 @@ ship, and add new notes under the right area.
 
 - [ ] **Fix · Places:** dragging a card that's partly out of view breaks the drag.
 - [ ] **Fix · Places:** dragging a card to the edge of the screen doesn't scroll the list.
-- [ ] **Fix · Moon:** the moon card doesn't open when you're visiting a place.
+- [x] **Fix · Moon:** the moon card doesn't open when you're visiting a place.
 
 ## ⭐ Next session priorities
 
 1. Rework what needs redoing and make everything consistent (spacing, materials, components).
-2. The starred place folding into a compact version (💬 propose the animation).
-3. The small fixes below, plus the realistic moon.
+2. ~~The starred place folding into a compact version~~ (done 2026-11-19, "fold like paper").
+3. ~~The realistic moon~~ (done) and the small fixes below.
 
 ---
 
@@ -73,7 +73,7 @@ ship, and add new notes under the right area.
 - [ ] Alerts as cards, and Live Updates.
 
 ### Fix
-- [ ] **Text colours follow the sky:** in dark mode, opening a place where it's day, the "Visiting"
+- [x] **Text colours follow the sky:** in dark mode, opening a place where it's day, the "Visiting"
   text doesn't adapt. All Forecast text follows the sky; only This week adapts to any background.
 - [ ] **Rendering past the edges while the page recedes** (opening search, floating cards): draw the
   background and edge blur a bit beyond the visible area.
@@ -96,20 +96,20 @@ ship, and add new notes under the right area.
 ## Moon
 
 ### Functionality
-- [ ] ⭐ **Realistic moon** from NASA's CGI Moon Kit colour map (download approval pending),
+- [x] ⭐ **Realistic moon** from NASA's CGI Moon Kit colour map (done 2026-11-19: NASA map + AGSL shader),
   shader-lit by phase, with earthshine. One component for the button, the moon card and the sun
   path. Lunaria is a reference.
 - [ ] 💬 **Opening morph:** the moon button grows into the card.
 - [ ] Decide the moon card's size and position, or a full moon page instead (pros and cons).
 
 ### Refinement
-- [ ] **Finer, lighter vibrations** on the dial's small steps (6-hour ticks), with the stronger
+- [x] **Finer, lighter vibrations** on the dial's small steps (6-hour ticks), with the stronger
   tick per day.
-- [ ] **Inertia on the dial** (a flick keeps it turning, then it settles).
-- [ ] **An arrow towards today** when today is out of view on the dial.
+- [x] **Inertia on the dial** (a flick keeps it turning, then it settles).
+- [x] **An arrow towards today** when today is out of view on the dial.
 - [ ] Make the moon card match our design (it looks straight out of iOS); follow This week's
   direction.
-- [ ] Moon button: remove its small moon icon (redundant); use a proper moon-phase icon from the
+- [x] Moon button: remove its small moon icon (redundant); use a proper moon-phase icon from the
   icon library on the Forecast page.
 - [ ] Day labels on the dial (Tue · Today · Thu).
 
@@ -119,23 +119,23 @@ ship, and add new notes under the right area.
 - [ ] Tapping a day (a pill, or a day named in the summary) opens that day's floating card.
 
 ### Refinement
-- [ ] Shorter pills, with more space between the pills and the text above and below.
-- [ ] Wording: "It's raining two days this week".
-- [ ] A more visible card background.
+- [x] Shorter pills, with more space between the pills and the text above and below.
+- [x] Wording: "It's raining two days this week".
+- [x] A more visible card background.
 
 ---
 
 ## Places
 
 ### Functionality
-- [ ] ⭐💬 **The starred place folds into a compact version.**
-- [ ] **When another place is starred, the current location becomes a one-line card.**
+- [x] ⭐💬 **The starred place folds into a compact version.**
+- [x] **When another place is starred, the current location becomes a one-line card.**
 - [ ] 💬 **Swapping main and pinned when you travel:** e.g. Mexico City is main and Tijuana pinned;
   move to Tijuana and they swap (Tijuana main, Mexico City pinned). Research how Apple Maps and
   Apple Weather handle it before building.
 
 ### Refinement
-- [ ] Remove the grain paper effect for now; use the same background and edge fade as This week.
+- [x] Remove the grain paper effect for now; use the same background and edge fade as This week.
 - [ ] Reset the scroll position when you leave Places.
 
 ## Postcard window (visiting a place)
@@ -146,16 +146,16 @@ ship, and add new notes under the right area.
 
 ### Refinement
 - [ ] A small icon before the "Visiting" text.
-- [ ] Pin icon: white outline; when pinned, filled (white in dark mode, black in light mode).
+- [x] Pin icon: white outline; when pinned, filled (white in dark mode, black in light mode).
 
 ## Search pane
 
 ### Functionality
-- [ ] **A button to clear recent searches.**
+- [x] **A button to clear recent searches.**
 
 ### Fix
-- [ ] **Back closes the search card.**
-- [ ] **The keyboard's dismiss button expands the search card to full height,** and the card is
+- [x] **Back closes the search card.**
+- [x] **The keyboard's dismiss button expands the search card to full height,** and the card is
   drawn behind the navigation bar.
 
 ### Refinement

@@ -39,20 +39,24 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -70,6 +74,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -145,6 +150,7 @@ import kotlin.math.roundToInt
  * place when they change. [progress] (0 = bubble, 1 = open) is one spring for opening and closing;
  * it's read in layout and draw only, so opening never recomposes the screen.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchOverlay(
     open: Boolean,
@@ -175,10 +181,33 @@ fun SearchOverlay(
     var extra by remember { mutableFloatStateOf(0f) }
     var pulled by remember { mutableFloatStateOf(0f) }
     var settle by remember { mutableStateOf<Job?>(null) }
+    // Written by the card's layout each frame; read by the drags (how far it can grow).
+    val room = remember { FloatArray(1) }
     // The query last sent, so "no results" only shows once that search has answered.
     var requested by remember { mutableStateOf("") }
 
     BackHandler(enabled = open, onBack = onClose)
+    // Hiding the keyboard (its dismiss key) while search is open expands the card to full height.
+    val imeShown = WindowInsets.isImeVisible
+    var hadIme by remember { mutableStateOf(false) }
+    LaunchedEffect(imeShown) {
+        if (open && hadIme && !imeShown) {
+            settle?.cancel()
+            settle = scope.launch {
+                animate(
+                    extra,
+                    room[0],
+                    animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+                ) {
+                        v,
+                        _,
+                    ->
+                    extra = v
+                }
+            }
+        }
+        hadIme = imeShown
+    }
     LaunchedEffect(open) {
         if (open) {
             extra = 0f
@@ -201,7 +230,8 @@ fun SearchOverlay(
         // Build the typing index now, so the first letters already find cities.
         withContext(Dispatchers.Default) { Cities.search(context, "a") }
     }
-    val recents = remember(open) { RecentSearches.all(context) }
+    var recentsVersion by remember { mutableStateOf(0) }
+    val recents = remember(open, recentsVersion) { RecentSearches.all(context) }
 
     // Never looks like it's loading (agreed 2026-11-18): matches from the bundled city list show
     // instantly as you type; when the online answer for this query arrives, rows settle into it
@@ -248,7 +278,6 @@ fun SearchOverlay(
         }
     }
     // Written by the card's layout each frame; read by the handle's drag (how far it can grow).
-    val room = remember { FloatArray(1) }
 
     // How far the inside is shown, from the open progress (read only in draw/layout lambdas).
     fun inside() = ((progress().coerceIn(0f, 1f) - 0.45f) / 0.55f).coerceIn(0f, 1f)
@@ -344,11 +373,9 @@ fun SearchOverlay(
                     val height = constraints.maxHeight.toFloat()
                     val shrunk = (view.rootView.height - constraints.maxHeight).coerceAtLeast(0)
                     val keyboard = ime.getBottom(this)
-                    val bottomInset = if (keyboard > 0) {
-                        (keyboard - shrunk).coerceAtLeast(0)
-                    } else {
-                        navigation.getBottom(this)
-                    }
+                    // On the keyboard; with the keyboard hidden, down to the screen's edge (behind the
+                    // navigation bar; the field keeps clear of it with padding).
+                    val bottomInset = if (keyboard > 0) (keyboard - shrunk).coerceAtLeast(0) else 0
                     val top = status.getTop(this) + 12.dp.toPx()
                     // Full width, sitting right on the keyboard (no gaps).
                     val margin = 0f
@@ -400,7 +427,11 @@ fun SearchOverlay(
                                 recents.any { it.name == c.name && it.countryCode == c.countryCode }
                             },
                             recents = recents,
-                            onPickCity = onPickCity
+                            onPickCity = onPickCity,
+                            onClearRecents = {
+                                RecentSearches.clear(context)
+                                recentsVersion++
+                            }
                         )
                     }
                 }
@@ -410,6 +441,8 @@ fun SearchOverlay(
                     focus = focus,
                     onSelect = { shownHits.firstOrNull()?.pick?.invoke() }
                 )
+                // Behind the navigation bar when the keyboard is hidden.
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars.exclude(WindowInsets.ime)))
             }
             // The handle's touch area is taller than it looks (it overlaps the top of the results).
             Handle(
@@ -543,6 +576,7 @@ private fun Results(
     suggestions: List<City>,
     recents: List<City>,
     onPickCity: (City) -> Unit,
+    onClearRecents: () -> Unit,
 ) {
     val now = System.currentTimeMillis()
     val searching = query.trim().length >= 2
@@ -625,11 +659,16 @@ private fun Results(
                     if (recents.isNotEmpty()) {
                         val o = order(at++)
                         item(key = "recent") {
-                            SectionTitle(
-                                stringResource(R.string.search_recent),
-                                Icons.Outlined.History,
-                                Modifier.riseIn(o, shownAt)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                SectionTitle(
+                                    stringResource(R.string.search_recent),
+                                    Icons.Outlined.History,
+                                    Modifier.riseIn(o, shownAt).weight(1f)
+                                )
+                                TextButton(onClick = onClearRecents, modifier = Modifier.riseIn(o, shownAt)) {
+                                    Text(stringResource(R.string.search_clear_recents))
+                                }
+                            }
                         }
                         val base = at
                         itemsIndexed(recents, key = { _, c -> "r" + c.name + c.countryCode }) { i, city ->

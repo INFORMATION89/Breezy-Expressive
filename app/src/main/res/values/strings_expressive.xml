@@ -55,7 +55,7 @@
     <string name="shell_now_main_place">This is now your main place</string>
     <string name="week_dry">A dry week ahead</string>
     <string name="week_one_wet">Only %1$s needs an umbrella</string>
-    <string name="week_some_wet">%1$d wet days this week</string>
+    <string name="week_some_wet">It’s raining %1$s days this week</string>
     <string name="week_mostly_wet">A wet week, keep an umbrella close</string>
     <string name="week_expect">Expect</string>
     <string name="week_on">on %1$s</string>
@@ -68,4 +68,15 @@
     <string name="moon_next_full">Next full moon</string>
     <string name="moon_days">%1$d days</string>
     <string name="moon_distance">Distance</string>
+    <string-array name="count_words">
+        <item>zero</item>
+        <item>one</item>
+        <item>two</item>
+        <item>three</item>
+        <item>four</item>
+        <item>five</item>
+        <item>six</item>
+        <item>seven</item>
+    </string-array>
+    <string name="search_clear_recents">Clear</string>
 </resources>

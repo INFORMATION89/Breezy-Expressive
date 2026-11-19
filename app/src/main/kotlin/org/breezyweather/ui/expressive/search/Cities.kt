@@ -190,5 +190,7 @@ object RecentSearches {
         prefs(context).edit { putString(KEY, list.joinToString("\n") { it.encode() }) }
     }
 
+    fun clear(context: Context) = prefs(context).edit { remove(KEY) }
+
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
