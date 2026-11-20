@@ -17,22 +17,38 @@
 package org.breezyweather.ui.expressive.shell
 
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.github.information89.motion.Motion
+import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 
@@ -76,5 +92,59 @@ internal fun ToolbarDock(alpha: () -> Float = { 1f }, content: @Composable Colum
                 .graphicsLayer { this.alpha = alpha() },
             content = content
         )
+    }
+}
+
+/** The large title's distance below the status bar on plain pages. */
+private val PageTitleTop = 34.dp
+
+/** Room at the end of a plain page's list so its last item can scroll clear of the toolbar. */
+private val ToolbarClearance = 160.dp
+
+/**
+ * A plain page (This week, Places): a list edge to edge under a transparent status bar and the
+ * toolbar, the page's large title (with an optional [action], e.g. Settings) at the same height on
+ * every page, the standard side margins, room for the toolbar at the end, and the progressive edge
+ * blur at the top. One place to change them all (component catalog, M4).
+ */
+@Composable
+internal fun PageScaffold(
+    title: String,
+    onPage: Color,
+    page: Color,
+    listState: LazyListState,
+    pageFade: () -> Float,
+    spacing: Dp,
+    action: (@Composable () -> Unit)? = null,
+    content: LazyListScope.() -> Unit,
+) {
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(
+            start = Space.S4,
+            end = Space.S4,
+            top = top + PageTitleTop,
+            bottom = ToolbarClearance
+        ),
+        verticalArrangement = Arrangement.spacedBy(spacing),
+        modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp, strength = pageFade)
+    ) {
+        item(key = "header") {
+            // As tall as an icon button, with or without one, so the title sits at the same height.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.heightIn(min = 48.dp).padding(bottom = Space.S1)
+            ) {
+                Text(
+                    title,
+                    color = onPage,
+                    style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f).padding(start = Space.S1)
+                )
+                action?.invoke()
+            }
+        }
+        content()
     }
 }

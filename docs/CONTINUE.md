@@ -107,7 +107,7 @@ card is pulled below compact), `Motion.control` = `Motion.settle` (merge or tell
 - **Tokens left:** 175 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`.
 - **Navigation 3:** decided, migration started, **not on `main`** (no `navigation3` dependency yet):
   say where it is before touching Settings or pushed screens. New icons there use `SolsticeIcons`.
-- Page scaffold (component catalog), `Modifier.searchBlur` unused, `unresist` caps at 99.9 %.
+- `PageScaffold` done (PLAN.md log); `Modifier.searchBlur` unused, `unresist` caps at 99.9 %.
 - Old branches to delete on GitHub: `material-symbols`, `motion-framework-plan` (both merged).
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the

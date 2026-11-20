@@ -24,24 +24,16 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.horizontalDrag
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -79,7 +71,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -90,7 +81,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.SolsticeIcons
-import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.theme.CornerShapes
 import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.PI
@@ -179,42 +169,24 @@ internal fun PlacesPage(
         return sign(dist) * nudgeMax * sin(PI * (reach - d) / (reach - near)).toFloat()
     }
 
-    LazyColumn(
-        state = listState,
-        // Edge to edge like This week: the list scrolls under a transparent status bar. Top padding
-        // chosen so the heading sits at the same height as This week's.
-        contentPadding = PaddingValues(
-            start = Space.S4,
-            end = Space.S4,
-            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 34.dp,
-            bottom = 132.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(Space.S4),
-        // The same plain page and progressive edge blur as This week (the grain paper is off for now).
-        modifier = Modifier.fillMaxSize()
-            .edgeBlur(
-                if (onPage.luminance() < 0.5f) Color.White else Color.Black,
-                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 56.dp,
-                strength = pageFade
-            )
-    ) {
-        item(key = "header") {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = Space.S2)) {
-                Text(
-                    stringResource(R.string.shell_tab_places),
-                    style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
-                    color = onPage,
-                    modifier = Modifier.weight(1f).padding(start = Space.S1)
+    // Edge to edge like This week, on the same plain page, title height and edge blur.
+    PageScaffold(
+        title = stringResource(R.string.shell_tab_places),
+        onPage = onPage,
+        page = if (onPage.luminance() < 0.5f) Color.White else Color.Black,
+        listState = listState,
+        pageFade = pageFade,
+        spacing = Space.S4,
+        action = {
+            IconButton(onClick = onSettings) {
+                Icon(
+                    SolsticeIcons.Settings,
+                    contentDescription = stringResource(R.string.action_settings),
+                    tint = onPage.copy(alpha = 0.7f)
                 )
-                IconButton(onClick = onSettings) {
-                    Icon(
-                        SolsticeIcons.Settings,
-                        contentDescription = stringResource(R.string.action_settings),
-                        tint = onPage.copy(alpha = 0.7f)
-                    )
-                }
             }
         }
+    ) {
         items(shown, key = { it }) { id ->
             val location = byId[id] ?: return@items
             val isCarried = carried == id

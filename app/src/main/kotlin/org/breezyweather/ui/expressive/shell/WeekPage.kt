@@ -17,24 +17,16 @@
 package org.breezyweather.ui.expressive.shell
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -66,7 +58,6 @@ import breezyweather.domain.location.model.Location
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.CardMaterial
 import org.breezyweather.ui.expressive.components.SolsticeCard
-import org.breezyweather.ui.expressive.components.edgeBlur
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.paletteAt
@@ -94,23 +85,16 @@ internal fun DaysPage(
 ) {
     val context = LocalContext.current
     val days = location?.weather?.dailyForecastStartingToday.orEmpty().take(7)
-    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     // Edge to edge: the list scrolls under the status bar and the toolbar, with a progressive blur
     // at both edges (also a hint that there's more to scroll).
-    LazyColumn(
-        state = listState,
-        contentPadding = PaddingValues(start = Space.S4, end = Space.S4, top = top + Space.S10, bottom = 160.dp),
-        verticalArrangement = Arrangement.spacedBy(Space.S3),
-        modifier = Modifier.fillMaxSize().edgeBlur(page, top = top + 56.dp, strength = pageFade)
+    PageScaffold(
+        title = stringResource(R.string.shell_tab_days),
+        onPage = onPage,
+        page = page,
+        listState = listState,
+        pageFade = pageFade,
+        spacing = Space.S3
     ) {
-        item {
-            Text(
-                stringResource(R.string.shell_tab_days),
-                color = onPage,
-                style = MaterialTheme.typography.displaySmallEmphasized.copy(fontWeight = FontWeight.SemiBold),
-                modifier = Modifier.padding(start = Space.S1, bottom = Space.S1)
-            )
-        }
         if (location != null && days.isNotEmpty()) {
             item { WeekSummary(location, days, onPage, onDay) }
             item { WeekPills(location, days, onPage, onDay) }

@@ -2086,3 +2086,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   into the bubble, the card's own icon travels to the toolbar, but the toolbar's search button is
   already drawn there (the toolbar fades in with `1 − presence`). Fix: hide that button until the
   card's hand-off, then swap in one frame (CONTINUE.md 1B).
+- **2026-11-19: M4 done: `PageScaffold`** (`shell/PageFrame.kt`). This week and Places (and the
+  postcard window's This week) build on it: the list edge to edge, the large title (with an optional
+  action, Places' Settings) in a 48 dp row 34 dp below the status bar, `Space.S4` margins, 160 dp of
+  toolbar room at the end, the top edge blur. Small shifts: This week's title 4 dp higher (now level
+  with Places', checked on the Pixel 7), Places a little closer under its title and 28 dp more room at
+  the end. Forecast stays its own layout (centred, on the sky).
