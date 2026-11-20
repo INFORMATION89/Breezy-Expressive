@@ -95,6 +95,24 @@ by proposing options for each point (lab demos where possible), agree, then buil
    while a refresh runs, "Couldn't update" with a retry when it fails.
 2. **Refresh the weather when the app opens, without overdoing it.** First agree the compromise in
    PLAN.md "Refresh on open (proposed 2026-11-20)", then build it.
+3. **One toolbar for home and the postcard window** (reported by the user 2026-11-20: in a visit, the
+   This week tab's title doesn't fold away while the page shows its own title, so both show).
+   `PlaceWindow.kt` builds its own `ShellToolbar` with different inputs from `SolsticeShell.kt`:
+
+   | | Home (`SolsticeShell.kt`) | Postcard window (`PlaceWindow.kt`) |
+   |---|---|---|
+   | Tab title folding | `labelShown` from the lists' scroll (`titleVisible`) | **hard-coded `listOf(1f, 1f)`**: the bug |
+   | Tapping a tab | `navigate()`: the agreed page jump | `pager.animateScrollToPage`: no page jump |
+   | Interrupt / slide position | `onInterrupt`, `position` | missing |
+   | Bud icon while its card is out | `budIconShown` | not set (pin) |
+   | Messages | `ShellMessageHost` above it | none |
+   | Fade in | `1 − max(search, window presence)` | `(progress − 0.25) / 0.5` |
+
+   Fix: one shared piece (e.g. `rememberShellToolbarState(pager, lists…)` plus a `ShellToolbarHost`
+   that both use) so the behaviour is the same by construction and only the **configuration** differs
+   (which tabs, which bud: search or pin). Use the window's own This week list for its title folding.
+   Then check both side by side on the Pixel 7: title folding, tab tap jump, slide to switch, bud.
+   The fade-in difference may be intended (the window opening): propose, don't change it silently.
 
 ### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 

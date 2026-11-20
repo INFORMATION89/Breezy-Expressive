@@ -2309,3 +2309,8 @@ Steps:
   upstream). One-line edit in `buildSrc/.../AndroidConfig.kt` (a fork difference to keep when syncing
   upstream); upstream's own version checks stay as they are. First item of the next session
   (CONTINUE.md "00").
+- **2026-11-20 (reported by the user):** home and postcard-window toolbars differ. The window's
+  `ShellToolbar` gets `labelShown = listOf(1f, 1f)` (This week's title never folds, so it shows with the
+  page's title), a plain pager scroll instead of `navigate()` (no page jump), no `onInterrupt` /
+  `position`, no `budIconShown`, no messages, its own fade-in. Plan: one shared toolbar state and host,
+  only the configuration differs (CONTINUE.md 0b.3).

@@ -90,6 +90,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] 💬 **"Last updated" text** on Forecast (relative, "Updating…", "Couldn't update"). PLAN.md.
 - [ ] 💬 **Refresh on open** without overdoing it: shown place only, 30 min freshness (to agree), sources'
   rules, back-off after failures, reuse a recent position. PLAN.md "Last updated text and refresh on open".
+- [ ] **Fix:** one toolbar for home and the postcard window (the window's This week title doesn't fold;
+  no page jump; missing hooks). Shared state + host, only configuration differs (CONTINUE.md 0b.3).
 - [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (needs Android 10,
   the new minimum; check the SDK's license). PLAN.md "Far future".
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected
