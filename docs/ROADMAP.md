@@ -79,7 +79,7 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   then trace the moon card's remaining cost (CONTINUE.md 1A).
 - [x] **Fix** (checked 2026-11-19): swiping search down shows two search icons (the toolbar's button is drawn while the
   card's icon travels to it); hide it until the hand-off (CONTINUE.md 1B).
-- [ ] **Test builds for the user:** profile build on a rolling `testing` pre-release, stable test key,
+- [x] **Test builds for the user** (built 2026-11-20; waiting on the two GitHub secrets): profile build on a rolling `testing` pre-release, stable test key,
   "Solstice Lab" launcher icon in test builds (CONTINUE.md 1C).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected

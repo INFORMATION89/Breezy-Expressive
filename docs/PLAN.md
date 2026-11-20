@@ -2181,3 +2181,15 @@ Steps:
   stable test key in CI secrets, the `profile` build published to a rolling `testing` pre-release on
   every push to `main`, a "Solstice Lab" launcher icon in test builds only, README steps
   (CONTINUE.md 1C).
+- **2026-11-20: test builds for the phone (CONTINUE.md 1C), built:**
+  - **Shared test key** outside the repo (`~/.android/solstice-test.keystore` plus `.password`).
+    Profile builds use it when present, both here and in CI.
+  - **Testing release:** a CI job publishes the profile APK to a rolling `testing` pre-release on
+    every push to `main` (secrets `SOLSTICE_TEST_KEYSTORE_BASE64` and `SOLSTICE_TEST_KEY_PASSWORD`;
+    it's skipped without them).
+  - **Lab icon:** a "Solstice Lab" launcher icon in debug and profile builds only.
+  - **README:** the steps for installing on the phone.
+  - **On the Pixel:** profile build installed with the test key (the old debug-key copy was
+    uninstalled, as the user agreed).
+  - **Waiting on:** the user adding the two secrets.
+

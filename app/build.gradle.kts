@@ -50,6 +50,25 @@ configure<ApplicationExtension> {
         }
     }
 
+    // Solstice test key (2026-11-20): profile builds made on a computer and by CI are signed with the
+    // same key, so each new test build installs over the last and keeps the user's places. The key
+    // lives outside the repo: ~/.android/solstice-test.keystore with its password in
+    // ~/.android/solstice-test.password (CI writes both from secrets). Without it, profile builds
+    // fall back to the debug key.
+    val testKeystore = File(System.getProperty("user.home"), ".android/solstice-test.keystore")
+    val testPassword = File(System.getProperty("user.home"), ".android/solstice-test.password")
+    val hasTestKey = testKeystore.canRead() && testPassword.canRead()
+    signingConfigs {
+        if (hasTestKey) {
+            create("solsticeTest") {
+                storeFile = testKeystore
+                storePassword = testPassword.readText().trim()
+                keyAlias = "solstice-test"
+                keyPassword = testPassword.readText().trim()
+            }
+        }
+    }
+
     buildTypes {
         named("debug") {
             applicationIdSuffix = ".debug"
@@ -68,7 +87,7 @@ configure<ApplicationExtension> {
             initWith(getByName("release"))
             applicationIdSuffix = ".profile"
             versionNameSuffix = "-profile"
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasTestKey) "solsticeTest" else "debug")
             matchingFallbacks += listOf("release")
         }
     }

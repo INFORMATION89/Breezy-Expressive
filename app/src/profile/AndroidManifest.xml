@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solstice: test-build-only additions for the profile build (not in release builds). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- The motion lab gets its own launcher icon in test builds (not in release). -->
+        <activity
+            android:name="org.breezyweather.ui.expressive.lab.MotionLabActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Solstice Lab"
+            android:taskAffinity="${applicationId}.lab"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

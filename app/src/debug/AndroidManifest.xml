@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Solstice: debug-only screens (not in release builds). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application>
         <!-- Sky gradient preview: adb shell am start -n <debug app id>/org.breezyweather.ui.expressive.sky.SkyPreviewActivity -->
         <activity
             android:name="org.breezyweather.ui.expressive.sky.SkyPreviewActivity"
             android:exported="true"
             android:theme="@style/BreezyWeatherTheme" />
+        <!-- The motion lab gets its own launcher icon in test builds (not in release). -->
+        <activity
+            android:name="org.breezyweather.ui.expressive.lab.MotionLabActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Solstice Lab"
+            android:taskAffinity="${applicationId}.lab"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

@@ -40,3 +40,51 @@ jobs:
         with:
           name: solstice-basic-debug
           path: app/build/outputs/apk/basic/debug/*.apk
+
+  # Test builds for the phone (2026-11-20): the profile build (smooth, R8), signed with the Solstice
+  # test key from secrets, published to a rolling "testing" pre-release on every push to main, so it
+  # can be downloaded on the phone without signing in (or followed with Obtainium).
+  testing:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TEST_KEYSTORE: ${{ secrets.SOLSTICE_TEST_KEYSTORE_BASE64 }}
+      TEST_PASSWORD: ${{ secrets.SOLSTICE_TEST_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          java-version-file: .github/.java-version
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Test key
+        if: env.TEST_KEYSTORE != ''
+        run: |
+          mkdir -p ~/.android
+          echo "$TEST_KEYSTORE" | base64 -d > ~/.android/solstice-test.keystore
+          printf '%s' "$TEST_PASSWORD" > ~/.android/solstice-test.password
+
+      - name: Assemble basic profile
+        if: env.TEST_KEYSTORE != ''
+        run: ./gradlew assembleBasicProfile
+
+      - name: Publish the testing pre-release
+        if: env.TEST_KEYSTORE != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          short=$(git rev-parse --short HEAD)
+          cp app/build/outputs/apk/basic/profile/*arm64-v8a*.apk "solstice-testing-$short.apk"
+          gh release delete testing --yes --cleanup-tag || true
+          gh release create testing "solstice-testing-$short.apk"             --prerelease             --title "Solstice testing ($short)"             --notes "Latest test build of main, commit $short. Installs as Solstice (profile) next to other builds, with a Solstice Lab icon for the motion lab."
+
