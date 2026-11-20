@@ -50,6 +50,21 @@ State on 2026-11-19 evening: icons on Material Symbols Rounded (merged, selected
 left: the three documented timed exceptions). The focus now: **fix the two reported bugs, check by
 hand, build the motion lab (M5), then refine animations area by area.**
 
+### 00. ASAP, first thing next session: minimum Android 10 (decided by the user 2026-11-20)
+
+Raise the minimum from Android 7 (API 24) to **Android 10 (API 29)**: `MIN_SDK = 29` in
+`buildSrc/src/main/kotlin/breezy/buildlogic/AndroidConfig.kt` (an upstream file: one-line edit, note
+it in the PLAN.md log as a fork difference to keep when syncing upstream). Then:
+- Build and check on the Pixel 7 (profile build); CI must stay green (lint may flag now-useless
+  version checks: fix them in `ui/expressive/` and `:motion`, **leave the ~30 in upstream files**
+  (`VERSION_CODES.N` … `Q`) and the `-v26`/`-v28` resource folders as they are, so upstream merges stay
+  easy).
+- Our own code: drop fallbacks only needed below 10 (check `ui/expressive/`, `:motion`; Android 12+
+  checks for `RenderEffect` blur stay).
+- Docs: README, UI_SYSTEMS.md and PLAN.md wherever they say Android 7 / minSdk 24 (e.g. the icons'
+  "works on minSdk 24", Haze's "fits our minSdk 24").
+- It unblocks the far-future native Smartspacer work (its SDK needs Android 10).
+
 ### 0. Next session: Saturday 2026-11-21, 1:00 AM (planned by the user, top priority)
 
 **Refine the morph animations, using the motion lab.** Motion rule still applies: start the session

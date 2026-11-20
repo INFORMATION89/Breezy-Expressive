@@ -819,8 +819,8 @@ retry on failure. Place and look to propose first.
 (`com.kieronquinn.smartspacer:sdk-plugin`) builds Targets and Complications as exported content
 providers (`SmartspacerTargetProvider`, `SmartspacerComplicationProvider`) protected by Smartspacer's
 permission; nothing says they must live in a separate app, so Solstice can ship them itself and push
-updates with `notifyChange` after each refresh. Smartspacer needs Android 10+ (Solstice's minimum is
-7): enable the providers only on 10+. To check first: the SDK's license against Solstice's LGPL-3.0,
+updates with `notifyChange` after each refresh. Smartspacer needs Android 10+, which becomes Solstice's minimum
+(decided 2026-11-20), so no version gate is needed. To check first: the SDK's license against Solstice's LGPL-3.0,
 and what Targets (current conditions, rain soon, alerts) and Complications (temperature, condition
 icon) to offer. Docs: github.com/KieronQuinn/Smartspacer/wiki ("SDK: Creating a Target",
 "Creating a Complication").
@@ -2305,3 +2305,7 @@ Steps:
   Forecast, and refresh on open with a compromise to agree (shown place only, 30 min freshness,
   sources' rules, back-off; section "Last updated text and refresh on open"). Far future: native
   Smartspacer Targets/Complications in Solstice, no bridge app (section "Far future").
+- **2026-11-20: decided by the user: minimum Android 10 (API 29), ASAP** (was Android 7, API 24, as
+  upstream). One-line edit in `buildSrc/.../AndroidConfig.kt` (a fork difference to keep when syncing
+  upstream); upstream's own version checks stay as they are. First item of the next session
+  (CONTINUE.md "00").

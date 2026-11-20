@@ -82,6 +82,7 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [x] **Test builds for the user** (built 2026-11-20; waiting on the two GitHub secrets): profile build on a rolling `testing` pre-release, stable test key,
   "Solstice Lab" launcher icon in test builds (CONTINUE.md 1C).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).
+- [ ] ⭐ **Minimum Android 10** (API 29), ASAP, first thing next session (CONTINUE.md "00").
 - [ ] 💬⭐ **Morph refining (Sat 2026-11-21, 1:00 AM, top priority):** lab renamed "Motion Lab"; the button
   itself becomes the card; blur to hide text changes; text transformations (label into title, replace,
   rolling numbers); a lab demo per kind of animation; the toolbar's animations into `:motion` and the lab.
@@ -89,8 +90,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] 💬 **"Last updated" text** on Forecast (relative, "Updating…", "Couldn't update"). PLAN.md.
 - [ ] 💬 **Refresh on open** without overdoing it: shown place only, 30 min freshness (to agree), sources'
   rules, back-off after failures, reuse a recent position. PLAN.md "Last updated text and refresh on open".
-- [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (Android 10+;
-  check the SDK's license). PLAN.md "Far future".
+- [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (needs Android 10,
+  the new minimum; check the SDK's license). PLAN.md "Far future".
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected
   toolbar tab filled; audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
 - [ ] Icons later (agree first): animated fill.
