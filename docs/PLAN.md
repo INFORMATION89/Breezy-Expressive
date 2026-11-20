@@ -2118,3 +2118,8 @@ Things to try on the phone before calling any motion done (debug and release bui
   patterns that live in the app (search sheet, postcard window, moon card, toolbar, Places drag,
   messages) are listed with where to find them; slow motion applies to them too while the lab is
   open in the background. English only (a tool, `translatable="false"`). Next: the `:motion` README.
+- **2026-11-19: checked on the Pixel 7 (profile):** the motion lab (tokens, Play all, 5× slow motion,
+  release track, morph; frame meter 90 fps / 0–1 % slow frames while playing) with two fixes: the
+  token dots use the middle 60 % of the track so overshoot shows (playful and wobble were clipped),
+  and the morph's surface is only drawn while it's out (it hid the pill's label). Bug B: closing
+  search now shows one icon (the card's) until it lands. Page jump and Places star swipe work.

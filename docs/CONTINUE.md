@@ -64,7 +64,7 @@ hand, build the motion lab (M5), then refine animations area by area.**
   sampling while it runs; recede only the content under the glass; or drop the recede.
 - Before this, the moon card measured 3.3 % janky frames (2026-11-19, M3). Compare against that.
 
-**B. Swiping search down shows two search icons.** **Fixed 2026-11-19, check on the phone**
+**B. Swiping search down shows two search icons.** **Fixed and checked on the phone 2026-11-19**
 (`budIconShown` in `Toolbar.kt`, see PLAN.md log). (Clarified by the user.) Start with search
 open and slide it down: the card shrinks back into the bubble and its own search icon travels to the
 toolbar (correct), but the toolbar's real search button is already drawn at that spot, so two icons
@@ -86,7 +86,7 @@ Not felt yet: toolbar and Places drag, catching the postcard window mid-close, m
 fly off), page jumps, Places swipe actions. Icons on the screens not looked at yet: search, Settings,
 details, Management (gauge → `speed`, UV → `wb_sunny`, wind → `air`, eye → `visibility`).
 
-### 3. M5: the motion lab, before refining (**built 2026-11-19**, check on the phone; README next)
+### 3. M5: the motion lab, before refining (**built and checked 2026-11-19**; README next)
 
 A debug-only screen with each pattern (sheet, morph, window, toolbar bud, drag, swipe action,
 message), a slow-motion switch (animator duration scale), a frame counter, and the tokens' values
