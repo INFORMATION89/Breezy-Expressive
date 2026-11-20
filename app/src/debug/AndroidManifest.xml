@@ -8,6 +8,12 @@
             android:name="org.breezyweather.ui.expressive.sky.SkyPreviewActivity"
             android:exported="true"
             android:theme="@style/BreezyWeatherTheme" />
+        <!-- Its own name in the app drawer, so it's never mistaken for the real app. -->
+        <activity
+            android:name="org.breezyweather.ui.main.MainActivity"
+            android:label="Solstice Dev"
+            tools:node="merge"
+            tools:replace="android:label" />
         <!-- The motion lab gets its own launcher icon in test builds (not in release). -->
         <activity
             android:name="org.breezyweather.ui.expressive.lab.MotionLabActivity"
