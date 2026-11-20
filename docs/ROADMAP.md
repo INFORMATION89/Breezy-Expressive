@@ -76,8 +76,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [x] 💬⭐ **Icon style:** Material Symbols Rounded, one catalog (`SolsticeIcons`), old Material Icons
   removed (2026-11-19, PR #1). Check on the phone (CONTINUE.md).
 - [ ] **Fix:** frames drop opening the moon card and search (likely the page recede; CONTINUE.md 1A).
-- [ ] 💬 **Fix:** swiping search down, the toolbar's search icon is back too early; hand-off options
-  to agree (CONTINUE.md 1B).
+- [ ] **Fix:** swiping search down shows two search icons (the toolbar's button is drawn while the
+  card's icon travels to it); hide it until the hand-off (CONTINUE.md 1B).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected
   toolbar tab filled; audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.

@@ -2082,3 +2082,7 @@ Things to try on the phone before calling any motion done (debug and release bui
   toolbar's search icon is back before the card reaches it (`ToolbarDock` alpha is `1 − presence`).
   Next steps, options and the order after them (check by hand, M5 motion lab, refining rounds) in
   CONTINUE.md "Pick up here".
+- **2026-11-19 (clarified by the user):** bug (B) is two search icons at once: while search folds back
+  into the bubble, the card's own icon travels to the toolbar, but the toolbar's search button is
+  already drawn there (the toolbar fades in with `1 − presence`). Fix: hide that button until the
+  card's hand-off, then swap in one frame (CONTINUE.md 1B).

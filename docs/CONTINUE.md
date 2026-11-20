@@ -64,17 +64,20 @@ hand, build the motion lab (M5), then refine animations area by area.**
   sampling while it runs; recede only the content under the glass; or drop the recede.
 - Before this, the moon card measured 3.3 % janky frames (2026-11-19, M3). Compare against that.
 
-**B. Swiping search down: the toolbar's search icon is already back before the card reaches it.**
-- Cause: the toolbar fades in by `1 − max(searchSheet.presence, windowPresence)`
-  (`ToolbarDock(alpha = …)` in `shell/SolsticeShell.kt`), so it's half visible half-way through the
-  close, while the card is still travelling to *become* that button.
-- Options to propose (motion rule; the same applies to the postcard window and the moon pill):
-  1. **Hand-off at the end:** the toolbar (or just the search button) appears in the last ~15 % of
-     `presence` (`p.window(0f, 0.15f)` / `handOff`), as the card lands into it.
-  2. Toolbar fades with `presence` as now, but the search button itself stays hidden until the card
-     has landed.
-  3. A true morph: the card's own icon travels into the button's place (like the moon pill).
-  Suggested: 1, it's the "one thing at a time" rule in MOTION.md.
+**B. Swiping search down shows two search icons.** (Clarified by the user.) Start with search
+open and slide it down: the card shrinks back into the bubble and its own search icon travels to the
+toolbar (correct), but the toolbar's real search button is already drawn at that spot, so two icons
+show at once until the card lands.
+- Cause: the card's travelling icon is in `search/SearchOverlay.kt` ("While still small it's the
+  bubble's search icon", alpha `1 − inside()`). Meanwhile the whole toolbar fades back in with
+  `ToolbarDock(alpha = { 1 − max(searchSheet.presence, windowPresence) })` (`shell/SolsticeShell.kt`),
+  including its search button (`budIcon` in `shell/Toolbar.kt`).
+- Fix (a bug in the agreed motion, "the card becomes the button", so no new options needed): keep the
+  toolbar's **search button hidden while search is open or closing**, and show it in the same frame
+  the card hides itself (`handedOff` in `SearchOverlay.kt`, `alpha = if (handedOff) 0f else 1f`), so
+  it's a one-frame swap at the same spot. The rest of the toolbar can keep fading in with `presence`.
+  Opening has the same hand-off in reverse: hide the button the frame the card appears over it.
+- Check the same on the postcard window and the moon pill (a source drawn twice while its morph runs).
 
 ### 2. Check by hand on the Pixel 7 (profile build)
 
