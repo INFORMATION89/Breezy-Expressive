@@ -84,7 +84,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).
 - [ ] 💬⭐ **Morph refining (Sat 2026-11-21, 1:00 AM, top priority):** lab renamed "Motion Lab"; the button
   itself becomes the card; blur to hide text changes; text transformations (label into title, replace,
-  rolling numbers); a lab demo per kind of animation. PLAN.md "Morph refining".
+  rolling numbers); a lab demo per kind of animation; the toolbar's animations into `:motion` and the lab.
+  PLAN.md "Morph refining".
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected
   toolbar tab filled; audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
 - [ ] Icons later (agree first): animated fill.

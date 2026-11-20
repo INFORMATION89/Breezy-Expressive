@@ -69,6 +69,8 @@ by proposing options for each point (lab demos where possible), agree, then buil
    text transition), text appearing and leaving with its container.
 5. **More interactions in the lab, one per kind of animation**, so every pattern can be tried and
    compared with iOS: list in PLAN.md.
+6. **The toolbar's animations into `:motion`**, so the system drives them and they can be tweaked
+   and refined in the lab (PLAN.md "Morph refining", point 5).
 
 ### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 

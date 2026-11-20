@@ -768,6 +768,24 @@ slowed down and compared with iOS. Suggested list (agree which first):
 - scroll effects: collapsing title, edge blur, sticky headers;
 - haptics on each (which ones, and when).
 
+**5. The toolbar's animations into `:motion`** (added by the user 2026-11-20), so the system drives
+them and they can be tweaked and refined. Today `shell/Toolbar.kt` animates with seven plain Compose
+`Animatable`s on token springs, with the amounts typed inline, and none of it is in the lab:
+- the **search bud** (agreed 2026-11-18, "gooey bud"): `neck` (`Motion.playful` / `settle`),
+  `wobble` and `ripple` after it pops free or is taken back (`Motion.wobble`);
+- the **pin's jab** when pinning (`jab`, `Motion.container`; 1.5 dp down, 7 % squash, 3 % stretch,
+  8° tilt, haptic);
+- **slide to switch pages**: the selection's `pop` (`Motion.playful` / `container` / `dismiss`) and the
+  finger-to-page factor (`1.6`);
+- each **tab's press** (`squeeze`), the **labels unfolding** (follows the pager), the bud's tint
+  (`animateColorAsState`, `Motion.control`).
+To do: name each of these as a `:motion` pattern or a parameter set (one place for its spring and
+amounts, e.g. a `ToolbarMotion` object), drive the finger-driven ones (slide to switch, the bud's
+swipe) with `MotionValue` and its release rules, and add a **toolbar demo to the lab** with live
+controls for those parameters (and the tokens they use), shared with the app so a value tuned in the
+lab is the value the app uses. No change to how it looks or moves until a change is proposed and
+agreed.
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -2241,3 +2259,6 @@ Steps:
   original button itself becomes the card (no swap); blur to hide text changes; text transformations
   and transitions (label into title, replace in place, rolling numbers); one lab demo per kind of
   animation. Section "Morph refining".
+- **2026-11-20 (added by the user):** also for Saturday: the toolbar's animations into `:motion` (one
+  place for their springs and amounts, `MotionValue` for the finger-driven ones, a lab demo with live
+  controls). "Morph refining", point 5.
