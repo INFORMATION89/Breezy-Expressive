@@ -2174,3 +2174,6 @@ Steps:
   `ScreenPush.push()` / `pop()` are its transition specs (forward, back and predictive back);
   `navigation-compose` removed. Checked: push to Appearance (slides over the dimmed list), on to
   Units, back twice, and a held predictive-back swipe that follows the finger and completes.
+- **2026-11-20: page recede dropped** (the user's decision): the page behind search and the moon card
+  no longer scales; the lab's "Page recede" switch is gone. Built and installed; **not re-measured
+  yet** (the phone's USB connection kept dropping mid-run).

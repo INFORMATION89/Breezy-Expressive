@@ -98,7 +98,6 @@ import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.components.rememberSolsticeSheetState
-import org.breezyweather.ui.expressive.lab.LabFlags
 import org.breezyweather.ui.expressive.search.RecentSearches
 import org.breezyweather.ui.expressive.search.SearchOverlay
 import org.breezyweather.ui.expressive.sky.AnimatedSkyBackground
@@ -525,14 +524,6 @@ fun SolsticeShell(
                             }
                         }
                         .graphicsLayer {
-                            // The page recedes a little while search or the moon card is open.
-                            val k = if (LabFlags.pageRecede) {
-                                1f - 0.04f * maxOf(searchSheet.backdrop(), MoonCardState.progress)
-                            } else {
-                                1f
-                            }
-                            scaleX = k
-                            scaleY = k
                             // The tab jump: the arriving page slides in from the tapped side (a quarter of
                             // the width) while the old one slides out under the crossfade.
                             translationX = jumpDir * size.width * fadeOut.value
