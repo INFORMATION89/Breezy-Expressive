@@ -75,7 +75,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **Design frameworks:** spacing scale, type scale, motion tokens, component rules.
 - [x] 💬⭐ **Icon style:** Material Symbols Rounded, one catalog (`SolsticeIcons`), old Material Icons
   removed (2026-11-19, PR #1). Check on the phone (CONTINUE.md).
-- [ ] **Fix:** frames drop opening the moon card and search (likely the page recede; CONTINUE.md 1A).
+- [ ] **Fix:** frames drop opening the moon card and search. Decided: drop the page recede, re-measure,
+  then trace the moon card's remaining cost (CONTINUE.md 1A).
 - [x] **Fix** (checked 2026-11-19): swiping search down shows two search icons (the toolbar's button is drawn while the
   card's icon travels to it); hide it until the hand-off (CONTINUE.md 1B).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).

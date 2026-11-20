@@ -2147,3 +2147,5 @@ Things to try on the phone before calling any motion done (debug and release bui
   The recede is the main cost for search; the moon card has another one too (it was 3.3 % in M3, by a
   different measure). Options to propose next: drop the recede, or recede only the content under the
   glass; for the moon card, a Perfetto trace of an opening first.
+- **2026-11-20: decided by the user: drop the page recede** (bug A, option A) for search and the moon
+  card; re-measure both, then trace the moon card's remaining cost (21 % janky without the recede).

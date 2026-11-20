@@ -56,6 +56,11 @@ hand, build the motion lab (M5), then refine animations area by area.**
 **Measured 2026-11-20** (PLAN.md log): the recede is the main cost for search (22 % → 8 % janky
 without it); the moon card drops 28 % → 21 %, so it has another cost too. Next: options for the
 recede, a Perfetto trace of the moon card.
+**Decided by the user 2026-11-20: option A, drop the recede** for both search and the moon card (the
+page behind no longer scales; the scrim and everything else stay). Then re-measure both the same way
+(profile build, `dumpsys gfxinfo`, 6 opens and flick closes each): expect search near 8 %, moon card
+near 21 %. Remove the lab's "Page recede" switch once the recede is gone. Then a **Perfetto trace of a
+moon card opening** to find its remaining cost, and bring the findings (and any options) to the user.
 - Likely cause (to confirm): both make the page behind recede, `scale = 1 − 0.04 × max(search
   backdrop, MoonCardState.progress)` in a `graphicsLayer` on the whole pager (`shell/SolsticeShell.kt`,
   "The page recedes a little…", added in M4). Scaling the page makes everything that samples it redraw
