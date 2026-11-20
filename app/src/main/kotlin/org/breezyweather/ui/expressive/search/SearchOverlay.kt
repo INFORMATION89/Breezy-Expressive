@@ -182,6 +182,10 @@ fun SearchOverlay(
     val onReopenNow = rememberUpdatedState(onReopen)
     // The keyboard's height while open (the card's bottom), held while closing.
     val heldInset = remember { IntArray(1) }
+    // The keyboard and a pull (agreed 2026-11-19, like iOS): pulled below compact, the keyboard starts
+    // hiding while the card holds its height; let go and it springs back, the keyboard comes back.
+    // 0 = none, 1 = hidden by the pull, 2 = coming back (held until it's all the way up).
+    val pullKeyboard = remember { IntArray(1) }
     // The query last sent, so "no results" only shows once that search has answered.
     var requested by remember { mutableStateOf("") }
 
@@ -192,12 +196,13 @@ fun SearchOverlay(
     val keyboardController = LocalSoftwareKeyboardController.current
     var hadIme by remember { mutableStateOf(false) }
     LaunchedEffect(imeShown) {
-        if (open && hadIme && !imeShown) sheet.expand()
+        if (open && hadIme && !imeShown && pullKeyboard[0] == 0) sheet.expand()
         hadIme = imeShown
     }
     LaunchedEffect(open) {
         if (open) {
             // Opens tall (agreed 2026-11-19): the caller's sheet.showTall().
+            pullKeyboard[0] = 0
             delay(120)
             runCatching { focus.requestFocus() }
         } else {
@@ -272,6 +277,10 @@ fun SearchOverlay(
         if (sheet.presence.isRunning || sheet.detent.isRunning) sheet.catch()
         val wasTall = sheet.extra >= sheet.room - 0.5f
         sheet.drag(delta)
+        if (sheet.pulled > 0f && imeNow.value && pullKeyboard[0] == 0) {
+            pullKeyboard[0] = 1
+            keyboardController?.hide()
+        }
         // With the keyboard hidden, swiping the card up until it hits the top brings the keyboard back.
         if (delta < 0f && !imeNow.value && !wasTall && sheet.extra >= sheet.room - 0.5f) {
             runCatching { focus.requestFocus() }
@@ -283,6 +292,11 @@ fun SearchOverlay(
     // enough dismisses, carrying the fling's speed into the close.
     fun release(velocity: Float) {
         val close = sheet.release(velocity)
+        if (!close && pullKeyboard[0] == 1) {
+            pullKeyboard[0] = 2
+            runCatching { focus.requestFocus() }
+            keyboardController?.show()
+        }
         if (close && openNow.value) {
             onCloseNow.value()
         } else if (!close && !openNow.value) {
@@ -353,8 +367,10 @@ fun SearchOverlay(
                     val liveInset = if (keyboard > 0) (keyboard - shrunk).coerceAtLeast(0) else 0
                     // Closing hides the keyboard: keep the card where it was (not falling with the
                     // keyboard), so it folds into the button from there and can still be caught.
-                    if (openNow.value) heldInset[0] = liveInset
-                    val bottomInset = if (openNow.value) liveInset else heldInset[0]
+                    if (pullKeyboard[0] == 2 && liveInset >= heldInset[0]) pullKeyboard[0] = 0
+                    val holding = !openNow.value || pullKeyboard[0] != 0
+                    if (!holding) heldInset[0] = liveInset
+                    val bottomInset = if (holding) heldInset[0] else liveInset
                     val top = status.getTop(this) + Space.S3.toPx()
                     // Full width, sitting right on the keyboard (no gaps).
                     val margin = 0f

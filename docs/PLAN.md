@@ -2132,3 +2132,8 @@ Things to try on the phone before calling any motion done (debug and release bui
   back; the pull **tracks the finger 1:1** (the drag range is the real distance from the sheet's top
   to the moon pill, read with the new `morphAnchorOf(key)`; 420 dp until measured). Next round:
   search.
+- **2026-11-19: refining round 2, search** (agreed with the user, checked on the Pixel 7): the card's
+  sizes project flings with UIKit's **normal deceleration**, so a medium flick from tall steps to
+  compact and a hard one dismisses straight away; **the keyboard hides on the pull** (once the card is
+  pulled below compact it starts hiding and the card holds its height; let go and it springs back,
+  the keyboard comes back with it). Next round: the postcard window.

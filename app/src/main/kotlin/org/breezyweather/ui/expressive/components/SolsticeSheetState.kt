@@ -165,7 +165,10 @@ fun rememberSolsticeSheetState(): SolsticeSheetState {
         initial = 0f,
         restPoints = listOf(-1f, 0f, 1f),
         overMin = overPx * 2f,
-        overMax = overPx
+        overMax = overPx,
+        // UIKit's normal deceleration (agreed 2026-11-19): a medium flick steps down one size, a hard
+        // one from tall can dismiss.
+        deceleration = MotionPhysics.DECELERATION_NORMAL
     )
     return remember(presence, detent) {
         // UIKit's release rule: slower than 250 dp/s is no flick, faster than 1000 dp/s moves a step.
