@@ -82,6 +82,8 @@ import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Elevation
+import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.PI
 import kotlin.math.abs
@@ -232,7 +234,7 @@ internal fun PlacesPage(
                             val k = 1f + 0.035f * glide.value
                             scaleX = k
                             scaleY = k
-                            shadowElevation = glide.value * 10.dp.toPx()
+                            shadowElevation = glide.value * Elevation.Lifted.toPx()
                             ambientShadowColor = Color.Black.copy(alpha = 0.10f)
                             spotShadowColor = Color.Black.copy(alpha = 0.16f)
                             shape = CornerShapes.XXS
@@ -242,7 +244,7 @@ internal fun PlacesPage(
                             scaleX = lift.value
                             scaleY = lift.value
                             rotationZ = tilt
-                            shadowElevation = ((lift.value - 1f) / 0.03f).coerceIn(0f, 1f) * 10.dp.toPx()
+                            shadowElevation = ((lift.value - 1f) / 0.03f).coerceIn(0f, 1f) * Elevation.Lifted.toPx()
                             ambientShadowColor = Color.Black.copy(alpha = 0.10f)
                             spotShadowColor = Color.Black.copy(alpha = 0.16f)
                             shape = CornerShapes.XXS
@@ -438,7 +440,7 @@ private fun SwipeablePlace(
                 .background(behind)
                 .padding(end = Space.S7)
         ) {
-            Icon(icon, contentDescription = null, tint = onBehind, modifier = Modifier.size(28.dp))
+            Icon(icon, contentDescription = null, tint = onBehind, modifier = Modifier.size(Sizes.IconXLarge))
         }
         Box(
             Modifier

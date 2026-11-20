@@ -80,6 +80,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.MotionValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -145,8 +146,8 @@ internal fun PlaceWindow(
     val density = LocalDensity.current
     // How far down a pull reaches the dismiss point.
     val rangePx = with(density) { 260.dp.toPx() }
-    val slowPx = with(density) { 250.dp.toPx() }
-    val fastPx = with(density) { 1000.dp.toPx() }
+    val slowPx = with(density) { MotionPhysics.SlowFlick.toPx() }
+    val fastPx = with(density) { MotionPhysics.FastFlick.toPx() }
     val screenPx = remember { FloatArray(1) { 1f } }
     val closingNow = rememberUpdatedState(closing)
     SideEffect {

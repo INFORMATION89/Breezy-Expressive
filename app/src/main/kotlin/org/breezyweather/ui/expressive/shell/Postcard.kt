@@ -99,7 +99,9 @@ import org.breezyweather.ui.expressive.sky.SkyBackground
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.theme.CornerShapes
 import org.breezyweather.ui.expressive.theme.Corners
+import org.breezyweather.ui.expressive.theme.Elevation
 import org.breezyweather.ui.expressive.theme.HeroType
+import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
 import java.util.Date
@@ -201,7 +203,7 @@ internal fun PlaceCard(
             .clickable(interactionSource = press, indication = null, onClick = onClick)
             // A soft, low shadow, like card lying on paper.
             .shadow(
-                elevation = if (selected) 8.dp else 6.dp,
+                elevation = if (selected) Elevation.CardSelected else Elevation.Card,
                 shape = deckled,
                 ambientColor = Color.Black.copy(alpha = 0.10f),
                 spotColor = Color.Black.copy(alpha = 0.22f)
@@ -236,7 +238,7 @@ internal fun PlaceCard(
                             SolsticeIcons.Small.NearMeFill,
                             contentDescription = stringResource(R.string.location_current),
                             tint = nameColor,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(Sizes.IconXSmall)
                         )
                         Spacer(Modifier.width(Space.S1))
                     }
@@ -367,7 +369,7 @@ internal fun PlaceCard(
                         scaleX = k
                         scaleY = k
                         rotationZ = -9f + 6f * lower
-                        shadowElevation = 10.dp.toPx() * (1f - lower)
+                        shadowElevation = Elevation.Lifted.toPx() * (1f - lower)
                         ambientShadowColor = Color.Black.copy(alpha = 0.12f)
                         spotShadowColor = Color.Black.copy(alpha = 0.18f)
                         alpha = (t * 6f).coerceIn(0f, 1f)
@@ -422,11 +424,11 @@ internal fun PlaceCard(
                         Icon(
                             SolsticeIcons.forSize(
                                 hourIcon(SkyWeather.of(current?.weatherCode), sky.sunHeight < 0f),
-                                18.dp
+                                Sizes.IconMedium
                             ),
                             contentDescription = current?.weatherText,
                             tint = SolsticePalette.Stamp,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(Sizes.IconMedium)
                         )
                         Spacer(Modifier.width(Space.S2))
                         Text(

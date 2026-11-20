@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.breezyweather.ui.expressive.theme.Corners
 import org.breezyweather.ui.expressive.theme.Space
 
 /** Check / close icon shown inside a Switch thumb. */
@@ -192,8 +193,8 @@ fun ChoiceSheet(
                     } else {
                         val first = i == 0 || isHeader[i - 1]
                         val last = i == valueArray.lastIndex || isHeader[i + 1]
-                        val big = 20.dp
-                        val small = 4.dp
+                        val big = Corners.M
+                        val small = Corners.XXS
                         val itemEnabled = enableArray?.getOrNull(i) ?: true
                         val isSelected = value == selected
                         // Material 3 selectable surface (radio semantics), in the segmented shape.
@@ -249,7 +250,7 @@ fun ChoiceSheet(
                     horizontalArrangement = Arrangement.End
                 ) { extraButton() }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Space.S4))
         }
     }
 }

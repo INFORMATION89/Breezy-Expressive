@@ -37,6 +37,7 @@ import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import org.breezyweather.ui.expressive.theme.StrokeWidth
 
 /**
  * Frosted glass for overlays and cards: the content behind is blurred, tinted and edged with a fine
@@ -83,7 +84,9 @@ fun Modifier.glass(
 ): Modifier {
     val faded = if (alpha != null) this.graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) } else this
     if (source == null) {
-        return faded.clip(shape).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(0.5.dp, edge, shape)
+        return faded.clip(
+            shape
+        ).background(tint.copy(alpha = maxOf(tint.alpha, 0.92f))).border(StrokeWidth.Hairline, edge, shape)
     }
     val style = remember(tint, blur) {
         HazeBlurStyle {
@@ -96,5 +99,5 @@ fun Modifier.glass(
     return faded
         .clip(shape)
         .hazeBlur(HazeInput.Sources(source.haze), style, performanceMode = HazePerformanceMode.Balanced)
-        .border(0.5.dp, edge, shape)
+        .border(StrokeWidth.Hairline, edge, shape)
 }

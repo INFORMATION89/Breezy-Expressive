@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.breezyweather.ui.expressive.theme.CornerShapes
 import org.breezyweather.ui.expressive.theme.Space
+import org.breezyweather.ui.expressive.theme.StrokeWidth
 
 /** What a [SolsticeCard] is made of. */
 enum class CardMaterial {
@@ -76,7 +77,7 @@ fun SolsticeCard(
             Modifier
                 .clip(shape)
                 .background(ink.copy(alpha = 0.09f))
-                .border(0.5.dp, ink.copy(alpha = 0.10f), shape)
+                .border(StrokeWidth.Hairline, ink.copy(alpha = 0.10f), shape)
                 .padding(Space.S5)
     }
     Box(modifier.fillMaxWidth().then(surface)) { Column(content = content) }

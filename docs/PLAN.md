@@ -2096,3 +2096,15 @@ Things to try on the phone before calling any motion done (debug and release bui
   (`ShellToolbar(budIconShown = …)`) whenever the search card is on screen (`presence > 0` or
   moving); the card carries the icon there and back, and the real one shows in the frame the card has
   folded away. Bug A (frames dropping) still to measure.
+- **2026-11-19: tokens cleanup** (no visual change: every replacement has the same value). New
+  tokens: `Sizes.IconXSmall` 12, `IconMedium` 18, `IconXLarge` 28, `IconHero` 32, `HandleWidth` 36 /
+  `HandleThickness` 4 (the sheets' grab bar), `Elevation.Card` 6 / `CardSelected` 8 / `Lifted` 10,
+  and in `:motion` `MotionPhysics.SlowFlick` 250 dp/s / `FastFlick` 1000 dp/s (were repeated in three
+  places). The `Stroke` token object is now `StrokeWidth` (it clashed with Compose's drawing `Stroke`).
+  Replaced: hairline/thin/regular borders and lines, touch-target rows, icon sizes, card shadows,
+  segmented-row corners, the sheets' corner radius, top gap and handle, the collapsing top bar's
+  margins. Colours and shapes were already done (no hex colours or fixed `RoundedCornerShape`s
+  outside the theme). **Left as local values on purpose (~94):** illustration geometry (postmark,
+  stamp, sun arc, rain bars, moon dial, blur radii), motion distances (pull ranges, dismiss points)
+  and component-internal metrics (toolbar tab widths, search card sizes). Rule: a value becomes a
+  token when it's a design decision shared by two or more places.

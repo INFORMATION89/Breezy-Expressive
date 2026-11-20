@@ -51,16 +51,31 @@ object Space {
 object Sizes {
     /** Smallest touch target (Material and Android accessibility). */
     val TouchTarget = 48.dp
+    val IconXSmall = 12.dp
     val IconSmall = 16.dp
+    val IconMedium = 18.dp
     val Icon = 20.dp
     val IconLarge = 24.dp
+    val IconXLarge = 28.dp
+    val IconHero = 32.dp
+
+    /** A sheet's grab bar (search, moon card). */
+    val HandleWidth = 36.dp
+    val HandleThickness = 4.dp
 }
 
 /** Line widths. */
-object Stroke {
+object StrokeWidth {
     val Hairline = 0.5.dp
     val Thin = 1.dp
     val Regular = 1.5.dp
+}
+
+/** Shadow heights: a card lying on the page, a selected one, one lifted while it moves. */
+object Elevation {
+    val Card = 6.dp
+    val CardSelected = 8.dp
+    val Lifted = 10.dp
 }
 
 /**

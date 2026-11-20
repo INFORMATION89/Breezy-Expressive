@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.information89.motion.Motion
 import org.breezyweather.ui.expressive.components.edgeBlur
+import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 
@@ -134,7 +135,7 @@ internal fun PageScaffold(
             // As tall as an icon button, with or without one, so the title sits at the same height.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.heightIn(min = 48.dp).padding(bottom = Space.S1)
+                modifier = Modifier.heightIn(min = Sizes.TouchTarget).padding(bottom = Space.S1)
             ) {
                 Text(
                     title,

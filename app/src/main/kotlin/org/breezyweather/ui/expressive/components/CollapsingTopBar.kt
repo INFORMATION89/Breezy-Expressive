@@ -38,6 +38,7 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -95,8 +96,8 @@ fun CollapsingTopBar(
             val loose = Constraints(maxWidth = width, maxHeight = collapsed.roundToInt())
             val nav = measurables.first { it.layoutId == "nav" }.measure(loose)
             val acts = measurables.first { it.layoutId == "actions" }.measure(loose)
-            val edge = 16.dp.roundToPx()
-            val navEnd = if (nav.width > 0) 4.dp.roundToPx() + nav.width else edge
+            val edge = Space.S4.roundToPx()
+            val navEnd = if (nav.width > 0) Space.S1.roundToPx() + nav.width else edge
             // Room for the title when small (between the icons), shown at its large size.
             val smallRoom = (width - navEnd - acts.width - edge).coerceAtLeast(0)
             val largeRoom = width - 2 * edge
@@ -105,15 +106,15 @@ fun CollapsingTopBar(
                 .measure(Constraints(maxWidth = titleMax, maxHeight = Constraints.Infinity))
             layout(width, height) {
                 val rowTop = 0
-                nav.placeRelative(4.dp.roundToPx(), rowTop + (collapsed.roundToInt() - nav.height) / 2)
+                nav.placeRelative(Space.S1.roundToPx(), rowTop + (collapsed.roundToInt() - nav.height) / 2)
                 acts.placeRelative(
-                    width - acts.width - 4.dp.roundToPx(),
+                    width - acts.width - Space.S1.roundToPx(),
                     rowTop + (collapsed.roundToInt() - acts.height) / 2
                 )
                 // From its large place (left edge, near the bottom) to the bar row (after the icon).
                 val scale = 1f + (ratio - 1f) * f
                 val fromX = edge.toFloat()
-                val fromY = height - 20.dp.toPx() - title.height
+                val fromY = height - Space.S5.toPx() - title.height
                 val toX = navEnd.toFloat()
                 val toY = (collapsed - title.height * ratio) / 2f
                 // Sideways leads (eased out), so the title clears the back arrow before it reaches the row.

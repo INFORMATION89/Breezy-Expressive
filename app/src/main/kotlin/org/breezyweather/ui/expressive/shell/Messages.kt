@@ -171,7 +171,7 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
                 .padding(horizontal = Space.S6)
                 .padding(bottom = Space.S3)
                 .widthIn(max = 420.dp)
-                .heightIn(min = 48.dp)
+                .heightIn(min = Sizes.TouchTarget)
                 .onSizeChanged { width = it.width.coerceAtLeast(1) }
                 // Before the layer, so the finger is tracked in screen space while the pill moves.
                 .pointerInput(message) {

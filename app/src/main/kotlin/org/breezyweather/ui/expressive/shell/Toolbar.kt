@@ -87,6 +87,7 @@ import org.breezyweather.ui.expressive.components.SolsticeIcons
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
+import org.breezyweather.ui.expressive.theme.Elevation
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
@@ -330,7 +331,7 @@ private fun ToolbarTabs(
                     val k = 1f + 0.12f * pop.value
                     scaleX = k
                     scaleY = k
-                    shadowElevation = 6.dp.toPx() * pop.value
+                    shadowElevation = Elevation.Card.toPx() * pop.value
                     shape = CircleShape
                 }
                 .background(primary, CircleShape)

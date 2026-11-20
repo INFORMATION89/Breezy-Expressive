@@ -49,6 +49,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import org.breezyweather.R
+import org.breezyweather.ui.expressive.theme.Corners
+import org.breezyweather.ui.expressive.theme.Elevation
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
 import sh.calvin.reorderable.ReorderableItem
@@ -101,14 +103,14 @@ fun <T : Any> ReorderList(
                 )
             ) { isDragging ->
                 val elevation by animateDpAsState(
-                    if (isDragging) 6.dp else 0.dp,
+                    if (isDragging) Elevation.Card else 0.dp,
                     MaterialTheme.motionScheme.fastSpatialSpec(),
                     label = "dragElevation"
                 )
                 val first = index == 0
                 val last = index == items.lastIndex
-                val big = 24.dp
-                val small = if (isDragging) big else 4.dp
+                val big = Corners.L
+                val small = if (isDragging) big else Corners.XXS
                 Surface(
                     shape = RoundedCornerShape(
                         topStart = if (first) big else small,

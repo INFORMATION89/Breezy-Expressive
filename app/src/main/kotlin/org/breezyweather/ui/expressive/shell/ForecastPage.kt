@@ -82,6 +82,7 @@ import org.breezyweather.ui.expressive.theme.HeroType
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
+import org.breezyweather.ui.expressive.theme.StrokeWidth
 import java.util.Date
 import java.util.TimeZone
 import kotlin.math.PI
@@ -148,7 +149,7 @@ internal fun ForecastPage(
                         SolsticeIcons.Small.NearMeFill,
                         contentDescription = stringResource(R.string.location_current),
                         tint = text,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(Sizes.IconMedium)
                     )
                     Spacer(Modifier.width(Space.S2))
                 }
@@ -346,8 +347,8 @@ private fun SunPath(
                 androidx.compose.ui.geometry.Rect(0f, 0f, w, size.height),
                 androidx.compose.ui.graphics.Paint()
             )
-            drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = 1.dp.toPx())
-            drawPath(curve, text.copy(alpha = 0.55f), style = Stroke(1.5.dp.toPx()))
+            drawLine(text.copy(alpha = 0.3f), Offset(0f, base), Offset(w, base), strokeWidth = StrokeWidth.Thin.toPx())
+            drawPath(curve, text.copy(alpha = 0.55f), style = Stroke(StrokeWidth.Regular.toPx()))
             val sunX = edge + progress * (1f - 2 * edge)
             val done = Path().apply {
                 moveTo(0f, base)

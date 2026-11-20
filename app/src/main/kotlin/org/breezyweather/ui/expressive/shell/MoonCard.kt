@@ -143,8 +143,11 @@ import org.breezyweather.ui.expressive.components.GlassSource
 import org.breezyweather.ui.expressive.components.SolsticeMotion
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Corners
+import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
+import org.breezyweather.ui.expressive.theme.StrokeWidth
 import org.shredzone.commons.suncalc.MoonIllumination
 import org.shredzone.commons.suncalc.MoonPhase
 import org.shredzone.commons.suncalc.MoonPosition
@@ -276,7 +279,7 @@ internal fun MoonButton(
             MoonCardState.buttonInk = text
             MoonCardState.show(location, now, null, phase + suffix, palette, night)
         },
-        border = BorderStroke(1.dp, text.copy(alpha = 0.35f)),
+        border = BorderStroke(StrokeWidth.Thin, text.copy(alpha = 0.35f)),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
         contentPadding = PaddingValues(horizontal = Space.S3, vertical = Space.S2),
         modifier = Modifier
@@ -419,8 +422,8 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
     // Where the sheet rests: full width, docked at the bottom, at full screen height below the status
     // bar (agreed 2026-11-19). Known up front, so the morph draws from its first frame.
     val window = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
-    val radius = with(density) { 32.dp.toPx() }
-    val top = status.getTop(density) + with(density) { 12.dp.toPx() }
+    val radius = with(density) { Corners.XL.toPx() }
+    val top = status.getTop(density) + with(density) { Space.S3.toPx() }
     val target = remember(window, top, radius) {
         MorphAnchor(Rect(0f, top, window.width.toFloat(), window.height.toFloat()), radius)
     }
@@ -434,7 +437,7 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
             .motionDrag(motion, Orientation.Vertical, MOON_RANGE, reverseDirection = true)
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
-                    if (tap.y < status.getTop(this) + 12.dp.toPx()) close()
+                    if (tap.y < status.getTop(this) + Space.S3.toPx()) close()
                 }
             }
     ) {
@@ -492,8 +495,8 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
                     Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = Space.S3)
-                        .width(36.dp)
-                        .height(4.dp)
+                        .width(Sizes.HandleWidth)
+                        .height(Sizes.HandleThickness)
                         .background(ink.copy(alpha = 0.4f), CircleShape)
                 )
             }
@@ -859,7 +862,7 @@ private fun MoonCard(
                             .fillMaxWidth()
                             .clip(CornerShapes.L)
                             .background(ink.copy(alpha = 0.09f))
-                            .border(0.5.dp, ink.copy(alpha = 0.10f), CornerShapes.L)
+                            .border(StrokeWidth.Hairline, ink.copy(alpha = 0.10f), CornerShapes.L)
                             .padding(Space.S5)
                     ) {
                         Text(body, color = ink, style = MaterialTheme.typography.bodyLarge)

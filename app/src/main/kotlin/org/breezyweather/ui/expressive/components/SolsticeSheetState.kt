@@ -21,6 +21,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.MotionValue
 import io.github.information89.motion.rememberMotionValue
 
@@ -168,6 +169,11 @@ fun rememberSolsticeSheetState(): SolsticeSheetState {
     )
     return remember(presence, detent) {
         // UIKit's release rule: slower than 250 dp/s is no flick, faster than 1000 dp/s moves a step.
-        SolsticeSheetState(presence, detent, with(density) { 250.dp.toPx() }, with(density) { 1000.dp.toPx() })
+        SolsticeSheetState(
+            presence,
+            detent,
+            with(density) { MotionPhysics.SlowFlick.toPx() },
+            with(density) { MotionPhysics.FastFlick.toPx() }
+        )
     }
 }

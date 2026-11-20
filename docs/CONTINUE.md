@@ -105,7 +105,7 @@ card is pulled below compact), `Motion.control` = `Motion.settle` (merge or tell
 
 - **Icons vs M3** (PLAN.md "Icons", gaps 1, 3, 4): grade −25 for light icons on dark backgrounds;
   audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
-- **Tokens left:** 175 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`.
+- **Tokens:** done 2026-11-19 (PLAN.md log); what stays local is on purpose (art, motion distances).
 - **Navigation 3:** decided, migration started, **not on `main`** (no `navigation3` dependency yet):
   say where it is before touching Settings or pushed screens. New icons there use `SolsticeIcons`.
 - `PageScaffold` done (PLAN.md log); `Modifier.searchBlur` unused, `unresist` caps at 99.9 %.

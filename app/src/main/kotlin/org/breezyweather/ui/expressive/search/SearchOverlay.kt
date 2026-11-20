@@ -129,6 +129,7 @@ import org.breezyweather.ui.expressive.components.SolsticeSheetState
 import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.shell.timeDifference
 import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Corners
 import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.Space
 import org.breezyweather.ui.search.LoadableLocationStatus
@@ -246,7 +247,7 @@ fun SearchOverlay(
     // Round as the bubble; docked, only the top corners stay round (the bottom sits on the keyboard).
     val cardShape = remember {
         GenericShape { size, _ ->
-            val top = minOf(32.dp.value * density.density, size.minDimension / 2)
+            val top = minOf(Corners.XL.value * density.density, size.minDimension / 2)
             val bottom = top * (1f - sheet.presence.value.coerceIn(0f, 1f))
             addRoundRect(
                 RoundRect(
@@ -354,7 +355,7 @@ fun SearchOverlay(
                     // keyboard), so it folds into the button from there and can still be caught.
                     if (openNow.value) heldInset[0] = liveInset
                     val bottomInset = if (openNow.value) liveInset else heldInset[0]
-                    val top = status.getTop(this) + 12.dp.toPx()
+                    val top = status.getTop(this) + Space.S3.toPx()
                     // Full width, sitting right on the keyboard (no gaps).
                     val margin = 0f
                     val chrome = (24.dp + 64.dp).toPx() // handle + field
@@ -488,8 +489,8 @@ private fun Handle(
         Box(
             Modifier
                 .padding(top = Space.S3)
-                .width(36.dp)
-                .height(4.dp)
+                .width(Sizes.HandleWidth)
+                .height(Sizes.HandleThickness)
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
         )
     }
@@ -618,7 +619,7 @@ private fun Results(
                     SolsticeIcons.SearchOff,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(Sizes.IconHero)
                 )
                 Spacer(Modifier.height(Space.S2))
                 Text(
@@ -837,8 +838,8 @@ private fun ResultRow(
         .apply { timeZone = zone }
         .format(Date(now))
     val diff = timeDifference(zone, now)
-    val big = 20.dp
-    val small = 4.dp
+    val big = Corners.M
+    val small = Corners.XXS
     val colors = MaterialTheme.colorScheme
     // The best-match highlight eases on and off instead of jumping between rows.
     val fill by animateColorAsState(

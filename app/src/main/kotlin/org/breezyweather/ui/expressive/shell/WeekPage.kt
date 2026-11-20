@@ -62,6 +62,7 @@ import org.breezyweather.ui.expressive.sky.SkyState
 import org.breezyweather.ui.expressive.sky.SkyWeather
 import org.breezyweather.ui.expressive.sky.paletteAt
 import org.breezyweather.ui.expressive.theme.CornerShapes
+import org.breezyweather.ui.expressive.theme.Sizes
 import org.breezyweather.ui.expressive.theme.SolsticePalette
 import org.breezyweather.ui.expressive.theme.Space
 import java.text.SimpleDateFormat
@@ -233,7 +234,7 @@ private fun WeekPills(
                             hourIcon(weather, false),
                             contentDescription = day.day?.weatherText,
                             tint = if (wet) SolsticePalette.Wet else onPage.copy(alpha = 0.75f),
-                            modifier = Modifier.padding(top = Space.S2, bottom = Space.Half).size(18.dp)
+                            modifier = Modifier.padding(top = Space.S2, bottom = Space.Half).size(Sizes.IconMedium)
                         )
                         Text(
                             if (i == 0) stringResource(R.string.shell_today) else dayShort(day.date, location.timeZone),
