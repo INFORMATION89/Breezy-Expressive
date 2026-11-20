@@ -372,7 +372,9 @@ private fun ToolbarTabs(
                 ) {
                     // Filled while selected (M3: navigation shows the current destination filled); a swap, not an animation.
                     Icon(
-                        if (shown[i] > 0.5f) tab.iconOn else tab.icon,
+                        // By selection (more than half way to this tab), not by the label: on This week and
+                        // Places the label folds away while the page shows its own title (fixed 2026-11-20).
+                        if (open[i] > 0.5f) tab.iconOn else tab.icon,
                         contentDescription = null,
                         tint = color,
                         modifier = Modifier.size(Sizes.IconLarge)
