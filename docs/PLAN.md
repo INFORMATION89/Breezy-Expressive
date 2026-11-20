@@ -786,6 +786,45 @@ controls for those parameters (and the tokens they use), shared with the app so 
 lab is the value the app uses. No change to how it looks or moves until a change is proposed and
 agreed.
 
+## Last updated text and refresh on open (proposed 2026-11-20, to agree)
+
+**Today:** `MainActivity.onStart()` calls `checkToUpdate()`, which refreshes the shown place only when
+its data is older than the background-update interval (`UpdateInterval.validity`, 1.5 h by default
+and when background updates are off). So most opens show old data, and the Solstice shell doesn't
+show when it was last updated.
+
+**Last updated text:** on the Forecast page, relative and ticking ("Updated 12 min ago"), the clock
+time (12-hour) once it's older than a few hours, "Updating…" during a refresh, "Couldn't update" with
+retry on failure. Place and look to propose first.
+
+**Refresh on open, proposed compromise** (to agree):
+- On open, and on coming back to the app, refresh the **shown place only** when its data is older
+  than a **freshness threshold of 30 min** (suggested; 15 or 60 to discuss), separate from the
+  background interval. Other places refresh the same way when they're shown (swiped to, postcard
+  opened), never all at once.
+- **Respect each source:** MET Norway's terms say never to repeat a request before its `Expires`
+  header and to use `If-Modified-Since`; check what the sources code already does and keep it.
+  Forecast models update hourly or every few hours, so 30 min rarely misses anything.
+- **Guards:** one refresh at a time (already); the existing 10-second guard for manual refreshes; no
+  network: skip and keep the last data with its "last updated" time; after a failure, wait (e.g.
+  15 min, growing) before trying again on open, so it never loops.
+- **Current location:** reuse the last position if it's recent (e.g. under 15 min) instead of asking
+  for a new fix on every open.
+- Widgets and the notification pick up the new data as they do today.
+- Possible later: a shorter threshold only for the minutely rain nowcast, where a source has one.
+
+## Far future (added by the user 2026-11-20)
+
+**Native Smartspacer support, without a bridge app.** Smartspacer's plugin SDK
+(`com.kieronquinn.smartspacer:sdk-plugin`) builds Targets and Complications as exported content
+providers (`SmartspacerTargetProvider`, `SmartspacerComplicationProvider`) protected by Smartspacer's
+permission; nothing says they must live in a separate app, so Solstice can ship them itself and push
+updates with `notifyChange` after each refresh. Smartspacer needs Android 10+ (Solstice's minimum is
+7): enable the providers only on 10+. To check first: the SDK's license against Solstice's LGPL-3.0,
+and what Targets (current conditions, rain soon, alerts) and Complications (temperature, condition
+icon) to offer. Docs: github.com/KieronQuinn/Smartspacer/wiki ("SDK: Creating a Target",
+"Creating a Complication").
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -2262,3 +2301,7 @@ Steps:
 - **2026-11-20 (added by the user):** also for Saturday: the toolbar's animations into `:motion` (one
   place for their springs and amounts, `MotionValue` for the finger-driven ones, a lab demo with live
   controls). "Morph refining", point 5.
+- **2026-11-20 (planned by the user):** next session, after the morph work: a "last updated" text on
+  Forecast, and refresh on open with a compromise to agree (shown place only, 30 min freshness,
+  sources' rules, back-off; section "Last updated text and refresh on open"). Far future: native
+  Smartspacer Targets/Complications in Solstice, no bridge app (section "Far future").

@@ -72,6 +72,15 @@ by proposing options for each point (lab demos where possible), agree, then buil
 6. **The toolbar's animations into `:motion`**, so the system drives them and they can be tweaked
    and refined in the lab (PLAN.md "Morph refining", point 5).
 
+### 0b. Also next session, after the morph work (added by the user 2026-11-20)
+
+1. **"Last updated" text** on the Forecast page (the old main screen had one, `HeaderViewHolder`'s
+   `refreshTime`; the Solstice shell has none). Propose where and how before building: relative and
+   ticking ("Updated 12 min ago", then the time in 12-hour format after a few hours), "Updating…"
+   while a refresh runs, "Couldn't update" with a retry when it fails.
+2. **Refresh the weather when the app opens, without overdoing it.** First agree the compromise in
+   PLAN.md "Refresh on open (proposed 2026-11-20)", then build it.
+
 ### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 
 **A. Frames drop when opening the moon card and the search card.**
