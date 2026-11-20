@@ -88,6 +88,30 @@ show at once until the card lands.
   Opening has the same hand-off in reverse: hide the button the frame the card appears over it.
 - Check the same on the postcard window and the moon pill (a source drawn twice while its morph runs).
 
+### 1C. Make Solstice and the motion lab installable by the user (requested 2026-11-20)
+
+The user wants to install and test builds himself, on his phone, without a computer. Today the only
+build CI makes is `basic-debug`: inside a zip, downloadable only when signed in to GitHub, expiring
+after 90 days, slow (debug), and signed with CI's throwaway debug key, so a new build won't install
+over the previous one. To do:
+
+1. **A stable test key.** Create a dedicated keystore (not the release key, not anyone's
+   `~/.android/debug.keystore`) and store it as GitHub Actions secrets (keystore as base64, passwords,
+   alias). Sign the `profile` build with it in CI, so each new build installs over the last one and
+   keeps the user's places and settings. Never commit the keystore.
+2. **CI publishes the `profile` build** (smooth, R8, installs as `io.github.information89.solstice.profile`
+   next to any other build) on every push to `main` to a rolling GitHub **pre-release** (for example
+   tag `testing`, replaced each time), as a plain `.apk` asset with the commit in its name or notes.
+   The repo is public, so the user can download it on the phone from the Releases page without signing
+   in. Keep the `basic-debug` artifact as it is.
+3. **The motion lab gets its own launcher icon in test builds only**: a `LAUNCHER` intent filter on
+   `MotionLabActivity` with the label "Solstice Lab", in a `profile` (and `debug`) source-set manifest,
+   so the release build is unchanged. It stays in Settings → Debug as well.
+4. Optional: mention **Obtainium** in the README's testing section (it installs and updates from the
+   `testing` pre-release automatically).
+5. Write the steps for the user in `README.md` (Testing: where to download, "Install unknown apps"
+   for the browser once, how the two icons look) and say in the PLAN.md log when the first build is up.
+
 ### 2. Check by hand on the Pixel 7 (profile build)
 
 Not felt yet: toolbar and Places drag, catching the postcard window mid-close, messages (rise, sink,

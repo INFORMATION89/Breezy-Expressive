@@ -2177,3 +2177,7 @@ Steps:
 - **2026-11-20: page recede dropped** (the user's decision): the page behind search and the moon card
   no longer scales; the lab's "Page recede" switch is gone. Built and installed; **not re-measured
   yet** (the phone's USB connection kept dropping mid-run).
+- **2026-11-20 (requested by the user):** make Solstice and the motion lab installable on his phone:
+  stable test key in CI secrets, the `profile` build published to a rolling `testing` pre-release on
+  every push to `main`, a "Solstice Lab" launcher icon in test builds only, README steps
+  (CONTINUE.md 1C).
