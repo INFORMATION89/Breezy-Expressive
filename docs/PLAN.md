@@ -2076,3 +2076,9 @@ Things to try on the phone before calling any motion done (debug and release bui
   **Moon card:** stays on its own `MotionValue` (decided with the user): it already follows every
   motion rule; its pull plays the morph backwards and it has no compact size, unlike search's
   `SolsticeSheetState`. Not checked by hand yet: messages, page jumps, Places swipe actions.
+- **2026-11-19 (reported by the user, not fixed):** two bugs from the phone check. (A) Frames drop
+  when opening the moon card and the search card; likely the page recede (`graphicsLayer` scale on the
+  whole pager) making the Haze glass and edge blur redraw every frame. (B) Swiping search down, the
+  toolbar's search icon is back before the card reaches it (`ToolbarDock` alpha is `1 − presence`).
+  Next steps, options and the order after them (check by hand, M5 motion lab, refining rounds) in
+  CONTINUE.md "Pick up here".

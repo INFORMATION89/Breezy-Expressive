@@ -45,45 +45,67 @@ Where things stand and how to pick the work up anywhere. The plan, decisions and
 
 ## Pick up here (next session)
 
-The focus is still **iOS-level polish with shared systems**. The icon task is done (to check on
-the phone); next is M4. Background: [UI_SYSTEMS.md](UI_SYSTEMS.md), PLAN.md "Icons", "Motion framework" and
-"Design system foundations".
+State on 2026-11-19 evening: icons on Material Symbols Rounded (merged, selected tab filled) and
+**M4 finished**: every animation in `ui/expressive/` is a motion token (1 `spring(…)` and 2 `tween(…)`
+left: the three documented timed exceptions). The focus now: **fix the two reported bugs, check by
+hand, build the motion lab (M5), then refine animations area by area.**
 
-### Icons: done 2026-11-19 (`material-symbols`, merged into main), partly checked on the phone
+### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 
-Material Symbols **Rounded** everywhere (rules in PLAN.md, "Icons"). Seen on the Pixel 7: the shell
-pages, toolbar (selected tab filled), postcards. Still to look at:
+**A. Frames drop when opening the moon card and the search card.**
+- Likely cause (to confirm): both make the page behind recede, `scale = 1 − 0.04 × max(search
+  backdrop, MoonCardState.progress)` in a `graphicsLayer` on the whole pager (`shell/SolsticeShell.kt`,
+  "The page recedes a little…", added in M4). Scaling the page makes everything that samples it redraw
+  every frame: the Haze glass (toolbar, cards) and the edge blur.
+- How: profile build, `adb shell dumpsys gfxinfo io.github.information89.solstice.profile framestats`
+  (or Perfetto) for 10 opens each, then the same with the recede off (temporary debug switch).
+  Also note whether it's only the first open (first composition, shader compile) or every open.
+- If the recede is the cause, options to propose (motion rule): keep the recede but freeze the glass
+  sampling while it runs; recede only the content under the glass; or drop the recede.
+- Before this, the moon card measured 3.3 % janky frames (2026-11-19, M3). Compare against that.
 
-- **Every screen:** shell pages, toolbar, search, postcard window, messages, Places swipe, reorder,
-  Settings, details, Management. The shapes changed from sharp/old Material to Rounded, and upstream's
-  Pictogrammers icons (search, location, wind, gauge, eye, delete, drag, back…) are now Symbols.
-- **Weather condition icons** changed glyphs: clear night is `clear_night` (moon and stars, was the
-  bedtime moon), partly cloudy is `partly_cloudy_day`/`_night`, rain is `rainy` (our `RainCloud` is
-  gone), snow is `weather_snowy` (was a snowflake), fog is `foggy` (was three lines).
-- **Small icons** (12 to 20 dp: postcard, Forecast "near me", rain card, messages, switch thumbs) use
-  optical size 20, so their strokes look a touch heavier than before.
-- `ic_gauge` became `speed`, `ic_uv` became `wb_sunny`, `ic_wind` became `air`, `ic_eye` became
-  `visibility`: check that they still read right in the details screens.
+**B. Swiping search down: the toolbar's search icon is already back before the card reaches it.**
+- Cause: the toolbar fades in by `1 − max(searchSheet.presence, windowPresence)`
+  (`ToolbarDock(alpha = …)` in `shell/SolsticeShell.kt`), so it's half visible half-way through the
+  close, while the card is still travelling to *become* that button.
+- Options to propose (motion rule; the same applies to the postcard window and the moon pill):
+  1. **Hand-off at the end:** the toolbar (or just the search button) appears in the last ~15 % of
+     `presence` (`p.window(0f, 0.15f)` / `handOff`), as the card lands into it.
+  2. Toolbar fades with `presence` as now, but the search button itself stays hidden until the card
+     has landed.
+  3. A true morph: the card's own icon travels into the button's place (like the moon pill).
+  Suggested: 1, it's the "one thing at a time" rule in MOTION.md.
 
-How to add an icon: `tools/symbols.txt` + `python3 tools/make_symbols.py` (PLAN.md, "Icons").
-Navigation 3: if that migration adds icons, use `SolsticeIcons` (CI fails on the old ones).
+### 2. Check by hand on the Pixel 7 (profile build)
 
-### Still open from before
+Not felt yet: toolbar and Places drag, catching the postcard window mid-close, messages (rise, sink,
+fly off), page jumps, Places swipe actions. Icons on the screens not looked at yet: search, Settings,
+details, Management (gauge → `speed`, UV → `wb_sunny`, wind → `air`, eye → `visibility`).
 
-- **M4:** search is on `:motion` (`SolsticeSheetState`, option B; catching it mid-close works). The postcard window (swipe down to close), Places drag
-  and the toolbar are on tokens too (check their feel by hand). Everything else is on tokens too
-  (three timed exceptions, see PLAN.md); the moon card keeps its own MotionValue. Left: the page
-  scaffold, then M5. Propose each motion first (motion rule).
-  27 `spring(…)`, 7 `tween(…)` and 12 `animate*AsState` left in `ui/expressive/`.
-- **Moon card by feel:** a flick just under 1000 dp/s that projects to about half way stays open
-  (the UIKit rule as specified). Lower the fast-flick speed for it if it feels wrong.
-- **Tokens left:** 174 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`; finish alongside
-  M4 and I2.
-- Smaller: `Motion.control` and `Motion.settle` are the same spring (merge or tell apart);
-  `Modifier.searchBlur` in
-  `SolsticeShell.kt` is unused; `unresist` caps at 99.9 % of the over-pull limit (a very hard fling
-  past `overMax` snaps back slightly when caught).
-- **M5:** the motion lab screen and the `:motion` README for other projects.
+### 3. M5: the motion lab, before refining
+
+A debug-only screen with each pattern (sheet, morph, window, toolbar bud, drag, swipe action,
+message), a slow-motion switch (animator duration scale), a frame counter, and the tokens' values
+shown. Then the `:motion` README for other projects. It makes refining "compare in the lab" instead
+of "build, install, find the screen".
+
+### 4. Refining animations, one area per round
+
+Order: moon card, search, postcard window, toolbar, Places, messages. Each round: record the iOS
+reference (Glasmio's notes for sheets and menus), compare in the lab, **propose changes, agree, then
+tune**, check on the profile build. Carry into the rounds: the moon card's borderline flick (just under
+1000 dp/s stays open), search's keyboard taking touches while it slides away (idea: hide it once the
+card is pulled below compact), `Motion.control` = `Motion.settle` (merge or tell apart).
+
+### Also open, between rounds
+
+- **Icons vs M3** (PLAN.md "Icons", gaps 1, 3, 4): grade −25 for light icons on dark backgrounds;
+  audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
+- **Tokens left:** 175 `.dp` literals, 13 `RoundedCornerShape(…)`, 33 `Color(0x…)`.
+- **Navigation 3:** decided, migration started, **not on `main`** (no `navigation3` dependency yet):
+  say where it is before touching Settings or pushed screens. New icons there use `SolsticeIcons`.
+- Page scaffold (component catalog), `Modifier.searchBlur` unused, `unresist` caps at 99.9 %.
+- Old branches to delete on GitHub: `material-symbols`, `motion-framework-plan` (both merged).
 
 Rules that still apply: propose and agree any new or changed motion before building it; keep the
 PLAN.md log and [ROADMAP.md](ROADMAP.md) up to date; new code in `ui/expressive/`; check on the
@@ -91,6 +113,7 @@ Pixel 7, smoothness on the `profile` build (`./gradlew assembleBasicProfile`, in
 `io.github.information89.solstice.profile`). Debug builds from different computers are signed with
 different keys: copy `~/.android/debug.keystore` between them to avoid reinstalling.
 
+How to add an icon: `tools/symbols.txt` + `python3 tools/make_symbols.py` (PLAN.md, "Icons").
 Reference for iOS behaviour: `NEORUAA/Glasmio` (Apache-2.0), `docs/ios-sheet-motion.md` and
 `docs/dropdown-motion.md`. Research only, not a dependency.
 
