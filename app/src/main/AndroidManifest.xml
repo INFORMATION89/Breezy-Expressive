@@ -163,6 +163,11 @@
             android:name=".ui.expressive.reorder.ReorderActivity"
             android:theme="@style/BreezyWeatherTheme" />
 
+        <!-- Solstice: motion lab (debug tool, opened from Settings > Debug). -->
+        <activity
+            android:name=".ui.expressive.lab.MotionLabActivity"
+            android:theme="@style/BreezyWeatherTheme" />
+
         <activity
             android:name=".ui.settings.activities.CardDisplayManageActivity"
             android:label="@string/settings_main_cards_title"

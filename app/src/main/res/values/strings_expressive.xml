@@ -100,4 +100,7 @@
     </string-array>
     <string name="search_clear_recents">Clear</string>
     <string name="shell_you_are_here">You are here</string>
+    <!-- Motion lab (debug tool, M5): English only. -->
+    <string name="motion_lab" translatable="false">Motion lab</string>
+    <string name="motion_lab_summary" translatable="false">Every motion token and pattern, with slow motion and a frame meter</string>
 </resources>

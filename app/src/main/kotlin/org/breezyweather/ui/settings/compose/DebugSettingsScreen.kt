@@ -192,6 +192,19 @@ fun DebugSettingsScreen(
                 sectionFooterItem(R.string.settings_debug_section_refresh_error)
             }
 
+            // Solstice: the motion lab (M5).
+            largeSeparatorItem()
+            clickablePreferenceItem(R.string.motion_lab) { id ->
+                PreferenceViewWithCard(
+                    titleId = id,
+                    summaryId = R.string.motion_lab_summary,
+                    isFirst = true,
+                    isLast = true
+                ) {
+                    org.breezyweather.ui.expressive.lab.MotionLabActivity.start(context)
+                }
+            }
+
             bottomInsetItem()
         }
     }

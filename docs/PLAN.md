@@ -2108,3 +2108,13 @@ Things to try on the phone before calling any motion done (debug and release bui
   stamp, sun arc, rain bars, moon dial, blur radii), motion distances (pull ranges, dismiss points)
   and component-internal metrics (toolbar tab widths, search card sizes). Rule: a value becomes a
   token when it's a design decision shared by two or more places.
+- **2026-11-19: M5, the motion lab** (`ui/expressive/lab/MotionLabActivity.kt`, Settings → Debug →
+  Motion lab; built, **not yet checked on the phone**). One screen with: a **slow-motion switch** (5×,
+  `:motion`'s new `MotionTime.scale`, which every token's `spec()` reads; reset when the lab closes),
+  a **frame meter** (fps and the share of frames over 1.5 refresh intervals, last ~2 s), every
+  **token** with its response and damping and a dot to play it (one by one or all together), the
+  **UIKit release rule** on a three-stop track (value, velocity and chosen stop shown; rubber-band
+  past the ends), and a **morph** (a pill growing into a card, catchable and scrubbable). The
+  patterns that live in the app (search sheet, postcard window, moon card, toolbar, Places drag,
+  messages) are listed with where to find them; slow motion applies to them too while the lab is
+  open in the background. English only (a tool, `translatable="false"`). Next: the `:motion` README.
