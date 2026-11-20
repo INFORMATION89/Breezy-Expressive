@@ -112,8 +112,8 @@ tune**, check on the profile build. Rounds 1 (moon card), 2 (search) and 3 (post
 - **Icons vs M3** (PLAN.md "Icons", gaps 1, 3, 4): grade −25 for light icons on dark backgrounds;
   audit small-icon labels, 48 dp touch targets, icon/text alignment; optical size 40 for big icons.
 - **Tokens:** done 2026-11-19 (PLAN.md log); what stays local is on purpose (art, motion distances).
-- **Navigation 3:** decided, migration started, **not on `main`** (no `navigation3` dependency yet):
-  say where it is before touching Settings or pushed screens. New icons there use `SolsticeIcons`.
+- **Navigation 3:** started on `main` 2026-11-20 (PLAN.md "Navigation 3"): N1 done (Settings on
+  `NavDisplay`); next N2 (one Settings stack), N3 (adaptive Settings). New icons use `SolsticeIcons`.
 - `PageScaffold` done (PLAN.md log); `Modifier.searchBlur` unused, `unresist` caps at 99.9 %.
 - Old branches to delete on GitHub: `material-symbols`, `motion-framework-plan` (both merged).
 

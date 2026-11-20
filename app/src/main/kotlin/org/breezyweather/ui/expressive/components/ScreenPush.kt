@@ -16,21 +16,19 @@
 
 package org.breezyweather.ui.expressive.components
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.IntOffset
-import androidx.navigation.NavBackStackEntry
 import io.github.information89.motion.Motion
 
 /**
  * Screen transitions (agreed 2026-11-18, "iOS-style push"): the new screen slides in from the
  * right while the one below shifts a quarter of the way left and dims; back does the reverse.
- * With predictive back, Navigation drives the pop with the finger, and it can be cancelled.
+ * With predictive back, Navigation 3 drives the pop with the finger, and it can be cancelled.
  * Springs without bounce, so a quick back during the push simply reverses it.
  */
 object ScreenPush {
@@ -38,16 +36,13 @@ object ScreenPush {
     private val dim = Motion.settle.spec<Float>()
     private const val UNDER = 0.55f
 
-    val enter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-        slideInHorizontally(slide) { it }
-    }
-    val exit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-        slideOutHorizontally(slide) { -it / 4 } + fadeOut(dim, targetAlpha = UNDER)
-    }
-    val popEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-        slideInHorizontally(slide) { -it / 4 } + fadeIn(dim, initialAlpha = UNDER)
-    }
-    val popExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-        slideOutHorizontally(slide) { it }
-    }
+    /** Going forward: the new screen comes in from the right, over the one it covers. */
+    fun push(): ContentTransform =
+        slideInHorizontally(slide) { it } togetherWith
+            (slideOutHorizontally(slide) { -it / 4 } + fadeOut(dim, targetAlpha = UNDER))
+
+    /** Going back: the top screen leaves to the right, above the one coming back. */
+    fun pop(): ContentTransform =
+        (slideInHorizontally(slide) { -it / 4 } + fadeIn(dim, initialAlpha = UNDER)) togetherWith
+            slideOutHorizontally(slide) { it }
 }

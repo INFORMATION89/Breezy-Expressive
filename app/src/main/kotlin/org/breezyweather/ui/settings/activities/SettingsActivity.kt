@@ -24,12 +24,17 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import breezyweather.domain.location.model.Location
 import breezyweather.domain.source.SourceFeature
 import com.google.accompanist.permissions.PermissionStatus
@@ -174,10 +179,12 @@ class SettingsActivity : BreezyActivity() {
     @Composable
     private fun ContentView() {
         val scope = rememberCoroutineScope()
-        val navController = rememberNavController()
         val onBack = { onBackPressedDispatcher.onBackPressed() }
         val startDestination = intent.getStringExtra(KEY_SETTINGS_ACTIVITY_START_DESTINATION)
             ?: SettingsScreenRouter.Root.route
+        // Solstice: Navigation 3 (N1, 2026-11-20). The back stack is ours: a list of the same route
+        // strings upstream used, kept across configuration changes and process death.
+        val backStack = rememberSaveable(saver = routeStackSaver) { mutableStateListOf(startDestination) }
 
         val notificationPermissionState = rememberMultiplePermissionsState(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -206,29 +213,48 @@ class SettingsActivity : BreezyActivity() {
             }
         }
 
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            // Solstice: iOS-style push instead of the default cross-fade.
-            enterTransition = ScreenPush.enter,
-            exitTransition = ScreenPush.exit,
-            popEnterTransition = ScreenPush.popEnter,
-            popExitTransition = ScreenPush.popExit
-        ) {
-            composable(SettingsScreenRouter.Root.route) {
+        NavDisplay(
+            backStack = backStack,
+            onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else finish() },
+            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+            // Solstice: iOS-style push instead of the default cross-fade, also for predictive back.
+            transitionSpec = { ScreenPush.push() },
+            popTransitionSpec = { ScreenPush.pop() },
+            predictivePopTransitionSpec = { ScreenPush.pop() }
+        ) { route ->
+            NavEntry(route) {
+                SettingsPage(route, onNavigate = { backStack.add(it) }, onBack, hasNotificationPermission)
+            }
+        }
+    }
+
+    @Composable
+    private fun SettingsPage(
+        route: String,
+        onNavigate: (String) -> Unit,
+        onBack: () -> Unit,
+        hasNotificationPermission: Boolean,
+    ) {
+        val scope = rememberCoroutineScope()
+        // Keeps upstream's calls (navController.navigate(route)) as they were.
+        val navController = object {
+            fun navigate(next: String) = onNavigate(next)
+        }
+        when (route) {
+            SettingsScreenRouter.Root.route -> {
                 RootSettingsView(
                     onNavigateTo = { navController.navigate(it) },
                     onNavigateBack = { onBack() }
                 )
             }
-            composable(SettingsScreenRouter.BackgroundUpdates.route) {
+            SettingsScreenRouter.BackgroundUpdates.route -> {
                 BackgroundSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
                     updateInterval = remember { updateIntervalState }.value
                 )
             }
-            composable(SettingsScreenRouter.Appearance.route) {
+            SettingsScreenRouter.Appearance.route -> {
                 AppearanceSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateTo = { navController.navigate(it) },
@@ -236,7 +262,7 @@ class SettingsActivity : BreezyActivity() {
                     darkMode = remember { darkModeState }.value
                 )
             }
-            composable(SettingsScreenRouter.Unit.route) {
+            SettingsScreenRouter.Unit.route -> {
                 UnitSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -252,7 +278,7 @@ class SettingsActivity : BreezyActivity() {
                     }
                 )
             }
-            composable(SettingsScreenRouter.MainScreen.route) {
+            SettingsScreenRouter.MainScreen.route -> {
                 MainScreenSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -266,7 +292,7 @@ class SettingsActivity : BreezyActivity() {
                     }
                 )
             }
-            composable(SettingsScreenRouter.Notifications.route) {
+            SettingsScreenRouter.Notifications.route -> {
                 NotificationsSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -276,7 +302,7 @@ class SettingsActivity : BreezyActivity() {
                     tomorrowForecastEnabled = remember { tomorrowForecastEnabledState }.value
                 )
             }
-            composable(SettingsScreenRouter.Widgets.route) {
+            SettingsScreenRouter.Widgets.route -> {
                 ModulesSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -301,14 +327,14 @@ class SettingsActivity : BreezyActivity() {
                     broadcastSources = sourceManager.getBroadcastSources()
                 )
             }
-            composable(SettingsScreenRouter.Location.route) {
+            SettingsScreenRouter.Location.route -> {
                 LocationSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
                     locationSources = sourceManager.getLocationSources()
                 )
             }
-            composable(SettingsScreenRouter.WeatherProviders.route) {
+            SettingsScreenRouter.WeatherProviders.route -> {
                 WeatherSourcesSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -317,7 +343,7 @@ class SettingsActivity : BreezyActivity() {
                     configurableSources = sourceManager.getConfigurableSources()
                 )
             }
-            composable(SettingsScreenRouter.Debug.route) {
+            SettingsScreenRouter.Debug.route -> {
                 DebugSettingsScreen(
                     context = this@SettingsActivity,
                     onNavigateBack = { onBack() },
@@ -325,8 +351,15 @@ class SettingsActivity : BreezyActivity() {
                     postNotificationPermissionEnsurer = { postNotificationPermission(it) }
                 )
             }
+            else -> Unit
         }
     }
+
+    /** Saves the route back stack as a plain list of strings. */
+    private val routeStackSaver = listSaver<SnapshotStateList<String>, String>(
+        save = { it.toList() },
+        restore = { it.toMutableStateList() }
+    )
 
     private fun postNotificationPermission(
         succeedCallback: () -> Unit,

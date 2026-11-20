@@ -490,7 +490,9 @@ dependencies {
     implementation(libs.compose.ui.util)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
-    implementation(libs.navigation.compose)
+    // Solstice: Navigation 3 (owned back stack, predictive back, adaptive scenes).
+    implementation(libs.navigation3.runtime)
+    implementation(libs.navigation3.ui)
     lintChecks(libs.compose.lint.checks)
 
     implementation(libs.accompanist.permissions)

@@ -2149,3 +2149,28 @@ Things to try on the phone before calling any motion done (debug and release bui
   glass; for the moon card, a Perfetto trace of an opening first.
 - **2026-11-20: decided by the user: drop the page recede** (bug A, option A) for search and the moon
   card; re-measure both, then trace the moon card's remaining cost (21 % janky without the recede).
+
+## Navigation 3 (committed to 2026-11-20, user)
+
+Found 2026-11-20: decided on the other PC (b3801e7) but never started (no dependency, branch or
+commit). Started here. Navigation 3 1.2.2 (stable): an owned back stack (a plain list), `NavDisplay`
+with transitions and predictive back, and scenes for adaptive layouts (`adaptive-navigation3`, list
+and detail side by side on tablets and foldables).
+
+Steps:
+1. **N1, Settings on Navigation 3:** `SettingsActivity`'s `NavHost` becomes a `NavDisplay` over a
+   saveable back stack of the existing route strings (screens keep calling `onNavigateTo(route)`, so
+   upstream's screens don't change); `ScreenPush` (the iOS push) moves to `NavDisplay`'s transition
+   specs, including predictive back; `navigation-compose` is dropped.
+2. **N2, one Settings stack:** fold the separate Compose activities that open from Settings
+   (reorder, motion lab, About, dependencies) into the same back stack, so they push and pop the
+   same way.
+3. **N3, adaptive Settings:** on wide windows (tablets, unfolded foldables) the root list and the
+   chosen page side by side (`ListDetailSceneStrategy`).
+4. **N4, the rest:** details and the main shell's pushed screens; shared elements between screens
+   where they help (e.g. a postcard into details). To plan when we get there.
+- **2026-11-20: N1 done** (checked on the Pixel 7, profile build): Settings runs on `NavDisplay` with a
+  saveable back stack of route strings (`SettingsActivity` only; upstream's screens unchanged);
+  `ScreenPush.push()` / `pop()` are its transition specs (forward, back and predictive back);
+  `navigation-compose` removed. Checked: push to Appearance (slides over the dimmed list), on to
+  Units, back twice, and a held predictive-back swipe that follows the finger and completes.
