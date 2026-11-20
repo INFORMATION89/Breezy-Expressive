@@ -697,6 +697,9 @@ Rules, following Material 3's icon guidance (m3.material.io/styles/icons, "Apply
   with `<group android:translateY="960">` (see any existing one). Source and license:
   `third_party/material-symbols/README.md` (Apache-2.0).
 - **Weight:** 400 everywhere, never mixed; never below 200 at 24 dp (M3).
+- **The one exception (decided 2026-11-20):** the eight moon-phase icons (`moon_phase_0..7.xml`,
+  Weather Icons, `third_party/weather-icons`) on the sun path and the moon dial. Material Symbols has
+  no full set of phases. Every other icon comes from the catalog.
 
 ### Gaps against M3 (found 2026-11-19, to do)
 
