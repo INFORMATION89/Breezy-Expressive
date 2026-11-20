@@ -22,6 +22,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -99,6 +101,7 @@ internal fun ForecastPage(
     onOpenPlaces: () -> Unit,
     // Off in a postcard window, whose label already gives the local time.
     showLocalTime: Boolean = true,
+    pullToRefresh: Boolean = true,
 ) {
     val text = sky.palette.text
     if (location == null) {
@@ -115,7 +118,8 @@ internal fun ForecastPage(
     LaunchedEffect(hasData) {
         if (hasData) develop.animateTo(1f, tween(700)) else develop.snapTo(0f)
     }
-    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+    // In a postcard window there's nothing to refresh, and a pull down at the top closes the window.
+    val content: @Composable BoxScope.() -> Unit = {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -224,6 +228,16 @@ internal fun ForecastPage(
                 Text(stringResource(R.string.shell_more_details), color = text)
             }
         }
+    }
+    if (pullToRefresh) {
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+            content = content
+        )
+    } else {
+        Box(Modifier.fillMaxSize(), content = content)
     }
 }
 

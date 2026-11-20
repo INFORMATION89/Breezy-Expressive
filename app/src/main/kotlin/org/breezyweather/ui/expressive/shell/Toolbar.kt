@@ -18,8 +18,6 @@ package org.breezyweather.ui.expressive.shell
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -81,6 +79,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.github.information89.motion.Motion
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.ui.expressive.components.GlassSource
@@ -176,18 +175,18 @@ internal fun ShellToolbar(
         if (!joined) {
             launch {
                 wobble.snapTo(1f)
-                wobble.animateTo(0f, spring(dampingRatio = 0.32f, stiffness = Spring.StiffnessMediumLow))
+                wobble.animateTo(0f, Motion.wobble.spec())
             }
         } else if (bud > 0.05f) {
             launch {
                 ripple.snapTo(1f)
-                ripple.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium))
+                ripple.animateTo(0f, Motion.wobble.spec())
             }
         }
         neck.animateTo(
             if (joined) 1f else 0f,
             // Letting go: no bounce (overshooting below zero brought a sliver of neck back).
-            spring(dampingRatio = if (joined) 0.5f else 1f, stiffness = Spring.StiffnessMediumLow)
+            if (joined) Motion.playful.spec() else Motion.settle.spec()
         )
     }
     val density = LocalDensity.current
@@ -231,12 +230,12 @@ internal fun ShellToolbar(
                 if (budChecked != wasChecked) {
                     jab.snapTo(if (budChecked) 1f else -1f)
                     if (budChecked) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    jab.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                    jab.animateTo(0f, Motion.container.spec())
                 }
                 wasChecked = budChecked
             }
             // White in dark mode, black in light mode (the outline or the fill carries the state).
-            val tintColor by animateColorAsState(onSurface, label = "bud")
+            val tintColor by animateColorAsState(onSurface, Motion.control.spec(), label = "bud")
             Icon(
                 budIcon,
                 contentDescription = if (bud > 0.5f) budDescription else null,
@@ -291,19 +290,19 @@ private fun ToolbarTabs(
                     onDragStart = {
                         onInterrupt()
                         scope.launch {
-                            pop.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
+                            pop.animateTo(1f, Motion.playful.spec())
                         }
                     },
                     onDragEnd = {
                         val position = pager.currentPage + pager.currentPageOffsetFraction
                         onTab(position.roundToInt().coerceIn(0, tabs.lastIndex))
                         scope.launch {
-                            pop.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow))
+                            pop.animateTo(0f, Motion.container.spec())
                         }
                     },
                     onDragCancel = {
                         onTab(pager.currentPage)
-                        scope.launch { pop.animateTo(0f) }
+                        scope.launch { pop.animateTo(0f, Motion.dismiss.spec()) }
                     },
                     onDrag = { change, amount ->
                         change.consume()
@@ -342,9 +341,10 @@ private fun ToolbarTabs(
                 val pressed by press.collectIsPressedAsState()
                 val squeeze = remember { Animatable(1f) }
                 LaunchedEffect(pressed) {
+                    // In quickly; back out with a little bounce.
                     squeeze.animateTo(
                         if (pressed) 0.86f else 1f,
-                        spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium)
+                        if (pressed) Motion.snappy.spec() else Motion.playful.spec()
                     )
                 }
                 Row(

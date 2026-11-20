@@ -21,6 +21,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,10 +46,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,11 +69,18 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.MotionValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.breezyweather.R
@@ -90,21 +104,28 @@ import kotlin.math.abs
  * into a full-screen window with that place's Forecast and, a swipe
  * to the left, its This week. The paper frame and stamp fade away while the sky grows into the
  * window's sky, and the forecast fades in as it grows. Back plays it in reverse and follows the
- * finger (predictive back; cancel midway to stay). The window only shows the place: it doesn't
- * change the selected or main place.
+ * finger (predictive back; cancel midway to stay). Swiping down (at the top of the page) also closes
+ * it, like iOS's zoom transition: the window follows the finger, shrinking a little, and a release
+ * past the dismiss point (or a flick) folds it back into its postcard, carrying the fling. While it
+ * opens or closes, a touch catches it (agreed 2026-11-19). The window only shows the place: it
+ * doesn't change the selected or main place.
  *
- * [progress] (0 = the postcard, 1 = full screen) is read in draw only. [origin] is the
- * postcard's bounds on screen.
+ * [presence] (0 = the postcard, 1 = full screen) and [pull] (0 = in place, 1 = at the dismiss
+ * point) are read in draw only. [origin] is the postcard's bounds on screen.
  */
 @Composable
 internal fun PlaceWindow(
     location: Location,
     origin: Rect?,
-    progress: () -> Float,
+    presence: MotionValue,
+    pull: MotionValue,
+    closing: Boolean,
     now: Long,
     onBackProgress: (Float) -> Unit,
     onBackCancelled: () -> Unit,
-    onClose: () -> Unit,
+    // velocity: the finger's speed down (px/s) carried into the close, NaN for none.
+    onClose: (velocity: Float) -> Unit,
+    onReopen: () -> Unit,
     pinned: Boolean,
     fadeOut: Boolean,
     onPin: () -> Unit,
@@ -114,10 +135,76 @@ internal fun PlaceWindow(
     PredictiveBackHandler { events ->
         try {
             events.collect { onBackProgress(it.progress) }
-            onClose()
+            onClose(Float.NaN)
         } catch (e: CancellationException) {
             onBackCancelled()
             throw e
+        }
+    }
+    fun progress() = presence.value
+    val density = LocalDensity.current
+    // How far down a pull reaches the dismiss point.
+    val rangePx = with(density) { 260.dp.toPx() }
+    val slowPx = with(density) { 250.dp.toPx() }
+    val fastPx = with(density) { 1000.dp.toPx() }
+    val screenPx = remember { FloatArray(1) { 1f } }
+    val closingNow = rememberUpdatedState(closing)
+    SideEffect {
+        pull.slowFlick = slowPx / rangePx
+        pull.fastFlick = fastPx / rangePx
+    }
+
+    // Swipe down to close: a pull follows the finger; let go past the dismiss point (or flick) and it
+    // folds back into its postcard. While opening or closing, the finger drives the morph itself.
+    fun unsettled() = presence.value < 0.999f || (presence.isRunning && presence.target < 0.5f)
+    fun dragBy(dy: Float) {
+        if (unsettled()) {
+            presence.drag(-dy / screenPx[0])
+        } else {
+            pull.drag(dy / rangePx)
+        }
+    }
+    fun releaseWith(vy: Float) {
+        if (unsettled()) {
+            presence.slowFlick = slowPx / screenPx[0]
+            presence.fastFlick = fastPx / screenPx[0]
+            val open = presence.release(-vy / screenPx[0]) > 0.5f
+            if (open && closingNow.value) {
+                onReopen()
+            } else if (!open && !closingNow.value) {
+                onClose(vy)
+            }
+        } else if (pull.targetFor(vy / rangePx) >= 1f) {
+            pull.stop()
+            onClose(vy)
+        } else {
+            pull.release(vy / rangePx)
+        }
+    }
+    val pullScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Pulled: going back up undoes the pull before the page scrolls.
+                if (source != NestedScrollSource.UserInput || available.y >= 0f || pull.value <= 0f) {
+                    return Offset.Zero
+                }
+                dragBy(available.y)
+                return Offset(0f, available.y)
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                // At the top of the page, pulling down pulls the window.
+                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                if (pull.isRunning) pull.stop()
+                dragBy(available.y)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (pull.value <= 0f && !unsettled()) return Velocity.Zero
+                releaseWith(available.y)
+                return available
+            }
         }
     }
     val sky = skyFor(location, now)
@@ -142,6 +229,17 @@ internal fun PlaceWindow(
         Box(
             Modifier
                 .fillMaxSize()
+                .onSizeChanged { screenPx[0] = it.height.toFloat().coerceAtLeast(1f) }
+                // The pull: follows the finger down and shrinks a little, less as it folds into the
+                // postcard (so it lands exactly on it).
+                .graphicsLayer {
+                    val p = progress().coerceIn(0f, 1f)
+                    val f = pull.value
+                    val k = 1f - 0.12f * f.coerceIn(0f, 1.5f) * p
+                    scaleX = k
+                    scaleY = k
+                    translationY = f * rangePx * 0.6f * p
+                }
                 .graphicsLayer {
                     val p = progress().coerceIn(0f, 1f)
                     val from = origin ?: Rect(0f, 0f, size.width, size.height)
@@ -152,7 +250,9 @@ internal fun PlaceWindow(
                         from.bottom + (size.height - from.bottom) * p
                     )
                     // Clipped to the growing card; corners from the postcard's to square.
-                    shape = RectShape(rect, Corners.L.toPx() * (1f - p))
+                    // Pulled, the window rounds its corners like a card.
+                    val pulled = Corners.XL.toPx() * (pull.value * 4f).coerceIn(0f, 1f)
+                    shape = RectShape(rect, Corners.L.toPx() * (1f - p) + pulled * p)
                     clip = true
                     // Fades in over the postcard during the first moments (their skies are laid out
                     // differently), and out again at the very end of a close.
@@ -221,6 +321,7 @@ internal fun PlaceWindow(
                         .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
                         // This week sits on the plain page, like Outlook.
                         .plainPageBackdrop(pager, skyPage = 1, page = page)
+                        .nestedScroll(pullScroll)
                 ) {
                     HorizontalPager(
                         state = pager,
@@ -244,8 +345,9 @@ internal fun PlaceWindow(
                                     refreshing = false,
                                     onRefresh = {},
                                     onDetails = onDetails,
-                                    onOpenPlaces = onClose,
-                                    showLocalTime = false
+                                    onOpenPlaces = { onClose(Float.NaN) },
+                                    showLocalTime = false,
+                                    pullToRefresh = false
                                 )
                             }
                         }
@@ -309,6 +411,29 @@ internal fun PlaceWindow(
                     budIcon = if (pinned) SolsticeIcons.PushPinFill else SolsticeIcons.PushPin,
                     budDescription = stringResource(if (pinned) R.string.shell_pinned else R.string.shell_pin),
                     budChecked = pinned
+                )
+            }
+            // While it opens, closes or springs back, a touch anywhere catches it (like search).
+            var holding by remember { mutableStateOf(false) }
+            val catchable by remember { derivedStateOf { unsettled() || pull.isRunning } }
+            if (catchable || holding) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .draggable(
+                            orientation = Orientation.Vertical,
+                            state = rememberDraggableState { dragBy(it) },
+                            startDragImmediately = true,
+                            onDragStarted = {
+                                holding = true
+                                if (unsettled()) presence.stop()
+                                pull.stop()
+                            },
+                            onDragStopped = { v ->
+                                holding = false
+                                releaseWith(v)
+                            }
+                        )
                 )
             }
         }

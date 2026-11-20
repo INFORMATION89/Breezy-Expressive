@@ -2042,3 +2042,25 @@ Things to try on the phone before calling any motion done (debug and release bui
   (`reopen()`). `MotionValue.targetFor` picks a rest point without moving. Checked by the user: it can
   be caught now. Open: the keyboard, still sliding away, takes touches at the bottom; idea (to agree):
   start hiding it once the card is pulled below compact.
+- **2026-11-19: M4, the rest of the shell on `:motion`** (options agreed with the user).
+  - **Tokens:** `Motion.playful` (0.5 damping, ≈0.31 s: pops, squeezes, the neck, landing bumps) and
+    `Motion.wobble` (0.32: the liquid drop and ripple), for expressive moments only.
+  - **Toolbar:** every spring is a token now (wobble and ripple on `wobble`; neck `playful` / `settle`;
+    pin jab `container`; tab pop `playful` in, `container` out; press squeeze `snappy` in,
+    `playful` out). Same liquid look.
+  - **Places drag:** lift `snappy`; the drop settles on `settle` carrying the finger's vertical speed
+    (VelocityTracker); neighbours' bump `snappy` then `playful`; star-to-top glide `container` up,
+    `dismiss` down; list placement `settle`.
+  - **Postcard window:** `presence` and `pull` MotionValues instead of one spring. Opens on
+    `container`, closes on `dismiss` (no bounce). **Swipe down to close** (iOS zoom style): at the
+    top of the page a pull follows the finger, shrinks the window up to 12 % and rounds its corners;
+    a release past 260 dp × ½ (or a flick, UIKit rule) folds it into its postcard carrying the fling,
+    otherwise it springs back. A touch catches it mid-open or mid-close; thrown back up it reopens.
+    Its Forecast has no pull-to-refresh (`ForecastPage(pullToRefresh = false)`), so the pull reaches
+    the window. Predictive back still works.
+  - **Icon fix:** the window's pin was invisible: Google's `push_pin` SVGs are still in the old
+    format (24 px grid, no viewBox) and the generator drew them on the 960 grid. `make_symbols.py`
+    now reads each file's grid (`symbol(grid = …)`); only `push_pin` was affected.
+  - Checked on the Pixel 7 (profile): window opens; a short slow pull springs back; a longer pull
+    closes it into the postcard; mid-pull it follows the finger, shrinks and rounds; the pin shows.
+    Not checked by hand yet: toolbar and Places feel, catching the window mid-close.

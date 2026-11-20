@@ -351,7 +351,8 @@ object SolsticeIcons {
         symbol(
             "PushPin",
             "m16 12 2 2v2h-5v6l-1 1-1-1v-6H6v-2l2-2V5H7V3h10v2h-1Zm-7.15 2h6.3L14 12.85V5h-4v7.85ZM12" +
-                " 14Z"
+                " 14Z",
+            grid = 24f
         )
     }
     val Rainy: ImageVector by lazy {
@@ -577,7 +578,8 @@ object SolsticeIcons {
     val PushPinFill: ImageVector by lazy {
         symbol(
             "PushPinFill",
-            "m16 12 2 2v2h-5v6l-1 1-1-1v-6H6v-2l2-2V5H7V3h10v2h-1Z"
+            "m16 12 2 2v2h-5v6l-1 1-1-1v-6H6v-2l2-2V5H7V3h10v2h-1Z",
+            grid = 24f
         )
     }
     val RainyFill: ImageVector by lazy {
@@ -996,7 +998,8 @@ object SolsticeIcons {
             symbol(
                 "PushPin",
                 "m13.292 9.854 1.666 1.688v1.75h-4.104v5l-.875.875-.875-.875v-5H5v-1.75l1.667-1.688V4.25h" +
-                    "-.834V2.5h8.292v1.75h-.833Zm-5.813 1.688h5l-.937-.917V4.25H8.417v6.375Zm2.5 0Z"
+                    "-.834V2.5h8.292v1.75h-.833Zm-5.813 1.688h5l-.937-.917V4.25H8.417v6.375Zm2.5 0Z",
+                grid = 20f
             )
         }
         val Rainy: ImageVector by lazy {
@@ -1251,7 +1254,8 @@ object SolsticeIcons {
             symbol(
                 "PushPinFill",
                 "m13.312 9.854 1.667 1.688v1.75h-4.125v5l-.875.875-.875-.875v-5H5v-1.75l1.667-1.688V4.25h" +
-                    "-.834V2.5h8.313v1.75h-.834Z"
+                    "-.834V2.5h8.313v1.75h-.834Z",
+                grid = 20f
             )
         }
         val RainyFill: ImageVector by lazy {
@@ -1388,17 +1392,20 @@ object SolsticeIcons {
     )
 }
 
-/** One Material Symbol (viewport 960, y from -960 to 0 as in the SVGs). */
-private fun symbol(name: String, path: String, autoMirror: Boolean = false): ImageVector =
+/**
+ * One Material Symbol: drawn on a 960 grid with y from -960 to 0, as in most of the SVGs, or on the
+ * file's own [grid] (its pixel size, y from 0) for the few still in the old format.
+ */
+private fun symbol(name: String, path: String, autoMirror: Boolean = false, grid: Float = 0f): ImageVector =
     ImageVector.Builder(
         name = name,
         defaultWidth = 24.dp,
         defaultHeight = 24.dp,
-        viewportWidth = 960f,
-        viewportHeight = 960f,
+        viewportWidth = if (grid > 0f) grid else 960f,
+        viewportHeight = if (grid > 0f) grid else 960f,
         autoMirror = autoMirror
     ).apply {
-        group(translationY = 960f) {
+        group(translationY = if (grid > 0f) 0f else 960f) {
             addPath(PathParser().parsePathString(path).toNodes(), fill = SolidColor(Color.Black))
         }
     }.build()

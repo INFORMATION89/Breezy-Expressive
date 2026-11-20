@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,10 +80,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.rememberMotionValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.breezyweather.R
@@ -325,27 +328,57 @@ fun SolsticeShell(
     // A postcard opened as a window (agreed 2026-11-18): one spring grows it from its card and back.
     var windowId by rememberSaveable { mutableStateOf<String?>(null) }
     var windowOrigin by remember { mutableStateOf<Rect?>(null) }
-    val windowProgress = remember { Animatable(0f) }
+    // The window's motion (agreed 2026-11-19): presence opens on Motion.container and closes on
+    // dismiss; pull is the swipe-down (1 = the dismiss point). Both can be caught mid-motion.
+    val windowPresence = rememberMotionValue(initial = 0f, overMin = 0.05f, overMax = 0.02f)
+    val windowPull = rememberMotionValue(initial = 0f, overMin = 0.15f, overMax = 0.6f)
+    var windowClosing by remember { mutableStateOf(false) }
     // System bar icons follow whatever is behind them; a postcard window sets its own once it's
     // mostly open.
-    val windowCovers by remember { derivedStateOf { windowId != null && windowProgress.value > 0.5f } }
+    val windowCovers by remember { derivedStateOf { windowId != null && windowPresence.value > 0.5f } }
     if (!windowCovers) {
         SkySystemBars(if (pager.currentPage == PAGE_FORECAST) sky.palette else plainPalette(page, onPage))
     }
     var windowFade by remember { mutableStateOf(false) }
-    val windowSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
     // Grows once the place is in the list (a place just picked in search is added a moment later),
     // so the window never pops in half-way.
     val windowReady = windowId != null && locations.any { it.formattedId == windowId }
     LaunchedEffect(windowId, windowReady) {
-        if (windowReady) windowProgress.animateTo(1f, windowSpring)
+        if (windowReady) {
+            windowClosing = false
+            windowPull.snapTo(0f)
+            windowPresence.animateTo(1f)
+        }
     }
-    fun closeWindow() {
+    // How far the window's top travels as it folds back (roughly), to turn a fling into its speed.
+    val windowFoldPx = with(LocalDensity.current) { 700.dp.toPx() }
+
+    // velocity: a swipe-down's speed (px/s), carried into the fold back; NaN for none.
+    fun closeWindow(velocity: Float = Float.NaN) {
         val leaving = windowId
         // A visit that isn't kept fades away as it shrinks (it has no slot to land in).
         windowFade = leaving != null && leaving in Visits.all(context) && leaving !in starred
-        scope.launch {
-            windowProgress.animateTo(0f, windowSpring)
+        windowClosing = true
+        if (velocity.isNaN()) {
+            windowPresence.animateTo(0f)
+        } else {
+            windowPresence.animateTo(0f, -velocity / windowFoldPx)
+        }
+    }
+
+    // Caught while closing and thrown back up.
+    fun reopenWindow() {
+        windowClosing = false
+        windowPresence.animateTo(1f)
+        windowPull.animateTo(0f)
+    }
+    // Once folded all the way back (not caught), the window goes.
+    LaunchedEffect(windowClosing) {
+        if (!windowClosing) return@LaunchedEffect
+        snapshotFlow { windowPresence.isRunning to windowPresence.value }
+            .first { (running, v) -> !running && v <= 0.001f }
+        windowClosing = false
+        run {
             val id = windowId
             windowId = null
             // A visit you didn't pin (or star) is gone once you go back.
@@ -441,7 +474,7 @@ fun SolsticeShell(
                 // Only while the Forecast page shows some of it and no postcard window covers it.
                 visible = {
                     abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_FORECAST) < 0.999f &&
-                        windowProgress.value < 0.999f
+                        windowPresence.value < 0.999f
                 }
             ) {
                 Box(Modifier.fillMaxSize().plainPageBackdrop(pager, PAGE_FORECAST, page))
@@ -609,7 +642,7 @@ fun SolsticeShell(
                 }
             }
             // The toolbar steps aside while search or a place window is open.
-            ToolbarDock(alpha = { 1f - maxOf(searchSheet.presence.value.coerceIn(0f, 1f), windowProgress.value) }) {
+            ToolbarDock(alpha = { 1f - maxOf(searchSheet.presence.value.coerceIn(0f, 1f), windowPresence.value) }) {
                 ShellMessageHost(messages, glass)
                 ShellToolbar(
                     pager = pager,
@@ -655,11 +688,14 @@ fun SolsticeShell(
                 PlaceWindow(
                     location = windowPlace,
                     origin = windowOrigin,
-                    progress = { windowProgress.value },
+                    presence = windowPresence,
+                    pull = windowPull,
+                    closing = windowClosing,
                     now = now,
-                    onBackProgress = { e -> scope.launch { windowProgress.snapTo(1f - 0.5f * e) } },
-                    onBackCancelled = { scope.launch { windowProgress.animateTo(1f, windowSpring) } },
-                    onClose = { closeWindow() },
+                    onBackProgress = { e -> windowPresence.snapTo(1f - 0.5f * e) },
+                    onBackCancelled = { windowPresence.animateTo(1f) },
+                    onClose = { v -> closeWindow(v) },
+                    onReopen = { reopenWindow() },
                     pinned = windowPlace.formattedId !in visiting,
                     fadeOut = windowFade,
                     weather = SkyWeather.of(windowPlace.weather?.current?.weatherCode),

@@ -63,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -85,6 +86,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.Motion
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -226,8 +228,8 @@ internal fun PlacesPage(
                 if (l.first == id) return@LaunchedEffect
                 val diff = shown.indexOf(id) - shown.indexOf(l.first)
                 if (abs(diff) in 1..2) {
-                    bump.animateTo(sign(diff.toFloat()) * bumpMax / abs(diff), spring(stiffness = Spring.StiffnessHigh))
-                    bump.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
+                    bump.animateTo(sign(diff.toFloat()) * bumpMax / abs(diff), Motion.snappy.spec())
+                    bump.animateTo(0f, Motion.playful.spec())
                 }
             }
             // Starred just now: it lifts, glides to the top over the others, and sets down.
@@ -236,9 +238,9 @@ internal fun PlacesPage(
             val glide = remember { Animatable(0f) }
             LaunchedEffect(starredNow) {
                 if (starredNow && !wasStarred) {
-                    glide.animateTo(1f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium))
+                    glide.animateTo(1f, Motion.container.spec())
                     delay(380)
-                    glide.animateTo(0f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow))
+                    glide.animateTo(0f, Motion.dismiss.spec())
                 }
                 wasStarred = starredNow
             }
@@ -251,11 +253,7 @@ internal fun PlacesPage(
                             Modifier
                         } else {
                             Modifier.animateItem(
-                                placementSpec = spring(
-                                    dampingRatio = 0.9f,
-                                    stiffness = Spring.StiffnessMediumLow,
-                                    visibilityThreshold = IntOffset(1, 1)
-                                )
+                                placementSpec = Motion.settle.spec(visibilityThreshold = IntOffset(1, 1))
                             )
                         }
                     )
@@ -312,9 +310,14 @@ internal fun PlacesPage(
                                 cardBounds[id] = it.boundsInRoot()
                             }.pointerInput(id) {
                                 var moved = 0f
+                                // The finger's vertical speed at the drop, carried into the settle.
+                                val tracker = VelocityTracker()
+                                var travelled = 0f
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {
                                         moved = 0f
+                                        tracker.resetTracking()
+                                        travelled = 0f
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         order.clear()
                                         order.addAll(sortedIds)
@@ -322,12 +325,14 @@ internal fun PlacesPage(
                                         tilt = 0f
                                         carried = id
                                         scope.launch {
-                                            lift.animateTo(1.03f, spring(stiffness = Spring.StiffnessMedium))
+                                            lift.animateTo(1.03f, Motion.snappy.spec())
                                         }
                                     },
                                     onDrag = { change, amount ->
                                         change.consume()
                                         moved += abs(amount.y) + abs(amount.x)
+                                        travelled += amount.y
+                                        tracker.addPosition(change.uptimeMillis, Offset(0f, travelled))
                                         if (!pinned) {
                                             carryY += amount.y
                                             val target = (amount.y * 0.35f).coerceIn(-3f, 3f)
@@ -339,14 +344,16 @@ internal fun PlacesPage(
                                         val wasMoved = moved > viewConfiguration.touchSlop && !pinned
                                         val index = order.indexOf(id)
                                         val before = order.getOrNull(index + 1)
+                                        val vy = if (pinned) 0f else tracker.calculateVelocity().y
                                         scope.launch {
-                                            // Soft, non-bouncy settle into the slot.
-                                            val soft =
-                                                spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
+                                            // Settles into the slot without bounce, carrying the drop's speed.
+                                            val soft = Motion.settle.spec<Float>()
                                             launch { lift.animateTo(1f, soft) }
                                             launch { animate(tilt, 0f, animationSpec = soft) { v, _ -> tilt = v } }
                                             if (wasMoved) landed = id to System.nanoTime()
-                                            animate(carryY, 0f, animationSpec = soft) { v, _ -> carryY = v }
+                                            animate(carryY, 0f, initialVelocity = vy, animationSpec = soft) { v, _ ->
+                                                carryY = v
+                                            }
                                             carried = null
                                             // (Release without moving used to open the place's settings;
                                             // removed, it clashed with reordering. To revisit.)
@@ -355,7 +362,7 @@ internal fun PlacesPage(
                                     },
                                     onDragCancel = {
                                         scope.launch {
-                                            lift.animateTo(1f)
+                                            lift.animateTo(1f, Motion.settle.spec())
                                             carryY = 0f
                                             tilt = 0f
                                             carried = null

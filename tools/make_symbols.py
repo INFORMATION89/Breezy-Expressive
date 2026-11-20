@@ -26,7 +26,10 @@ def path(size, n):
             svg = r.read().decode()
         ps = re.findall(r'<path d="([^"]+)"', svg)
         assert len(ps) == 1, url
-        _cache[url] = ps[0]
+        # Most files draw on a 960 grid (viewBox "0 -960 960 960"); a few (push_pin) still use the
+        # old one, in the file's own pixel size with no viewBox.
+        own = None if "viewBox" in svg else re.search(r'width="(\d+)"', svg).group(1)
+        _cache[url] = (ps[0], own)
     return _cache[url]
 
 
@@ -65,14 +68,16 @@ out = [header.rstrip()+'\n', 'package org.breezyweather.ui.expressive.components
 ' */',
 'object SolsticeIcons {',
 ]
-def one(indent, name, p, mir):
+def one(indent, name, pv, mir):
+    p, own = pv
     chunks=[p[i:i+88] for i in range(0,len(p),88)]
     r=[f'{indent}val {name}: ImageVector by lazy {{', f'{indent}    symbol(', f'{indent}        "{name}",']
     for i,c in enumerate(chunks):
         pre = f'{indent}        ' if i==0 else f'{indent}            '
-        post = ' +' if i < len(chunks)-1 else (',' if mir else '')
+        post = ' +' if i < len(chunks)-1 else (',' if (mir or own) else '')
         r.append(f'{pre}"{c}"{post}')
-    if mir: r.append(f'{indent}        autoMirror = true')
+    if mir: r.append(f'{indent}        autoMirror = true' + (',' if own else ''))
+    if own: r.append(f'{indent}        grid = {own}f')
     r += [f'{indent}    )', f'{indent}}}']
     return r
 def entries(d, indent):
@@ -98,17 +103,20 @@ out += ['    }', '',
 ] + [f'        "{n}" to {{ Small.{n} }}' + (',' if i < len(allnames)-1 else '') for i,n in enumerate(allnames)] + [
 '    )',
 '}', '',
-'/** One Material Symbol (viewport 960, y from -960 to 0 as in the SVGs). */',
-'private fun symbol(name: String, path: String, autoMirror: Boolean = false): ImageVector =',
+'/**',
+' * One Material Symbol: drawn on a 960 grid with y from -960 to 0, as in most of the SVGs, or on the',
+' * file\'s own [grid] (its pixel size, y from 0) for the few still in the old format.',
+' */',
+'private fun symbol(name: String, path: String, autoMirror: Boolean = false, grid: Float = 0f): ImageVector =',
 '    ImageVector.Builder(',
 '        name = name,',
 '        defaultWidth = 24.dp,',
 '        defaultHeight = 24.dp,',
-'        viewportWidth = 960f,',
-'        viewportHeight = 960f,',
+'        viewportWidth = if (grid > 0f) grid else 960f,',
+'        viewportHeight = if (grid > 0f) grid else 960f,',
 '        autoMirror = autoMirror',
 '    ).apply {',
-'        group(translationY = 960f) {',
+'        group(translationY = if (grid > 0f) 0f else 960f) {',
 '            addPath(PathParser().parsePathString(path).toNodes(), fill = SolidColor(Color.Black))',
 '        }',
 '    }.build()', '']

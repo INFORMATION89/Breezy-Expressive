@@ -70,8 +70,10 @@ Navigation 3: if that migration adds icons, use `SolsticeIcons` (CI fails on the
 
 ### Still open from before
 
-- **M4:** search is on `:motion` (`SolsticeSheetState`, option B; catching it mid-close works). Next: the postcard window, Places drag, the toolbar, the moon card onto the sheet state, and
-  the page scaffold. Propose each motion first (motion rule).
+- **M4:** search is on `:motion` (`SolsticeSheetState`, option B; catching it mid-close works). The postcard window (swipe down to close), Places drag
+  and the toolbar are on tokens too (check their feel by hand). Next: the moon card onto the sheet
+  state, the small ports (messages, page jump fades, page fling, postcard press/fold/peel, Forecast
+  develop: propose first) and the page scaffold. Propose each motion first (motion rule).
   27 `spring(…)`, 7 `tween(…)` and 12 `animate*AsState` left in `ui/expressive/`.
 - **Moon card by feel:** a flick just under 1000 dp/s that projects to about half way stays open
   (the UIKit rule as specified). Lower the fast-flick speed for it if it feels wrong.
