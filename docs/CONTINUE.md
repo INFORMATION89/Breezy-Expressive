@@ -53,6 +53,9 @@ hand, build the motion lab (M5), then refine animations area by area.**
 ### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 
 **A. Frames drop when opening the moon card and the search card.**
+**Measured 2026-11-20** (PLAN.md log): the recede is the main cost for search (22 % → 8 % janky
+without it); the moon card drops 28 % → 21 %, so it has another cost too. Next: options for the
+recede, a Perfetto trace of the moon card.
 - Likely cause (to confirm): both make the page behind recede, `scale = 1 − 0.04 × max(search
   backdrop, MoonCardState.progress)` in a `graphicsLayer` on the whole pager (`shell/SolsticeShell.kt`,
   "The page recedes a little…", added in M4). Scaling the page makes everything that samples it redraw
@@ -97,7 +100,7 @@ of "build, install, find the screen".
 
 Order: moon card, search, postcard window, toolbar, Places, messages. Each round: record the iOS
 reference (Glasmio's notes for sheets and menus), compare in the lab, **propose changes, agree, then
-tune**, check on the profile build. Rounds 1 (moon card) and 2 (search) done 2026-11-19. Carry into the rounds: `Motion.control` = `Motion.settle` (merge or tell apart).
+tune**, check on the profile build. Rounds 1 (moon card), 2 (search) and 3 (postcard window) done. Carry into the rounds: `Motion.control` = `Motion.settle` (merge or tell apart).
 
 ### Also open, between rounds
 

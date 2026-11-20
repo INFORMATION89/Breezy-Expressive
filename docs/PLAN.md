@@ -2137,3 +2137,13 @@ Things to try on the phone before calling any motion done (debug and release bui
   compact and a hard one dismisses straight away; **the keyboard hides on the pull** (once the card is
   pulled below compact it starts hiding and the card holds its height; let go and it springs back,
   the keyboard comes back with it). Next round: the postcard window.
+- **2026-11-20: refining round 3, postcard window** (follows the principles agreed in rounds 1–2,
+  checked on the Pixel 7): its presence and pull project flings with UIKit's normal deceleration, and
+  the pull follows the finger 1:1 (was 0.6×). A held pull tracks, a short release springs back, a
+  medium flick folds it into its postcard.
+- **2026-11-20: bug A measured** (profile build, `dumpsys gfxinfo` janky frames, 6 opens and flick
+  closes each; the lab's new **Page recede** switch turns the recede off for testing):
+  moon card 28 % with the recede, 21 % without; search 22 % with, **8 %** without; page swipes 1 %.
+  The recede is the main cost for search; the moon card has another one too (it was 3.3 % in M3, by a
+  different measure). Options to propose next: drop the recede, or recede only the content under the
+  glass; for the moon card, a Perfetto trace of an opening first.

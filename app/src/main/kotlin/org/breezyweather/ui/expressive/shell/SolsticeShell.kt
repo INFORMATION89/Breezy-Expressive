@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
 import io.github.information89.motion.Motion
+import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.rememberMotionValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -97,6 +98,7 @@ import org.breezyweather.ui.expressive.components.glass
 import org.breezyweather.ui.expressive.components.glassSource
 import org.breezyweather.ui.expressive.components.rememberGlassSource
 import org.breezyweather.ui.expressive.components.rememberSolsticeSheetState
+import org.breezyweather.ui.expressive.lab.LabFlags
 import org.breezyweather.ui.expressive.search.RecentSearches
 import org.breezyweather.ui.expressive.search.SearchOverlay
 import org.breezyweather.ui.expressive.sky.AnimatedSkyBackground
@@ -327,8 +329,19 @@ fun SolsticeShell(
     var windowOrigin by remember { mutableStateOf<Rect?>(null) }
     // The window's motion (agreed 2026-11-19): presence opens on Motion.container and closes on
     // dismiss; pull is the swipe-down (1 = the dismiss point). Both can be caught mid-motion.
-    val windowPresence = rememberMotionValue(initial = 0f, overMin = 0.05f, overMax = 0.02f)
-    val windowPull = rememberMotionValue(initial = 0f, overMin = 0.15f, overMax = 0.6f)
+    // UIKit's normal deceleration for both, like the moon card and search (rounds 1 and 2).
+    val windowPresence = rememberMotionValue(
+        initial = 0f,
+        overMin = 0.05f,
+        overMax = 0.02f,
+        deceleration = MotionPhysics.DECELERATION_NORMAL
+    )
+    val windowPull = rememberMotionValue(
+        initial = 0f,
+        overMin = 0.15f,
+        overMax = 0.6f,
+        deceleration = MotionPhysics.DECELERATION_NORMAL
+    )
     var windowClosing by remember { mutableStateOf(false) }
     // System bar icons follow whatever is behind them; a postcard window sets its own once it's
     // mostly open.
@@ -513,7 +526,11 @@ fun SolsticeShell(
                         }
                         .graphicsLayer {
                             // The page recedes a little while search or the moon card is open.
-                            val k = 1f - 0.04f * maxOf(searchSheet.backdrop(), MoonCardState.progress)
+                            val k = if (LabFlags.pageRecede) {
+                                1f - 0.04f * maxOf(searchSheet.backdrop(), MoonCardState.progress)
+                            } else {
+                                1f
+                            }
                             scaleX = k
                             scaleY = k
                             // The tab jump: the arriving page slides in from the tapped side (a quarter of

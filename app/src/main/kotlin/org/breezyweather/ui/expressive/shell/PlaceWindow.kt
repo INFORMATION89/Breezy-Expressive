@@ -239,7 +239,8 @@ internal fun PlaceWindow(
                     val k = 1f - 0.12f * f.coerceIn(0f, 1.5f) * p
                     scaleX = k
                     scaleY = k
-                    translationY = f * rangePx * 0.6f * p
+                    // Follows the finger 1:1, like the moon card (round 3, 2026-11-19).
+                    translationY = f * rangePx * p
                 }
                 .graphicsLayer {
                     val p = progress().coerceIn(0f, 1f)
