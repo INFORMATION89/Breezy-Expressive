@@ -117,6 +117,9 @@ internal fun ShellToolbar(
     budIcon: ImageVector = SolsticeIcons.Search,
     budDescription: String = stringResource(R.string.shell_search_elsewhere),
     budChecked: Boolean = false,
+    // 0 while something that grew out of the bud (search's card) is on screen: that card draws the
+    // bud's icon itself on its way back, so the two never show at once (read in draw).
+    budIconShown: () -> Float = { 1f },
     position: () -> Float? = { null },
     // A finger on the toolbar (the slide) stops any page transition in progress.
     onInterrupt: () -> Unit = {},
@@ -242,7 +245,7 @@ internal fun ShellToolbar(
                 tint = tintColor,
                 modifier = Modifier.graphicsLayer {
                     val j = jab.value
-                    alpha = iconAlpha
+                    alpha = iconAlpha * budIconShown()
                     // In: down and squashed; out: up and stretched.
                     translationY = j * 1.5.dp.toPx()
                     scaleY = 1f - 0.07f * j

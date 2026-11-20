@@ -2092,3 +2092,7 @@ Things to try on the phone before calling any motion done (debug and release bui
   toolbar room at the end, the top edge blur. Small shifts: This week's title 4 dp higher (now level
   with Places', checked on the Pixel 7), Places a little closer under its title and 28 dp more room at
   the end. Forecast stays its own layout (centred, on the sky).
+- **2026-11-19: bug B fixed (not yet checked on the phone).** The toolbar's search icon is hidden
+  (`ShellToolbar(budIconShown = …)`) whenever the search card is on screen (`presence > 0` or
+  moving); the card carries the icon there and back, and the real one shows in the frame the card has
+  folded away. Bug A (frames dropping) still to measure.

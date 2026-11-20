@@ -64,7 +64,8 @@ hand, build the motion lab (M5), then refine animations area by area.**
   sampling while it runs; recede only the content under the glass; or drop the recede.
 - Before this, the moon card measured 3.3 % janky frames (2026-11-19, M3). Compare against that.
 
-**B. Swiping search down shows two search icons.** (Clarified by the user.) Start with search
+**B. Swiping search down shows two search icons.** **Fixed 2026-11-19, check on the phone**
+(`budIconShown` in `Toolbar.kt`, see PLAN.md log). (Clarified by the user.) Start with search
 open and slide it down: the card shrinks back into the bubble and its own search icon travels to the
 toolbar (correct), but the toolbar's real search button is already drawn at that spot, so two icons
 show at once until the card lands.

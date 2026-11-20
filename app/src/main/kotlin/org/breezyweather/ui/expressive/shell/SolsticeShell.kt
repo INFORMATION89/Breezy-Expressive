@@ -655,7 +655,12 @@ fun SolsticeShell(
                         searchHandoff = false
                         searchOpen = true
                     },
-                    onSearchBounds = { searchOrigin = it }
+                    onSearchBounds = { searchOrigin = it },
+                    // The search card is the button while it's out: it carries the icon there and back,
+                    // and the real one shows again in the frame the card has folded away (one swap).
+                    budIconShown = {
+                        if (searchSheet.presence.value > 0f || searchSheet.presence.isRunning) 0f else 1f
+                    }
                 )
             }
             ChooseSourcesDialog(viewModel, sourceManager)
