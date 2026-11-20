@@ -97,8 +97,7 @@ of "build, install, find the screen".
 
 Order: moon card, search, postcard window, toolbar, Places, messages. Each round: record the iOS
 reference (Glasmio's notes for sheets and menus), compare in the lab, **propose changes, agree, then
-tune**, check on the profile build. Carry into the rounds: the moon card's borderline flick (just under
-1000 dp/s stays open), search's keyboard taking touches while it slides away (idea: hide it once the
+tune**, check on the profile build. Round 1 (moon card) done 2026-11-19. Carry into the rounds: search's keyboard taking touches while it slides away (idea: hide it once the
 card is pulled below compact), `Motion.control` = `Motion.settle` (merge or tell apart).
 
 ### Also open, between rounds

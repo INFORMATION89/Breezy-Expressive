@@ -130,8 +130,10 @@ import io.github.information89.motion.Morph
 import io.github.information89.motion.MorphAnchor
 import io.github.information89.motion.MorphHost
 import io.github.information89.motion.Motion
+import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.MotionValue
 import io.github.information89.motion.morphAnchor
+import io.github.information89.motion.morphAnchorOf
 import io.github.information89.motion.morphFrom
 import io.github.information89.motion.motionDrag
 import io.github.information89.motion.rememberMotionValue
@@ -231,7 +233,10 @@ private fun labelKey(location: Location) = "moon-label-${location.formattedId}"
 private const val MATERIAL_SPAN = 0.3f
 private const val LABEL_SPAN = 0.15f
 
-/** How far the sheet travels between the pill and open, for the drag (finger distance per unit). */
+/**
+ * How far the sheet's top travels between the pill and open, for the drag, until the pill has been
+ * measured (then the real distance is used, so the top edge stays under the finger, like iOS).
+ */
 private val MOON_RANGE = 420.dp
 
 /** iOS: a sheet pulled past open travels up to about 100 pt. */
@@ -380,7 +385,10 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
     val motion = rememberMotionValue(
         initial = 0f,
         overMin = 0.02f,
-        overMax = MOON_OVER_PULL / MOON_RANGE
+        overMax = MOON_OVER_PULL / MOON_RANGE,
+        // UIKit's normal deceleration for the fling (agreed 2026-11-19): a medium flick down closes
+        // it, as an iOS sheet would; a slow lift still springs back open.
+        deceleration = MotionPhysics.DECELERATION_NORMAL
     )
     androidx.compose.runtime.DisposableEffect(motion) {
         MoonCardState.motion = motion
@@ -428,13 +436,18 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
         MorphAnchor(Rect(0f, top, window.width.toFloat(), window.height.toFloat()), radius)
     }
     val shape = remember(motion, radius) { MoonSheetShape(motion, radius) }
+    // The drag tracks the finger 1:1 (agreed 2026-11-19): one unit of the morph is the distance the
+    // sheet's top travels, from the moon pill to open.
+    val pill = morphAnchorOf(pillKey(location))
+    val range = pill?.let { with(density) { (it.bounds.top - top).coerceAtLeast(1f).toDp() } }
+        ?.coerceAtLeast(200.dp) ?: MOON_RANGE
 
     // Gestures on the whole screen (the sheet shrinks under the finger while a pull scrubs it, so a
     // drag measured on it would run ahead): vertical pulls drive the morph, a tap above it closes.
     Box(
         Modifier
             .fillMaxSize()
-            .motionDrag(motion, Orientation.Vertical, MOON_RANGE, reverseDirection = true)
+            .motionDrag(motion, Orientation.Vertical, range, reverseDirection = true)
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
                     if (tap.y < status.getTop(this) + Space.S3.toPx()) close()

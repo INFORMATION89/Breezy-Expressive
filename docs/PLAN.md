@@ -2126,3 +2126,9 @@ Things to try on the phone before calling any motion done (debug and release bui
 - **2026-11-19: M5 done:** `motion/README.md` rewritten for other projects: what each piece is, the
   token table, the seven rules, two examples (a draggable sheet, a pill growing into a card), and the
   lab. Next: the refining rounds, moon card first.
+- **2026-11-19: refining round 1, moon card** (agreed with the user, checked on the Pixel 7): its
+  fling is projected with UIKit's **normal deceleration** (0.998; `rememberMotionValue(deceleration
+  = …)` is new), so a medium flick down (~900 dp/s) closes it as on iOS while a slow drag springs
+  back; the pull **tracks the finger 1:1** (the drag range is the real distance from the sheet's top
+  to the moon pill, read with the new `morphAnchorOf(key)`; 420 dp until measured). Next round:
+  search.
