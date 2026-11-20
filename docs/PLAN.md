@@ -728,6 +728,46 @@ Rules, following Material 3's icon guidance (m3.material.io/styles/icons, "Apply
 
 Later, to agree: animated fill for state changes (motion rule), weight matched to the text weight.
 
+## Morph refining (planned 2026-11-20 by the user, for 2026-11-21 1:00 AM)
+
+Top priority, in the motion lab first, then in the app. Each point: propose options, agree, build
+(motion rule). The lab's launcher icon becomes **"Motion Lab"**.
+
+**1. The original button becomes the card.** Today `Morph` (`:motion`) draws its own surface in an
+overlay from the source's anchor to the target's and hides the source, so the eye can catch a swap.
+Goal: what the user touched is what grows. The surface must start as exactly the button (shape,
+corner, glass, colour, elevation, its icon or label in place) and end as exactly the card, and the
+real button and card are never both visible. Options to weigh: the button's own container is the
+morph surface (its layout animates from the button's bounds to the card's); or the overlay copies the
+button pixel for pixel and swaps in the first frame. Check it on the moon pill, search's bubble and
+the postcard window.
+
+**2. Blur to hide text changes.** When text turns into other text (pill label into the sheet's heading,
+a value into another), both texts blur as they cross (iOS-style "blur replace"): the old one blurs
+out while the new one comes into focus, so no frame shows two readable texts on top of each other.
+Values to set: peak blur radius, how long the cross overlaps, and whether size and position move at
+the same time. `RenderEffect` blur needs Android 12+; below, fall back to a fade.
+
+**3. Text transformations and transitions**, built as reusable pieces in `:motion` with lab demos:
+- label into title: position, size and weight move together on the morph's progress, as one text;
+- text replaced in place: blur + fade (point 2), width animating if the length changes;
+- numbers: digits roll or count to the new value (like iOS's numeric text transition), for
+  temperatures, percentages and times;
+- text arriving and leaving with its container (staggered lines, the "content leaves first" rule).
+
+**4. More interactions in the lab: one demo per kind of animation**, so every pattern can be felt,
+slowed down and compared with iOS. Suggested list (agree which first):
+- morphs: button into card, pill into sheet, card into full screen (and back, with the back gesture);
+- sheets with detents, dismiss by pull, catching mid-flight;
+- menus and popovers growing from their button (Glasmio's `dropdown-motion.md`), context menu on
+  long press;
+- screen push and pop with predictive back, tab switch, page swipe;
+- swipe actions, drag to reorder, pull to refresh, rubber-band at list ends;
+- controls: button press, toggle, switch, checkbox, slider, segmented control;
+- text and numbers (point 3), loading and progress, toasts/messages in and out;
+- scroll effects: collapsing title, edge blur, sticky headers;
+- haptics on each (which ones, and when).
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -2196,3 +2236,8 @@ Steps:
     uninstalled, as the user agreed).
   - **Waiting on:** the user adding the two secrets.
 
+- **2026-11-20 (planned by the user):** next session **Saturday 2026-11-21, 1:00 AM**, top priority
+  **refining the morph animations with the motion lab**: rename the lab icon "Motion Lab"; the
+  original button itself becomes the card (no swap); blur to hide text changes; text transformations
+  and transitions (label into title, replace in place, rolling numbers); one lab demo per kind of
+  animation. Section "Morph refining".

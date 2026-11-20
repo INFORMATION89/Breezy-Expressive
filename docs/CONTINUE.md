@@ -50,6 +50,26 @@ State on 2026-11-19 evening: icons on Material Symbols Rounded (merged, selected
 left: the three documented timed exceptions). The focus now: **fix the two reported bugs, check by
 hand, build the motion lab (M5), then refine animations area by area.**
 
+### 0. Next session: Saturday 2026-11-21, 1:00 AM (planned by the user, top priority)
+
+**Refine the morph animations, using the motion lab.** Motion rule still applies: start the session
+by proposing options for each point (lab demos where possible), agree, then build. Plan in PLAN.md,
+"Morph refining (planned 2026-11-20)".
+
+1. **Rename the lab's launcher icon to "Motion Lab"** (now "Solstice Lab" in
+   `app/src/profile/AndroidManifest.xml` and `app/src/debug/AndroidManifest.xml`; the Settings entry
+   `motion_lab` is "Motion lab": make it "Motion Lab" too).
+2. **The original button becomes the card.** Today `Morph` draws a new surface in an overlay and hides
+   the source, so it reads as a swap. The button itself (its shape, glass, colour and icon or label)
+   has to be what grows into the card, with no moment where two things or a replacement show.
+3. **Blur to hide the text change**: while a label turns into a heading (or any text into other
+   text), blur both briefly as they cross, so the change is never seen as two texts overlapping.
+4. **Text transformations and transitions**: label into title (position, size, weight), text
+   replaced in place (blur + fade), numbers changing (rolling or counting digits, like iOS's numeric
+   text transition), text appearing and leaving with its container.
+5. **More interactions in the lab, one per kind of animation**, so every pattern can be tried and
+   compared with iOS: list in PLAN.md.
+
 ### 1. Bugs reported by the user on the Pixel 7 (2026-11-19), fix first
 
 **A. Frames drop when opening the moon card and the search card.**
