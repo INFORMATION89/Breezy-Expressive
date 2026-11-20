@@ -2123,3 +2123,6 @@ Things to try on the phone before calling any motion done (debug and release bui
   token dots use the middle 60 % of the track so overshoot shows (playful and wobble were clipped),
   and the morph's surface is only drawn while it's out (it hid the pill's label). Bug B: closing
   search now shows one icon (the card's) until it lands. Page jump and Places star swipe work.
+- **2026-11-19: M5 done:** `motion/README.md` rewritten for other projects: what each piece is, the
+  token table, the seven rules, two examples (a draggable sheet, a pill growing into a card), and the
+  lab. Next: the refining rounds, moon card first.

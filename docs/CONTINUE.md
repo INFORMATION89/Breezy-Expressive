@@ -86,7 +86,7 @@ Not felt yet: toolbar and Places drag, catching the postcard window mid-close, m
 fly off), page jumps, Places swipe actions. Icons on the screens not looked at yet: search, Settings,
 details, Management (gauge → `speed`, UV → `wb_sunny`, wind → `air`, eye → `visibility`).
 
-### 3. M5: the motion lab, before refining (**built and checked 2026-11-19**; README next)
+### 3. M5: the motion lab, before refining (**done 2026-11-19**: lab built and checked, README written)
 
 A debug-only screen with each pattern (sheet, morph, window, toolbar bud, drag, swipe action,
 message), a slow-motion switch (animator duration scale), a frame counter, and the tokens' values
