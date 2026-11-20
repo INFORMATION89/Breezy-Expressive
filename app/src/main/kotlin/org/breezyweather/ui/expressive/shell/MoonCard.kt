@@ -29,7 +29,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SeekableTransitionState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animate
@@ -130,6 +129,7 @@ import breezyweather.domain.location.model.Location
 import io.github.information89.motion.Morph
 import io.github.information89.motion.MorphAnchor
 import io.github.information89.motion.MorphHost
+import io.github.information89.motion.Motion
 import io.github.information89.motion.MotionValue
 import io.github.information89.motion.morphAnchor
 import io.github.information89.motion.morphFrom
@@ -212,7 +212,7 @@ internal fun DrawScope.drawMoon(center: Offset, r: Float, angle: Int, lit: Float
 private val dialDecay = FloatExponentialDecaySpec(frictionMultiplier = 1.6f)
 
 /** The dial's settle spring. */
-private val moonSettle = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+private val moonSettle = Motion.settle.spec<Float>()
 
 private fun hhmm(zone: java.util.TimeZone) = SimpleDateFormat("HH:mm", Locale.getDefault()).apply { timeZone = zone }
 
@@ -604,6 +604,8 @@ private fun MoonCard(
     val targetParallactic = remember(centre, location.latitude, location.longitude) {
         rest + (-4..4).map { tiltAt(centre + it * hour) }.average()
     }
+    // A slow drift on purpose (≈1.8 s), not a gesture's motion: one of the few documented exceptions
+    // to the motion tokens (agreed 2026-11-19).
     val parallactic by animateFloatAsState(
         targetParallactic.toFloat(),
         spring(dampingRatio = 1f, stiffness = 12f),
@@ -697,10 +699,7 @@ private fun MoonCard(
                                             animate(
                                                 offset,
                                                 snapped,
-                                                animationSpec = spring(
-                                                    dampingRatio = 0.9f,
-                                                    stiffness = Spring.StiffnessMediumLow
-                                                )
+                                                animationSpec = moonSettle
                                             ) {
                                                     value,
                                                     _,

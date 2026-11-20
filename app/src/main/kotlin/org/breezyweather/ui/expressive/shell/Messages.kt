@@ -18,9 +18,7 @@ package org.breezyweather.ui.expressive.shell
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -58,6 +56,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.information89.motion.Motion
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,10 +109,12 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
     val tracker = remember(message) { VelocityTracker() }
     var width by remember { mutableStateOf(1) }
     var holding by remember(message) { mutableStateOf(false) }
-    val soft = spring<Float>(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+    // Rises like a container; settles back after a drag without bounce.
+    val rising = Motion.container.spec<Float>()
+    val soft = Motion.settle.spec<Float>()
 
     suspend fun sinkAndClear() {
-        rise.animateTo(0f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow))
+        rise.animateTo(0f, Motion.dismiss.spec())
         if (messages.current === message) messages.current = null
     }
 
@@ -127,7 +128,7 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
                 sideways -> {
                     val dir = if (dx + vx * 0.1f >= 0f) 1f else -1f
                     launch { animate(dy, 0f, vy, soft) { v, _ -> dy = v } }
-                    animate(dx, dir * width * 1.3f, vx, spring(stiffness = Spring.StiffnessMediumLow)) { v, _ ->
+                    animate(dx, dir * width * 1.3f, vx, Motion.dismiss.spec()) { v, _ ->
                         dx = v
                     }
                     if (messages.current === message) messages.current = null
@@ -145,7 +146,7 @@ fun ShellMessageHost(messages: ShellMessages, glass: GlassSource, modifier: Modi
         }
     }
 
-    LaunchedEffect(message) { rise.animateTo(1f, soft) }
+    LaunchedEffect(message) { rise.animateTo(1f, rising) }
     // Holding it (mid-swipe) pauses the timer; letting go restarts it.
     LaunchedEffect(message, holding) {
         if (holding) return@LaunchedEffect

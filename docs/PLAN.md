@@ -2064,3 +2064,15 @@ Things to try on the phone before calling any motion done (debug and release bui
   - Checked on the Pixel 7 (profile): window opens; a short slow pull springs back; a longer pull
     closes it into the postcard; mid-pull it follows the finger, shrinks and rounds; the pin shows.
     Not checked by hand yet: toolbar and Places feel, catching the window mid-close.
+- **2026-11-19: M4 finished: every animation in `ui/expressive/` is a motion token** (agreed with
+  the user), except three documented exceptions: the stamp's sticker peel (560 ms keyframes), the
+  Forecast "develop" (700 ms) and the moon's slow parallactic drift (≈1.8 s). New token
+  `Motion.gentle` (≈0.44 s / 1, the page swipe settle; same feel as before). Messages rise on
+  `container`, sink and fly off on `dismiss` (keeping the flick's speed), spring back on `settle`; the
+  page jump's haze `snappy`, fade `content`, toolbar `settle`; postcard press `snappy` in /
+  `playful` out, fold `content`; Places swipe actions spring back on `container`, delete on `dismiss`;
+  the moon dial settles on `settle`; screen push on `settle` (same values). Reorder elevation and the
+  press-morph already go through the Material motion scheme (`snappy`).
+  **Moon card:** stays on its own `MotionValue` (decided with the user): it already follows every
+  motion rule; its pull plays the morph backwards and it has no compact size, unlike search's
+  `SolsticeSheetState`. Not checked by hand yet: messages, page jumps, Places swipe actions.

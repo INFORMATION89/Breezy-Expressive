@@ -19,10 +19,6 @@ package org.breezyweather.ui.expressive.shell
 import android.content.Context
 import android.os.Build
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,6 +76,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.Motion
 import io.github.information89.motion.rememberMotionValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -289,15 +286,15 @@ fun SolsticeShell(
                     toolbarPosition.snapTo(from)
                     pager.scrollToPage(target)
                     coroutineScope {
-                        launch { haze.animateTo(0f, tween(180)) }
+                        launch { haze.animateTo(0f, Motion.snappy.spec()) }
                         launch {
                             toolbarPosition.animateTo(
                                 target.toFloat(),
                                 // About the pace of a neighbouring tab change (user: edge to edge a touch faster).
-                                spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
+                                Motion.settle.spec()
                             )
                         }
-                        fadeOut.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
+                        fadeOut.animateTo(0f, Motion.content.spec())
                     }
                 } else {
                     pager.animateScrollToPage(target)

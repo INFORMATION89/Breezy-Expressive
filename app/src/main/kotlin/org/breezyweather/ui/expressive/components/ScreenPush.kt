@@ -19,14 +19,13 @@ package org.breezyweather.ui.expressive.components
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavBackStackEntry
+import io.github.information89.motion.Motion
 
 /**
  * Screen transitions (agreed 2026-11-18, "iOS-style push"): the new screen slides in from the
@@ -35,12 +34,8 @@ import androidx.navigation.NavBackStackEntry
  * Springs without bounce, so a quick back during the push simply reverses it.
  */
 object ScreenPush {
-    private val slide = spring(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMediumLow,
-        visibilityThreshold = IntOffset(1, 1)
-    )
-    private val dim = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    private val slide = Motion.settle.spec(visibilityThreshold = IntOffset(1, 1))
+    private val dim = Motion.settle.spec<Float>()
     private const val UNDER = 0.55f
 
     val enter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {

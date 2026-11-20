@@ -19,9 +19,7 @@ package org.breezyweather.ui.expressive.shell
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import breezyweather.domain.location.model.Location
+import io.github.information89.motion.Motion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.breezyweather.R
@@ -134,7 +133,8 @@ internal fun PlaceCard(
     val pressed by press.collectIsPressedAsState()
     val sink = remember { Animatable(1f) }
     LaunchedEffect(pressed) {
-        sink.animateTo(if (pressed) 0.98f else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
+        // Like the toolbar tabs' squeeze: in quickly, back out with a little bounce.
+        sink.animateTo(if (pressed) 0.98f else 1f, if (pressed) Motion.snappy.spec() else Motion.playful.spec())
     }
     val card = SolsticePalette.PaperWarm
     val ink = SolsticePalette.Ink
@@ -154,6 +154,8 @@ internal fun PlaceCard(
                 delay(330)
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             }
+            // A timed effect, not a motion (agreed 2026-11-19 as one of the few exceptions): the
+            // sticker's drop, press and shine are keyframes along this one clock.
             peel.animateTo(1f, tween(560, easing = LinearEasing))
         }
         hadStar = starred
@@ -171,7 +173,7 @@ internal fun PlaceCard(
     val showTime = !location.isCurrentPosition && timeDifference(location.timeZone, now) != null
     val fold by animateFloatAsState(
         if (folded) 1f else 0f,
-        spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        Motion.content.spec(),
         label = "fold"
     )
     // Tall enough for the star stamp.

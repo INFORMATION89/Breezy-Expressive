@@ -116,6 +116,7 @@ internal fun ForecastPage(
     val hasData = current != null
     val develop = remember { Animatable(if (hasData) 1f else 0f) }
     LaunchedEffect(hasData) {
+        // A timed effect (agreed 2026-11-19 as one of the few exceptions): a photo developing.
         if (hasData) develop.animateTo(1f, tween(700)) else develop.snapTo(0f)
     }
     // In a postcard window there's nothing to refresh, and a pull down at the top closes the window.

@@ -16,8 +16,6 @@
 
 package org.breezyweather.ui.expressive.shell
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import io.github.information89.motion.Motion
 import org.breezyweather.ui.expressive.theme.Space
 import kotlin.math.abs
 
@@ -54,11 +53,11 @@ internal val PagerState.position: Float get() = currentPage + currentPageOffsetF
 internal fun Modifier.plainPageBackdrop(pager: PagerState, skyPage: Int, page: Color): Modifier =
     drawBehind { drawRect(page, alpha = abs(pager.position - skyPage).coerceIn(0f, 1f)) }
 
-/** The pages' fling: a soft, unbouncy snap to the nearest page. */
+/** The pages' fling: an unhurried, unbouncy snap to the nearest page (Motion.gentle). */
 @Composable
 internal fun pageFling(pager: PagerState): TargetedFlingBehavior = PagerDefaults.flingBehavior(
     state = pager,
-    snapAnimationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+    snapAnimationSpec = Motion.gentle.spec()
 )
 
 /**

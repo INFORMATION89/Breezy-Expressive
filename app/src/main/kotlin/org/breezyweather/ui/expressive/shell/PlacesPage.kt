@@ -17,9 +17,7 @@
 package org.breezyweather.ui.expressive.shell
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -410,7 +408,8 @@ private fun SwipeablePlace(
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val starLabel = stringResource(if (starred) R.string.shell_unstar else R.string.shell_star)
     val deleteLabel = stringResource(R.string.shell_delete)
-    val settle = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
+    // Springs back with a touch of give (the closest token to the old 0.8 damping).
+    val settle = Motion.container.spec<Float>()
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -498,7 +497,7 @@ private fun SwipeablePlace(
                         val velocity = tracker.calculateVelocity().x
                         // Decide from where the card is right now, not from the last recomposition.
                         val released = stageOf(-x)
-                        val out = spring<Float>(stiffness = Spring.StiffnessMediumLow)
+                        val out = Motion.dismiss.spec<Float>()
                         settleJob = scope.launch {
                             when (released) {
                                 2 -> {
