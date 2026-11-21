@@ -50,7 +50,31 @@ State on 2026-11-19 evening: icons on Material Symbols Rounded (merged, selected
 left: the three documented timed exceptions). The focus now: **fix the two reported bugs, check by
 hand, build the motion lab (M5), then refine animations area by area.**
 
-### Tonight's plan (Saturday 2026-11-21, agreed with the user), in this order
+### 6 AM session (Saturday 2026-11-21, the user's list), work in `:motion`
+
+The user leaves the session to work alone: **work in the motion environment** (`:motion` and the Motion
+Lab), maximize work, minimize testing, and **test by yourself at the end** (profile build, Pixel 7).
+Research first where asked; the study is `docs/MORPH_STUDY.md`.
+
+1. **Reopen after it finishes:** once the new morph (`SpringMorph`) has closed, tapping the pill
+   doesn't open it again (still reported after the last fix).
+2. **Text blur more obvious:** the label/heading blur replace (`MorphHandOff.Blur`, 8 dp) should read
+   clearly as a blur.
+3. **Research blur in iOS animations, especially iOS 26/27** (Liquid Glass, blur replace, morphing
+   menus and sheets), and add the findings to `MORPH_STUDY.md`.
+4. **Research iOS 26/27 animation specifically and refine** the morph against it.
+5. **Closing too fast breaks the animation:** add a reasonable speed limit (cap the release velocity
+   handed to the springs).
+6. **A tiny bit more bounce on fully opening** (`Motion.brisk`, now 0.85 damping): going in the right
+   direction.
+7. **Plan the Motion Lab redesign** (plan only, part of the bigger `:motion` project): easy for a
+   normal user to see and try; if possible, a comparison between `:motion` and Google's default
+   libraries (Compose / Material motion) so the difference shows. Remove references to the weather
+   app from the lab and `:motion`: it's a library of universal animations and interaction components.
+8. **Plan applying the same Apple principles to the toolbar** (springs per property, velocity, never
+   blocking input, momentum), as a proposal for the user.
+
+
 
 Read DESIGN.md, MOTION.md (morph never pop, never block input, `:motion` covers every interaction) and
 WRITING.md first. Each motion item: propose options, agree, then build.

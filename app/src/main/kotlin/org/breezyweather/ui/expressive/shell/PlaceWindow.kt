@@ -414,6 +414,7 @@ internal fun PlaceWindow(
                     onTab = { nav.navigate(it) },
                     onInterrupt = { nav.interrupt() },
                     position = { nav.toolbarPosition() },
+                    passing = { nav.isPassing(it) },
                     searchEnabled = true,
                     onSearch = onPin,
                     onSearchBounds = {},

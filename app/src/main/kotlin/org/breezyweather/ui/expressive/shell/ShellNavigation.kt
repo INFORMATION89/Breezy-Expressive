@@ -77,6 +77,18 @@ internal class ShellNavigation(
         return if (r > 0f) jumpTo + (jumpFrom - jumpTo) * r else pager.currentPage + pager.currentPageOffsetFraction
     }
 
+    /**
+     * Whether tab [i] is only passed over by a change in progress (a jump from This week to Places
+     * passes Forecast): its label stays folded. The tabs a change starts and ends on unfold normally
+     * (2026-11-21: with every tab tap gliding, the middle tab's label stayed folded and popped in).
+     */
+    fun isPassing(i: Int): Boolean {
+        if (toolbarGlide.value < 0f && pageChange.remaining <= 0f) return false
+        val a = jumpFrom.roundToInt()
+        val b = jumpTo.roundToInt()
+        return i > minOf(a, b) && i < maxOf(a, b)
+    }
+
     /** Where the toolbar should show the selection, or null to follow the pager. */
     fun toolbarPosition(): Float? =
         toolbarGlide.value.takeIf { it >= 0f } ?: visualPosition().takeIf { pageChange.remaining > 0f }

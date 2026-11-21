@@ -2508,4 +2508,72 @@ Steps:
     for amounts, a reset). Edits apply in the app too until it restarts. The finger-driven parts
     aren't on `MotionValue` yet (that would change how they move: to propose).
   - **Lab icon** is now "Motion Lab" (launcher and Settings).
+- **2026-11-21: fix, Forecast's label popped in at home** (reported by the user), built.
+  - **Not two toolbar systems:** home and the window already share `ShellToolbar` and
+    `ShellNavigation`.
+  - **Cause:** the old far-jump rule, "while gliding, only the first and last tab unfold their
+    label". With every tab tap gliding since `PageTransition`, home's middle tab (Forecast) stayed
+    folded for the whole glide and popped in at the end. In the window, Forecast is the last tab, so
+    it never happened there.
+  - **Fix:** `ShellNavigation.isPassing(i)` folds only the tabs strictly between where a change
+    starts and ends; the toolbar takes it as `passing`.
+- **2026-11-21: tonight's item 4, the button itself becomes the card**, on the moon pill first. Option
+  agreed with the user: a style morph, not moving the live button. Built, not yet tested.
+  - **`:motion`:**
+    - **`MorphStyle`:** fill, border and width, shadow, and the amount of an app-supplied
+      material. It has `lerp` and `None`.
+    - **`MorphDefaults`:** the style window 0–30 % and the source window 0–15 %.
+    - **`Modifier.morphSource(key, cornerRadius, hidden)`:** registers the anchor and hides the
+      real element.
+    - **`Morph` gains:** `fromStyle`/`toStyle`/`styleWindow`, a composable `material` hook that
+      gets the live amount, and `sourceContent`/`sourceWindow` (the source's own content, drawn at
+      the source's place and size, handing over as the morph begins).
+  - **Moon pill:**
+    - It's a `morphSource`, hidden the frame its card opens.
+    - The morph's first frame is the pill (`moonPillStyle`: the Material outline at 35 %, Thin, plus
+      `MoonPillContent`, shared by both). The outline thins away while the glass comes in (0–30 %),
+      and the label hands over to the heading in the first 15 %.
+    - Before, the real pill faded in place under a separate glass surface fading in: a crossfade
+      that read as a swap.
+  - **Next:** search's bubble and the postcard window on the same pieces, then text blur on
+    hand-overs (morph refining, point 2).
+  - **Checked on the Pixel (profile build) and fixed along the way, all in `:motion`:**
+    - The source now hides only once the `Morph` has drawn a frame (before, the pill vanished a few
+      frames before the sheet appeared).
+    - `rememberMorphDrawn(key)` lets the opening spring wait for that first frame (before, a sheet
+      that took ~100 ms to build appeared already a third open).
+    - The material sits on its own layer behind everything, with the style's fill over it and the
+      outline on top (Haze-based glass fades the whole element it's on, so at material 0 the morph's
+      outline and label were invisible).
+    - The sheet's handle comes and goes with the content (`reveal`).
+  - **Result:** the opening starts as the pill itself, frame for frame, and grows continuously; the
+    close ends as the pill.
+- **2026-11-21: the morph, the iOS way, in the lab first** (study in `docs/MORPH_STUDY.md`, approved
+  by the user: "Yes, lab first"). Built, not tested.
+  - **Tokens:** `Motion.smooth` (0.5 s / 1, Apple's bounce-0 default, for taps and back) and
+    `Motion.momentum` (0.5 s / 0.8, Apple's 80 % damping for a flick).
+  - **`:motion` `SpringMorph` + `MorphMotion` + `MorphSprings`:**
+    - **Five springs:** centre x, y, width, height and corner radius, each keeping its velocity
+      when redirected. `MorphSprings.Open` has size slightly behind position, `Close` has size
+      slightly ahead, and `Momentum` has the overshoot.
+    - **Drag:** follows the finger 1:1 along the path. On release, the projected fling picks the end
+      and each spring starts with the finger's speed.
+    - **Transforms only:** the content is laid out once at the target's size, scaled uniformly and
+      clipped. Nothing re-measures per frame.
+    - **Content carried:** it grows with the surface instead of being uncovered.
+    - **Blur replace:** the source's label blurs and fades out as the content sharpens in (5–45 %
+      of growth, 8 dp).
+    - **Source:** the real source hides while the morph is on screen and returns once it lands.
+  - **Lab:** a "Morph, iOS way (new)" demo, side by side with the old `Morph` demo. The moon pill
+    still uses the old `Morph` until this is approved.
+- **2026-11-21: new morph, first round of feedback** (the user: "way better", but slow, odd corners,
+  can't tap it while it moves, stiff at the end of opening). Built, not tested.
+  - **Speed:** `Motion.smooth` and `momentum` are now 0.4 s (Apple's 0.5 felt slow on the phone).
+  - **Bounce:** new token `Motion.brisk` (0.4 s / 0.85, ~15 % bounce) for opening by a tap, used by
+    `MorphSprings.Open`.
+  - **Corners:** the radius springs from the anchor's *visible* radius (clamped to half its shorter
+    side), not the pill's nominal 100 dp. The lab card uses Corners.XL.
+  - **Input:** only the surface as drawn takes touches. A layer at the target's size is
+    transformed onto the current bounds, so a tap toggles it from anywhere mid-motion and a drag
+    catches it; the rest of the screen gets taps at once.
 

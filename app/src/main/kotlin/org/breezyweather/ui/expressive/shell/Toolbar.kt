@@ -122,6 +122,8 @@ internal fun ShellToolbar(
     // bud's icon itself on its way back, so the two never show at once (read in draw).
     budIconShown: () -> Float = { 1f },
     position: () -> Float? = { null },
+    // Tabs only passed over by a change in progress keep their label folded (ShellNavigation.isPassing).
+    passing: (Int) -> Boolean = { false },
     // A finger on the toolbar (the slide) stops any page transition in progress.
     onInterrupt: () -> Unit = {},
 ) {
@@ -139,13 +141,8 @@ internal fun ShellToolbar(
     val position = position() ?: (pager.currentPage + pager.currentPageOffsetFraction)
     val open = tabs.indices.map { (1f - abs(position - it)).coerceIn(0f, 1f) }
     // How far each tab's title is unfolded: selected (follows the swipe) and not already shown as the
-    // page's own big title.
-    val gliding = position() != null
-    val shown = tabs.indices.map { i ->
-        // While gliding over tabs (a tab jump), only the end tab unfolds its label.
-        val passing = gliding && i != 0 && i != tabs.lastIndex
-        if (passing) 0f else open[i] * labelShown[i]
-    }
+    // page's own big title. A tab only passed over by a change keeps its label folded.
+    val shown = tabs.indices.map { i -> if (passing(i)) 0f else open[i] * labelShown[i] }
     val widths = shown.map { collapsed + (expanded - collapsed) * it }
     val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
     val highlightX = tabs.indices.fold(0.dp) { acc, i -> acc + starts[i] * open[i] }

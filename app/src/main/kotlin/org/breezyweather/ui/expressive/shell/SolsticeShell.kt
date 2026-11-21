@@ -544,6 +544,7 @@ fun SolsticeShell(
                     onTab = { navigate(it) },
                     onInterrupt = { nav.interrupt() },
                     position = { nav.toolbarPosition() },
+                    passing = { nav.isPassing(it) },
                     searchEnabled = !searchOpen,
                     onSearch = {
                         searchHandoff = false

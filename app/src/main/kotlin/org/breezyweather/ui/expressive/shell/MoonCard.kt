@@ -132,15 +132,20 @@ import io.github.information89.motion.Morph
 import io.github.information89.motion.MorphAnchor
 import io.github.information89.motion.MorphGeometry
 import io.github.information89.motion.MorphHost
+import io.github.information89.motion.MorphStyle
 import io.github.information89.motion.Motion
 import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.MotionValue
 import io.github.information89.motion.morphAnchor
 import io.github.information89.motion.morphAnchorOf
 import io.github.information89.motion.morphFrom
+import io.github.information89.motion.morphSource
 import io.github.information89.motion.motionDrag
+import io.github.information89.motion.rememberMorphDrawn
 import io.github.information89.motion.rememberMotionValue
+import io.github.information89.motion.reveal
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.breezyweather.R
 import org.breezyweather.domain.weather.model.getDescription
@@ -275,11 +280,8 @@ internal fun MoonButton(
     LaunchedEffect(Unit) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { MoonRenderer.prewarm(context) }
     }
-    // While this place's card is open, the pill fades in place as the sheet grows out of it (it
-    // doesn't move, so the "· 71 %" never drifts).
-    val open = MoonCardState.request?.first?.formattedId == location.formattedId
-    val motion = MoonCardState.motion
-    fun fade(span: Float): Float = if (open && motion != null) 1f - motion.window(0f, span) else 1f
+    // While its card is open, the morph draws the pill exactly as it is and grows it into the sheet
+    // (the button becomes the card, 2026-11-21); morphSource hides the real pill only while it does.
     // Material 3 outlined button, in the sky's ink.
     OutlinedButton(
         onClick = {
@@ -290,18 +292,20 @@ internal fun MoonButton(
         border = BorderStroke(StrokeWidth.Thin, text.copy(alpha = 0.35f)),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
         contentPadding = PaddingValues(horizontal = Space.S3, vertical = Space.S2),
-        modifier = Modifier
-            .morphAnchor(pillKey(location), cornerRadius = 100.dp)
-            .graphicsLayer { alpha = smooth(fade(MATERIAL_SPAN)) }
+        modifier = Modifier.morphSource(pillKey(location), cornerRadius = 100.dp)
     ) {
-        Text(
-            phase,
-            color = text,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier
-                .morphAnchor(labelKey(location))
-                .graphicsLayer { alpha = fade(LABEL_SPAN) }
-        )
+        MoonPillContent(phase, suffix, text, Modifier.morphAnchor(labelKey(location)))
+    }
+}
+
+/** The pill's own look, shared by the real pill and the morph that grows out of it. */
+internal fun moonPillStyle(text: Color) = MorphStyle(border = text.copy(alpha = 0.35f), borderWidth = StrokeWidth.Thin)
+
+/** The pill's label: the phase and its "· 85 %". The morph draws the same, so the swap is invisible. */
+@Composable
+private fun MoonPillContent(phase: String, suffix: String, text: Color, labelModifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(phase, color = text, style = MaterialTheme.typography.labelLarge, modifier = labelModifier)
         Text(suffix, color = text, style = MaterialTheme.typography.labelLarge)
     }
 }
@@ -397,8 +401,13 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
         MoonCardState.motion = motion
         onDispose { if (MoonCardState.motion === motion) MoonCardState.motion = null }
     }
-    // Opening: the container's spring from the button.
-    LaunchedEffect(motion) { motion.animateTo(1f, velocity = 0f) }
+    // Opening: the container's spring from the button, once the morph is on screen as the button
+    // (rememberMorphDrawn), so it visibly starts from the pill however long the sheet takes to build.
+    val drawn = rememberMorphDrawn(pillKey(location))
+    LaunchedEffect(motion) {
+        androidx.compose.runtime.snapshotFlow { drawn.value }.first { it }
+        motion.animateTo(1f, velocity = 0f)
+    }
     // Tell the shell how far it is (the page recedes), and finish once it has closed.
     LaunchedEffect(motion) {
         var opening = false
@@ -485,10 +494,18 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
             // grows around it.
             contentAlignment = Alignment.TopCenter,
             shape = { _, _ -> shape },
-            // The search card's glass, in the forecast's tint, fading in with the shape.
-            surface = Modifier.glass(MoonCardState.glass ?: glass, shape, tint, alpha = {
-                smooth(motion.window(0f, MATERIAL_SPAN))
-            })
+            // Starts as the pill itself (its outline, its label) and becomes the sheet: the outline
+            // thins away while the search card's glass, in the forecast's tint, comes in.
+            fromStyle = moonPillStyle(MoonCardState.buttonInk),
+            toStyle = MorphStyle(material = 1f),
+            styleWindow = 0f..MATERIAL_SPAN,
+            material = { amount -> glass(MoonCardState.glass ?: glass, shape, tint, alpha = amount) },
+            sourceWindow = 0f..LABEL_SPAN,
+            sourceContent = {
+                val label = MoonCardState.label
+                val phase = label.substringBefore(" · ")
+                MoonPillContent(phase, label.removePrefix(phase), MoonCardState.buttonInk)
+            }
         ) {
             Box(Modifier.fillMaxSize()) {
                 Column {
@@ -519,10 +536,12 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
                         }
                     )
                 }
-                // The handle, like search's.
+                // The handle, like search's: it comes and goes with the content (it sat on the pill at
+                // the end of a close).
                 Box(
                     Modifier
                         .align(Alignment.TopCenter)
+                        .reveal(motion, SolsticeMotion.CONTENT_FROM, SolsticeMotion.CONTENT_TO, startScale = 1f)
                         .padding(top = Space.S3)
                         .width(Sizes.HandleWidth)
                         .height(Sizes.HandleThickness)
