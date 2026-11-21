@@ -2314,3 +2314,11 @@ Steps:
   page's title), a plain pager scroll instead of `navigate()` (no page jump), no `onInterrupt` /
   `position`, no `budIconShown`, no messages, its own fade-in. Plan: one shared toolbar state and host,
   only the configuration differs (CONTINUE.md 0b.3).
+- **2026-11-21:** **Design rules** added (`docs/DESIGN.md`) from two talks the user chose (Kole Jain on
+  mobile UI basics and on "vibe coded" apps): 15 checks every new screen, card, button or text must pass
+  (one job, someone needs it, complexity is ours, show don't tell, affordances match behaviour,
+  connected not siloed, essentials first, 48 dp, navigation, gestures never gesture-only, motion
+  explains depth, every state designed, Android first, edge to edge, any size). WRITING.md: forecasts
+  in natural future-tense sentences, only what helps decide something. Open with the user: Solstice's
+  own "opinion" (who it's for, what it leaves out); the page recede behind sheets (the talk recommends
+  it as a depth cue, we dropped it for frame drops); a long-press menu on place cards.

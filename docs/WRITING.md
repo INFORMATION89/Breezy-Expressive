@@ -7,11 +7,20 @@ when it shows (the condition), what it says today, and room for your version. Fi
 How the app picks a text: it checks the conditions in each table from top to bottom and uses the
 first one that matches.
 
-## Ground rules (proposed, change them as you like)
+## Ground rules (proposed, change them as you like; design rules in [DESIGN.md](DESIGN.md))
 
 - **Say what's happening, not the numbers.** A title should make sense without reading the data
   ("Going down to 16° in the next 3 hours", not "Hourly").
 - **Short and plain.** One idea per sentence; no "successfully", no exclamation marks.
+- **Natural, not generated** (added by the user 2026-11-21). Forecasts are about the future, so say it
+  with "will", in sentences a person would say, one fact each, instead of present-tense facts chained
+  with "and". Not "Monday is the warmest at 35°, and the coldest night is Friday at 21°" but "Monday
+  will be the warmest day, at 35°. The coldest night will be on Friday, at 21°." Same for "It's
+  raining 3 days this week" → "It will rain on 3 days this week". Read every text aloud: if it sounds
+  like a report generated from data, rewrite it.
+- **Only what helps decide something.** Each sentence should answer a question the user has (do I
+  need an umbrella, a jacket, when is it nicer); what that is for each summary is to be worked out
+  with the user (DESIGN.md, check 2).
 - **Same voice everywhere:** calm, a little warm, never alarmist (except real alerts).
 - **Units and times** come from settings; write `{temp}`, `{time}`, `{minutes}`, `{hours}`, `{day}`.
 - **Temperatures in the This week summary are bold and underlined** (future links to day cards).
