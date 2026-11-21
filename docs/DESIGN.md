@@ -11,14 +11,26 @@ answer the checks below in the proposal to the user (CLAUDE.md: consult the user
 ## What Solstice is for (its opinion)
 
 Generated software tends to be the average of everything it has seen; a product needs an opinion on
-why it exists and who it's for, and every choice follows from it. The user's own description:
+why it exists and who it's for, and every choice follows from it. Solstice's, in the user's words
+(2026-11-21):
 
-> A weather app with unique UI and UX conventions, fast, light, nice to use with smooth animations
-> and good design.
+> Solstice should be the most useful weather app imaginable. The priority of its design is to inform
+> the user without inundating them with endless information and data. The data Solstice provides
+> should be actionable, productive, and relevant to what an average person needs to know about the
+> weather to prepare them for daily life. Part of this objective implies the use of proactive
+> information channels, such as live activities, daily briefs and clothing recommendations, while also
+> being a joy to use. Live updates are chosen because they get out of the way: they appear
+> prominently and eventually disappear, without inundating the user with notifications that get
+> buried in the notification panel and have to be constantly dismissed.
 
-To write with the user (open): who it's for, the few things it must answer at a glance, and what it
-deliberately leaves out. Until then, a feature that doesn't serve "fast, light, nice to use" doesn't
-go in.
+What follows from it:
+- **Inform, don't inundate.** Show the least that answers the question; more only on demand.
+- **Actionable over complete.** Every value and sentence should change what someone does today
+  (umbrella, jacket, when to go out). Data that's merely available stays out or one tap away.
+- **Proactive, then gone.** The app reaches out when something matters (a brief, rain soon, what to
+  wear) through channels that appear prominently and **disappear on their own**; no standing
+  notifications to dismiss, nothing that piles up in the shade.
+- **A joy to use:** motion and feel as in [MOTION.md](MOTION.md), never at the cost of the above.
 
 ## The checks
 
@@ -32,8 +44,8 @@ go in.
 4. **Show, don't tell.** No explainer pop-ups or onboarding slides. A first use, an empty state or a
    new feature shows the thing working, with at most one short line.
 5. **Every affordance matches what it does.** A chevron points the way the thing opens; a menu or
-   sheet grows from what was touched (the morph rule); an icon means one thing everywhere; back goes
-   where you came from. A detail copied from another app without its reason is the "vibe coded" tell.
+   sheet grows out of what was touched (things morph, they never pop: MOTION.md); an icon means one
+   thing everywhere; back goes where you came from. A detail copied from another app without its reason is the "vibe coded" tell.
 6. **Connected, not siloed.** Information links to related information where it is (a day's
    temperature in the This week summary opens that day; a place opens its postcard), with a preview
    before a full jump where it helps. No page you can only reach or leave by backing out through

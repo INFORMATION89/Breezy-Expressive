@@ -825,6 +825,24 @@ and what Targets (current conditions, rain soon, alerts) and Complications (temp
 icon) to offer. Docs: github.com/KieronQuinn/Smartspacer/wiki ("SDK: Creating a Target",
 "Creating a Complication").
 
+## Research queue (from the user, 2026-11-21)
+
+1. **The page receding behind a sheet, done cheaply, as a `:motion` piece.** We dropped it because
+   scaling the live page made the glass and edge blur redraw every frame (search 22 % janky with it,
+   8 % without). Look at existing implementations first (iOS's sheet presentation; Android and Compose
+   libraries that scale the presenting screen) and at the cheap route we already use for the tab jump:
+   draw a frozen image of the page and scale that while the sheet is up (the glass then samples a still
+   picture). Bring options and measurements to the user.
+2. **Long press, properly.** Study how iOS's context menu works (the item lifts, the rest blurs, the menu
+   grows out of the item, and holding then moving turns it into a drag) and how Android and Compose
+   handle the same, so a long-press menu on place cards can live alongside drag to reorder (hold still:
+   menu; hold and move: drag). Then propose, as a `:motion` piece.
+3. **Proactive channels** (DESIGN.md "What Solstice is for"): Android 16's Live Updates (promoted
+   progress-centric notifications: status bar chip, lock screen, top of the shade), whether a weather
+   case qualifies (Google describes them for user-initiated start-to-end journeys like rides, deliveries
+   and navigation), and how they end on their own; plus a daily brief and clothing recommendations.
+   Bring what's possible, and what each would say, to the user.
+
 ## Motion test checklist (added 2026-11-18)
 Things to try on the phone before calling any motion done (debug and release builds):
 - **Tapping toolbar tabs at the extremes:** from Outlook straight to Places (and back) the pager
@@ -2322,3 +2340,9 @@ Steps:
   in natural future-tense sentences, only what helps decide something. Open with the user: Solstice's
   own "opinion" (who it's for, what it leaves out); the page recede behind sheets (the talk recommends
   it as a depth cue, we dropped it for frame drops); a long-press menu on place cards.
+- **2026-11-21 (the user):** Solstice's opinion written into DESIGN.md (the most useful weather app;
+  inform without inundating; actionable data for daily life; proactive channels that appear and then
+  disappear: live updates, daily briefs, clothing recommendations; a joy to use). MOTION.md: **things
+  morph, they never pop**, and `:motion`'s scope is every interaction in any app. Research queue: the
+  page recede done cheaply as a `:motion` piece, long press alongside drag to reorder, proactive
+  channels.

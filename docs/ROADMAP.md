@@ -92,7 +92,9 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
   rules, back-off after failures, reuse a recent position. PLAN.md "Last updated text and refresh on open".
 - [ ] **Fix:** one toolbar for home and the postcard window (the window's This week title doesn't fold;
   no page jump; missing hooks). Shared state + host, only configuration differs (CONTINUE.md 0b.3).
-- [ ] 💬 **Solstice's opinion** (DESIGN.md): who it's for, what it answers at a glance, what it leaves out.
+- [x] 💬 **Solstice's opinion** (DESIGN.md, written with the user 2026-11-21).
+- [ ] 🔎 **Research:** page recede done cheaply as a `:motion` piece; long press alongside drag to reorder;
+  proactive channels (Live Updates, daily brief, clothing). PLAN.md "Research queue".
 - [ ] **Design audits** (DESIGN.md): empty/loading/error/offline states everywhere; affordances vs behaviour;
   dead ends and links between information; landscape/foldable/tablet layouts; settings that shouldn't exist.
 - [ ] **Summary wording** to WRITING.md's "natural, not generated" rule (week summary first).
