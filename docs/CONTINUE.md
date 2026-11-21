@@ -71,15 +71,14 @@ WRITING.md first. Each motion item: propose options, agree, then build.
    `week_coldest_night` become "Monday will be the warmest day, at 35°. The coldest night will be on
    Friday, at 21°."; `week_some_wet` becomes "It will rain on 3 days this week"; read the rest aloud.
    Show the new texts to the user before committing.
-6. **Moon card.** The redesign in Material 3 Expressive is **designed in the chat environment with the
-   user first** (no code until the user has seen and approved it there). After that: text transitions on
-   it (blur while texts cross, section 0 points 3–4), and an end indicator for the dial (it's capped at
-   ±14 days but looks endless: options to propose, e.g. ticks fading at the ends, resistance with the
-   existing rubber-band and a haptic, a label).
-7. **Haptics as a `:motion` system**: today ~12 calls in 4 files (reorder, postcard, moon dial,
-   places), each picking its own type. Study iOS's feedback types first (impact light/medium/rigid/
-   soft, selection, success/warning/error) and map them to Android's; then the toolbar gets very
-   subtle ticks (to agree).
+6. **Moon card: direction A agreed (2026-11-21), built on foundations first.** Follow PLAN.md "Moon card
+   redesign and its foundations" in order: **F1 haptics system in `:motion`** (this replaces the old
+   item 7), **F2 generalized progressive edge blur in `:motion`**, **F3 a `:motion` dial** (with or
+   without text, drum curvature, dates and icons, ends with rubber-band and haptic), **F4 sky effects**
+   (stars in the AGSL sky, twinkle built but off until agreed, ambient clock into `:motion`), then **F5
+   the moon card**. The user's rule, in capitals: **make it properly from the start, no hand-made things
+   that should be systems.** Each piece gets a lab demo.
+7. (Merged into 6 as F1.)
 8. **Moon icon on the Forecast diagram follows the moon's real tilt in the sky** (user's choice): reuse
    the moon card's calculation (`MoonCard.kt`: bright limb angle from `MoonIllumination` and the
    averaged `parallacticAngle`), moved into a shared helper, and rotate the phase icon

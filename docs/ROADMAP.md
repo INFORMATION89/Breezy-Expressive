@@ -98,10 +98,12 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **Design audits** (DESIGN.md): empty/loading/error/offline states everywhere; affordances vs behaviour;
   dead ends and links between information; landscape/foldable/tablet layouts; settings that shouldn't exist.
 - [ ] **Summary wording** to WRITING.md's "natural, not generated" rule (week summary first).
-- [ ] 💬 **Moon card redesign** in Material 3 Expressive, designed in chat with the user before any code.
+- [x] 💬 **Moon card redesign** designed in chat: direction A with changes (2026-11-21).
+- [ ] ⭐ **Foundations for it** (PLAN.md): F1 haptics system, F2 edge blur generalized, F3 dial, F4 sky effects
+  (stars, twinkle ready but off, ready for weather effects), then F5 the moon card.
+- [ ] 💬 **Twinkling stars** (built with F4, switched on only once agreed).
 - [ ] **Moon icon on the Forecast diagram follows the moon's real tilt** (reuse the moon card's calculation).
-- [ ] 💬 **Moon dial end indicator** (looks endless; capped at ±14 days).
-- [ ] 💬 **Haptics system in `:motion`** (study iOS first), then very subtle toolbar haptics.
+- [ ] 💬 **Very subtle toolbar haptics**, once F1's haptics system exists.
 - [ ] **Fix:** taps blocked while a tab transition plays (MOTION.md "never block input").
 - [ ] **Fix:** the postcard window's pages lack home's blur between tabs (one page-transition piece).
 - [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (needs Android 10,

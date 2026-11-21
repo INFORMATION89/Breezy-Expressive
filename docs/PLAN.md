@@ -825,6 +825,96 @@ and what Targets (current conditions, rain soon, alerts) and Complications (temp
 icon) to offer. Docs: github.com/KieronQuinn/Smartspacer/wiki ("SDK: Creating a Target",
 "Creating a Complication").
 
+## Moon card redesign and its foundations (agreed with the user 2026-11-21)
+
+**Direction: A, "tonal tiles", with the user's changes.** Mockups (reference only):
+https://claude.ai/artifact/K9fV9BHkuFY4EYxQesif8C (artboard A). The user's dial reference: Apple's
+timer dial in the iOS 26 Control Centre (ticks with numbers above, a pointer, a soft progressive blur
+at both edges); adapt it to Solstice, don't copy it.
+
+**Rule for this work (the user, in capitals): build it properly from the start.** Nothing hand-made
+that should be a system. Each piece below is a reusable system first (in `:motion` when it's an
+interaction or something interactions need; in the sky system when it's a weather/sky effect), with a
+lab demo, then the moon card uses it. If a piece seems to need a one-off, stop and extend the system.
+
+### F1. Haptics in `:motion`
+
+Today about 12 haptic calls in 4 files (reorder, postcard, moon dial, places), each picking its own
+type. Make haptics a `:motion` system, controlled by tokens like the springs:
+- **Semantic tokens**, not raw types: e.g. `Haptic.tick` (a fine step), `Haptic.detent` (a major
+  step, like a day on the dial), `Haptic.edge` (hitting a limit), `Haptic.snap` (settling on a
+  target), `Haptic.press` / `Haptic.release`, `Haptic.threshold` (a drag crossing its point of no
+  return), `Haptic.confirm` / `Haptic.reject`. Study iOS's feedback types first (impact light/
+  medium/heavy/soft/rigid, selection, success/warning/error) and name ours from what they're for.
+- **Each token = a primitive + an intensity**, editable in one place: `VibrationEffect.Composition`
+  primitives (`CLICK`, `TICK`, `LOW_TICK`, `THUD`, `QUICK_RISE`…) with a scale where the phone supports
+  them (check `areAllPrimitivesSupported`), else the closest `HapticFeedbackConstants` (minimum is
+  Android 10: primitives need 11+, `LOW_TICK`/`THUD` 12+).
+- **Behaviour built in:** a minimum gap between ticks so fast drags don't buzz; ticks get lighter at
+  high speed (as iOS does); respects the system's touch-feedback setting; one global intensity.
+- **`LocalHaptics`** for Compose, used by every `:motion` piece (dials, sheets crossing thresholds,
+  swipe actions, reorder, press) so the app never calls the vibrator itself.
+- **Lab:** a haptics panel to feel each token and tune its primitive and intensity live.
+- Then move the existing ~12 calls onto tokens (no new haptics without the user agreeing; the very
+  subtle toolbar ticks are proposed after this exists).
+
+### F2. Progressive edge blur, generalized, in `:motion`
+
+`components/EdgeBlur.kt` blurs and fades the **top and bottom** edges of scrolling content (Android 12+
+blur, colour fade below). Generalize it into `:motion` as one modifier for any edge or pair of edges
+(top/bottom for lists, **left/right for dials and carousels**), band size, blur radius and fade, read
+in the draw phase; the app's `edgeBlur` becomes a call to it. No second edge-blur implementation.
+
+### F3. Dial in `:motion` (with and without text)
+
+A dial is a value you scrub by dragging along a ruler. Build it once:
+- **State on `MotionValue`:** drag 1:1, fling with projection, snap to steps (or not), the UIKit release
+  rules, **rubber-band at the ends with `Haptic.edge`** (the end the user found missing), never blocks
+  input, catches mid-flight.
+- **Steps and haptics:** minor steps (e.g. 6 hours) give `Haptic.tick`, major steps (a day) give
+  `Haptic.detent`, settling gives `Haptic.snap`, all from F1's tokens.
+- **Look, configurable:** ticks only, ticks + labels, ticks + labels + icons (slots: the caller gives
+  each major step's label and icon, e.g. date and moon phase). A centre marker. Optional **drum
+  curvature**: items are placed as on a turning cylinder, so labels and icons are largest at the centre
+  and get smaller (and fainter) towards the edges, like a real dial; tick spacing tightens the same
+  way. **F2's edge blur** on both sides. Ends drawn so the range is visibly finite.
+- **Accessibility:** an adjustable control for TalkBack (step back/forward, value read out).
+- **Lab:** a dial demo with switches for text, icons, curvature, blur and haptics.
+
+### F4. Sky effects: stars, ready for weather effects
+
+The sky is already one AGSL shader (`sky/AnimatedSkyBackground.kt`), on Android 13+, run by a clock
+that's capped in frames per second, pauses when not visible, and stops in battery saver or with
+animations off. Build effects into that system, not beside it:
+- **An effect layer** in the sky system: an effect is a few shader functions plus uniforms (density,
+  brightness, seed, time), so stars now, and later rain, snow, fog, lightning (ROADMAP's weather effects)
+  plug in the same way.
+- **Stars:** generated in the shader from a hashed grid (no star list, no per-frame allocation), drawn
+  in the same full-screen pass the sky already makes, so they cost almost nothing more. **Twinkle**
+  (glitter) is a per-star brightness wave on the existing clock: built in but **off until the user
+  agrees** (proposal: slow and subtle, a few stars at a time). Below Android 13: stars drawn once into a
+  cached image, no twinkle.
+- **The moon sheet uses the same effect** for its background, so the card's sky and the page's sky are
+  one system.
+- Move the clock and its "motion allowed" rule into `:motion` as an **ambient clock** (capped FPS,
+  lifecycle-aware, reduced-motion and battery-saver aware), since any app's ambient animation needs it.
+
+### F5. The moon card, A refined (after F1–F4)
+
+- **The whole sheet is the night sky** (F4's stars), not a sky inside a box: the moon sits directly on
+  it, and the stars show **behind the tiles** (tiles are translucent tonal containers over the sky).
+- **Header:** phase as the heading, date under it, close button (as A).
+- **Dial (F3):** drum curvature, **dates and moon-phase icons** on the major steps (one per day), ticks
+  every 6 hours, a gold "now" marker, edge blur on both sides, visible ends with rubber-band and
+  `Haptic.edge`, haptic per 6 hours and per day.
+- **Tiles (as A):** how lit and growing or shrinking; rises and sets; days to full moon (and distance).
+- Opens from the moon pill as a morph (MOTION.md: morph, never pop); text changes cross with blur
+  (Morph refining, point 3).
+- The moon itself keeps the realistic renderer and the real tilt.
+- Not included unless the user agrees: "Will I see it tonight?" (moon + tonight's cloud cover).
+
+Order: F1 → F2 → F3 → F4 → F5, each with its lab demo and a check on the Pixel 7, CI green.
+
 ## Research queue (from the user, 2026-11-21)
 
 1. **The page receding behind a sheet, done cheaply, as a `:motion` piece.** We dropped it because
@@ -2351,3 +2441,10 @@ Steps:
   button itself becomes the card; summary wording; moon card (redesign designed in chat first, then
   text transitions and the dial's end); haptics system; moon icon follows the real tilt (reusing the
   moon card's calculation).
+- **2026-11-21 (agreed with the user): moon card direction A** with changes (sky across the whole
+  sheet with stars behind the tiles; a drum dial with dates and phase icons that grow towards the centre;
+  edge blur like Apple's timer dial, adapted). **Foundations first, built properly as systems:** F1
+  haptics in `:motion` (semantic tokens, primitives, rate limit, lab), F2 generalized progressive edge
+  blur in `:motion`, F3 a `:motion` dial (with or without text, drum curvature, haptics, ends), F4 sky
+  effects in the AGSL sky (stars; twinkle built but off until agreed; ready for weather effects) and an
+  ambient clock in `:motion`, then F5 the moon card. Section "Moon card redesign and its foundations".
