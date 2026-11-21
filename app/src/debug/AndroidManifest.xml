@@ -19,7 +19,7 @@
             android:name="org.breezyweather.ui.expressive.lab.MotionLabActivity"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="Solstice Lab"
+            android:label="Motion Lab"
             android:taskAffinity="${applicationId}.lab"
             tools:node="merge">
             <intent-filter>

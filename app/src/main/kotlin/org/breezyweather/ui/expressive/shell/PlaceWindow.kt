@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import io.github.information89.motion.MotionPhysics
 import io.github.information89.motion.MotionValue
+import io.github.information89.motion.pageTransition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.breezyweather.R
@@ -220,6 +221,10 @@ internal fun PlaceWindow(
         val bezel = postcardBezel()
         val pager = rememberPagerState(initialPage = 1) { 2 }
         val days = rememberLazyListState()
+        // The same page changes and toolbar behaviour as home (ShellNavigation, 2026-11-21): tab taps
+        // and swipes switch at once with a drawn slide, swipe blur, and This week's title hand-off.
+        val nav = rememberShellNavigation(pager)
+        val labelShown by rememberTitleHandOff(listOf(days, null))
         // The status and navigation bar icons follow the window once it's mostly open: the sky's
         // text colour on Forecast, the page's on This week (light icons on a dark night window).
         val covers by remember { derivedStateOf { progress() > 0.5f } }
@@ -322,35 +327,37 @@ internal fun PlaceWindow(
                         .fillMaxSize()
                         .graphicsLayer { alpha = ((progress() - 0.25f) / 0.5f).coerceIn(0f, 1f) }
                         // This week sits on the plain page, like Outlook.
-                        .plainPageBackdrop(pager, skyPage = 1, page = page)
+                        .plainPageBackdrop({ nav.visualPosition() }, skyPage = 1, page = page)
                         .nestedScroll(pullScroll)
                 ) {
                     HorizontalPager(
                         state = pager,
                         beyondViewportPageCount = 1,
-                        flingBehavior = pageFling(pager),
-                        modifier = Modifier.fillMaxSize()
+                        flingBehavior = nav.fling,
+                        modifier = Modifier.fillMaxSize().pageTransition(nav.pageChange)
                     ) { index ->
-                        if (index == 0) {
-                            DaysPage(location, onPage, page, days) {
-                                abs(pager.currentPage + pager.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
-                            }
-                        } else {
-                            CompositionLocalProvider(
-                                LocalSkyGlass provides windowSky,
-                                LocalPageGlass provides windowGlass
-                            ) {
-                                ForecastPage(
-                                    location = location,
-                                    sky = sky,
-                                    now = now,
-                                    refreshing = false,
-                                    onRefresh = {},
-                                    onDetails = onDetails,
-                                    onOpenPlaces = { onClose(Float.NaN) },
-                                    showLocalTime = false,
-                                    pullToRefresh = false
-                                )
+                        Box(Modifier.fillMaxSize().pageSwipeBlur({ nav.visualPosition() }, index)) {
+                            if (index == 0) {
+                                DaysPage(location, onPage, page, days) {
+                                    abs(nav.visualPosition() - 1f).coerceIn(0f, 1f)
+                                }
+                            } else {
+                                CompositionLocalProvider(
+                                    LocalSkyGlass provides windowSky,
+                                    LocalPageGlass provides windowGlass
+                                ) {
+                                    ForecastPage(
+                                        location = location,
+                                        sky = sky,
+                                        now = now,
+                                        refreshing = false,
+                                        onRefresh = {},
+                                        onDetails = onDetails,
+                                        onOpenPlaces = { onClose(Float.NaN) },
+                                        showLocalTime = false,
+                                        pullToRefresh = false
+                                    )
+                                }
                             }
                         }
                     }
@@ -403,8 +410,10 @@ internal fun PlaceWindow(
                     sky = sky,
                     weather = weather,
                     glass = windowGlass,
-                    labelShown = listOf(1f, 1f),
-                    onTab = { scope.launch { pager.animateScrollToPage(it) } },
+                    labelShown = labelShown,
+                    onTab = { nav.navigate(it) },
+                    onInterrupt = { nav.interrupt() },
+                    position = { nav.toolbarPosition() },
                     searchEnabled = true,
                     onSearch = onPin,
                     onSearchBounds = {},

@@ -62,6 +62,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -123,11 +124,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import breezyweather.domain.location.model.Location
 import io.github.information89.motion.Morph
 import io.github.information89.motion.MorphAnchor
+import io.github.information89.motion.MorphGeometry
 import io.github.information89.motion.MorphHost
 import io.github.information89.motion.Motion
 import io.github.information89.motion.MotionPhysics
@@ -442,17 +445,29 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
     val range = pill?.let { with(density) { (it.bounds.top - top).coerceAtLeast(1f).toDp() } }
         ?.coerceAtLeast(200.dp) ?: MOON_RANGE
 
-    // Gestures on the whole screen (the sheet shrinks under the finger while a pull scrubs it, so a
-    // drag measured on it would run ahead): vertical pulls drive the morph, a tap above it closes.
+    // Closing (agreed 2026-11-21, MOTION.md: animations never block input): once it heads back to the
+    // pill, only the sheet as drawn catches a touch (to grab it mid-close); everywhere else, taps reach
+    // the page underneath at once.
+    val closing by remember(motion) { androidx.compose.runtime.derivedStateOf { motion.target == 0f } }
+    // Gestures on the whole screen while open (the sheet shrinks under the finger while a pull scrubs
+    // it, so a drag measured on it would run ahead): vertical pulls drive the morph, a tap above it
+    // closes.
     Box(
         Modifier
             .fillMaxSize()
-            .motionDrag(motion, Orientation.Vertical, range, reverseDirection = true)
-            .pointerInput(Unit) {
-                detectTapGestures { tap ->
-                    if (tap.y < status.getTop(this) + Space.S3.toPx()) close()
+            .then(
+                if (closing) {
+                    Modifier
+                } else {
+                    Modifier
+                        .motionDrag(motion, Orientation.Vertical, range, reverseDirection = true)
+                        .pointerInput(Unit) {
+                            detectTapGestures { tap ->
+                                if (tap.y < status.getTop(this) + Space.S3.toPx()) close()
+                            }
+                        }
                 }
-            }
+            )
     ) {
         // The page behind goes a little darker.
         Box(
@@ -491,6 +506,7 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
                             alpha = motion.window(0.85f, 1f)
                         },
                         deferRest = true,
+                        interactive = !closing,
                         restModifier = Modifier.graphicsLayer {
                             // Choreographed (agreed): the content fades and scales in from 92 % as the
                             // glass reaches ~70 % of its size, and leaves first when it closes.
@@ -514,6 +530,25 @@ private fun MoonSheet(location: Location, now: Long, glass: GlassSource) {
                 )
             }
         }
+        // While closing: a catcher exactly where the sheet is drawn this frame, so the shrinking sheet
+        // can still be grabbed (and pulled back open) without blocking the rest of the screen.
+        if (closing && pill != null) {
+            Box(
+                Modifier
+                    .offset {
+                        val r = MorphGeometry.frame(pill, target, motion.value).bounds
+                        IntOffset(r.left.roundToInt(), r.top.roundToInt())
+                    }
+                    .layout { measurable, _ ->
+                        val r = MorphGeometry.frame(pill, target, motion.value).bounds
+                        val w = r.width.roundToInt().coerceAtLeast(0)
+                        val h = r.height.roundToInt().coerceAtLeast(0)
+                        val placeable = measurable.measure(Constraints.fixed(w, h))
+                        layout(w, h) { placeable.place(0, 0) }
+                    }
+                    .motionDrag(motion, Orientation.Vertical, range, reverseDirection = true)
+            )
+        }
     }
 }
 
@@ -530,6 +565,8 @@ private fun MoonCard(
     headingModifier: Modifier = Modifier,
     dateModifier: Modifier = Modifier,
     restModifier: Modifier = Modifier,
+    // Whether it takes touches (the dial): not while the card is closing.
+    interactive: Boolean = true,
     // Built a frame after the heading when opening (it's invisible until a third of the way in), so
     // the morph's first frame only has the glass and the heading to build.
     deferRest: Boolean = false,
@@ -689,68 +726,79 @@ private fun MoonCard(
                         Modifier
                             .fillMaxWidth()
                             .height(60.dp)
-                            .pointerInput(Unit) {
-                                val perDay = size.width / 4f
-                                val tracker = VelocityTracker()
-                                detectHorizontalDragGestures(
-                                    onDragStart = {
-                                        fling?.cancel()
-                                        tracker.resetTracking()
-                                    },
-                                    onDragEnd = {
-                                        // Inertia: a flick keeps the dial turning, slowing down, then it
-                                        // settles on the nearest 6-hour tick.
-                                        val v = -tracker.calculateVelocity().x / perDay
-                                        fling = scope.launch {
-                                            var last = offset
-                                            animateDecay(offset, v, dialDecay) {
-                                                    value,
-                                                    _,
-                                                ->
-                                                offset = value.coerceIn(-14f, 14f)
-                                                tick(last, offset)
-                                                last = offset
+                            // Only while the card is open: closing, it lets every touch through to the page (MOTION.md).
+                            .then(
+                                if (interactive) {
+                                    Modifier.pointerInput(Unit) {
+                                        val perDay = size.width / 4f
+                                        val tracker = VelocityTracker()
+                                        detectHorizontalDragGestures(
+                                            onDragStart = {
+                                                fling?.cancel()
+                                                tracker.resetTracking()
+                                            },
+                                            onDragEnd = {
+                                                // Inertia: a flick keeps the dial turning, slowing down, then it
+                                                // settles on the nearest 6-hour tick.
+                                                val v = -tracker.calculateVelocity().x / perDay
+                                                fling = scope.launch {
+                                                    var last = offset
+                                                    animateDecay(offset, v, dialDecay) {
+                                                            value,
+                                                            _,
+                                                        ->
+                                                        offset = value.coerceIn(-14f, 14f)
+                                                        tick(last, offset)
+                                                        last = offset
+                                                    }
+                                                    val snapped = (
+                                                        kotlin.math.round(
+                                                            offset * 4f
+                                                        ) / 4f
+                                                        ).coerceIn(-14f, 14f)
+                                                    animate(
+                                                        offset,
+                                                        snapped,
+                                                        animationSpec = moonSettle
+                                                    ) {
+                                                            value,
+                                                            _,
+                                                        ->
+                                                        offset = value
+                                                    }
+                                                }
                                             }
-                                            val snapped = (kotlin.math.round(offset * 4f) / 4f).coerceIn(-14f, 14f)
-                                            animate(
-                                                offset,
-                                                snapped,
-                                                animationSpec = moonSettle
-                                            ) {
-                                                    value,
-                                                    _,
-                                                ->
-                                                offset = value
-                                            }
+                                        ) { change, dx ->
+                                            change.consume()
+                                            tracker.addPosition(change.uptimeMillis, change.position)
+                                            val before = offset
+                                            // Drag left to go forward in time (the ticks follow the finger).
+                                            offset = (offset - dx / perDay).coerceIn(-14f, 14f)
+                                            tick(before, offset)
                                         }
                                     }
-                                ) { change, dx ->
-                                    change.consume()
-                                    tracker.addPosition(change.uptimeMillis, change.position)
-                                    val before = offset
-                                    // Drag left to go forward in time (the ticks follow the finger).
-                                    offset = (offset - dx / perDay).coerceIn(-14f, 14f)
-                                    tick(before, offset)
+                                        // Double-tap: back to today.
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(onDoubleTap = {
+                                                scope.launch {
+                                                    animate(
+                                                        offset,
+                                                        0f,
+                                                        animationSpec = moonSettle
+                                                    ) {
+                                                            v,
+                                                            _,
+                                                        ->
+                                                        offset = v
+                                                    }
+                                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                                }
+                                            })
+                                        }
+                                } else {
+                                    Modifier
                                 }
-                            }
-                            // Double-tap: back to today.
-                            .pointerInput(Unit) {
-                                detectTapGestures(onDoubleTap = {
-                                    scope.launch {
-                                        animate(
-                                            offset,
-                                            0f,
-                                            animationSpec = moonSettle
-                                        ) {
-                                                v,
-                                                _,
-                                            ->
-                                            offset = v
-                                        }
-                                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                                    }
-                                })
-                            }
+                            )
                     ) {
                         Canvas(Modifier.fillMaxWidth().padding(top = Space.S4).height(28.dp)) {
                             val perDay = size.width / 4f

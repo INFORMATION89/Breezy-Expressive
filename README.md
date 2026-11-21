@@ -16,7 +16,7 @@ places and settings stay.
    sign in.
 2. The first time, Android asks you to allow your browser to install unknown apps. Allow it, then
    tap the downloaded file to install it.
-3. It installs as **Solstice** next to any other Solstice build. A second icon, **Solstice Lab**,
+3. It installs as **Solstice** next to any other Solstice build. A second icon, **Motion Lab**,
    opens the motion lab (also in Settings → Debug).
 
 To get each new build automatically, add the repo to [Obtainium](https://github.com/ImranR98/Obtainium)

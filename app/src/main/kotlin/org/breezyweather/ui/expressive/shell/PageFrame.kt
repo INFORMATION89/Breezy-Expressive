@@ -68,7 +68,11 @@ internal val PagerState.position: Float get() = currentPage + currentPageOffsetF
  * draw, so it follows the finger without recomposing.
  */
 internal fun Modifier.plainPageBackdrop(pager: PagerState, skyPage: Int, page: Color): Modifier =
-    drawBehind { drawRect(page, alpha = abs(pager.position - skyPage).coerceIn(0f, 1f)) }
+    plainPageBackdrop({ pager.position }, skyPage, page)
+
+/** The same, following a [position] read in draw (e.g. a page change's drawn slide). */
+internal fun Modifier.plainPageBackdrop(position: () -> Float, skyPage: Int, page: Color): Modifier =
+    drawBehind { drawRect(page, alpha = abs(position() - skyPage).coerceIn(0f, 1f)) }
 
 /** The pages' fling: an unhurried, unbouncy snap to the nearest page (Motion.gentle). */
 @Composable

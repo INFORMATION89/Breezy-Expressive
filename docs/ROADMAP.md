@@ -82,7 +82,7 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [x] **Test builds for the user** (built 2026-11-20; waiting on the two GitHub secrets): profile build on a rolling `testing` pre-release, stable test key,
   "Solstice Lab" launcher icon in test builds (CONTINUE.md 1C).
 - [ ] **M5:** motion lab, then refining rounds (moon, search, window, toolbar, Places, messages).
-- [ ] ⭐ **Minimum Android 10** (API 29), ASAP, first thing next session (CONTINUE.md "00").
+- [x] **Minimum Android 10** (API 29), done 2026-11-21.
 - [ ] 💬⭐ **Morph refining (Sat 2026-11-21, 1:00 AM, top priority):** lab renamed "Motion Lab"; the button
   itself becomes the card; blur to hide text changes; text transformations (label into title, replace,
   rolling numbers); a lab demo per kind of animation; the toolbar's animations into `:motion` and the lab.
@@ -104,8 +104,8 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] 💬 **Twinkling stars** (built with F4, switched on only once agreed).
 - [ ] **Moon icon on the Forecast diagram follows the moon's real tilt** (reuse the moon card's calculation).
 - [ ] 💬 **Very subtle toolbar haptics**, once F1's haptics system exists.
-- [ ] **Fix:** taps blocked while a tab transition plays (MOTION.md "never block input").
-- [ ] **Fix:** the postcard window's pages lack home's blur between tabs (one page-transition piece).
+- [x] **Fix:** taps blocked while a tab transition plays (done 2026-11-21: `:motion` PageTransition; closing sheets let taps through too).
+- [x] **Fix:** the postcard window's pages lack home's blur between tabs (done 2026-11-21: `ShellNavigation`, shared with home).
 - [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (needs Android 10,
   the new minimum; check the SDK's license). PLAN.md "Far future".
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected

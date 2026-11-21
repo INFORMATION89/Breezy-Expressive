@@ -55,12 +55,12 @@ hand, build the motion lab (M5), then refine animations area by area.**
 Read DESIGN.md, MOTION.md (morph never pop, never block input, `:motion` covers every interaction) and
 WRITING.md first. Each motion item: propose options, agree, then build.
 
-1. **Minimum Android 10** (section 00 below).
-2. **Taps are never blocked by animations** (MOTION.md rule, high priority). Reported: a place card
+1. ~~**Minimum Android 10**~~ (done 2026-11-21).
+2. **(Done 2026-11-21 for home and the sheets; the window's pager moves with item 3.)** **Taps are never blocked by animations** (MOTION.md rule, high priority). Reported: a place card
    can't be opened while a tab transition plays. Likely cause: a tab tap to a neighbour runs
    `pager.animateScrollToPage`, and the pager spends the first touch on stopping its scroll, so the
    card never gets the tap. Fix it in `:motion` for every animation, not per screen.
-3. **One shell system in `:motion`:** the toolbar (section 0b.3, and section 0 point 6: its seven
+3. **(Done 2026-11-21: `ShellNavigation`, `ToolbarMotion`, lab demo; MotionValue for the finger-driven parts still to propose.)** **One shell system in `:motion`:** the toolbar (section 0b.3, and section 0 point 6: its seven
    `Animatable`s into `:motion` with lab controls) and the **page transitions**: home's swipe blur (6 dp
    by distance) and tab-jump slide (frozen image, 4–5 dp blur) are written by hand in
    `SolsticeShell.kt`; the postcard window's pager has neither (reported: "visiting doesn't have the

@@ -179,18 +179,18 @@ internal fun ShellToolbar(
         if (!joined) {
             launch {
                 wobble.snapTo(1f)
-                wobble.animateTo(0f, Motion.wobble.spec())
+                wobble.animateTo(0f, ToolbarMotion.wobble.spec())
             }
         } else if (bud > 0.05f) {
             launch {
                 ripple.snapTo(1f)
-                ripple.animateTo(0f, Motion.wobble.spec())
+                ripple.animateTo(0f, ToolbarMotion.wobble.spec())
             }
         }
         neck.animateTo(
             if (joined) 1f else 0f,
             // Letting go: no bounce (overshooting below zero brought a sliver of neck back).
-            if (joined) Motion.playful.spec() else Motion.settle.spec()
+            if (joined) ToolbarMotion.neckJoin.spec() else ToolbarMotion.neckFree.spec()
         )
     }
     val density = LocalDensity.current
@@ -203,8 +203,8 @@ internal fun ShellToolbar(
             .height(height)
             .graphicsLayer {
                 // The ripple when it absorbs the bubble.
-                scaleX = 1f + 0.03f * ripple.value
-                scaleY = 1f - 0.04f * ripple.value
+                scaleX = 1f + ToolbarMotion.rippleStretch * ripple.value
+                scaleY = 1f - ToolbarMotion.rippleSquash * ripple.value
             }
             .glass(glass, shape, tint)
     ) {
@@ -234,12 +234,12 @@ internal fun ShellToolbar(
                 if (budChecked != wasChecked) {
                     jab.snapTo(if (budChecked) 1f else -1f)
                     if (budChecked) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    jab.animateTo(0f, Motion.container.spec())
+                    jab.animateTo(0f, ToolbarMotion.jab.spec())
                 }
                 wasChecked = budChecked
             }
             // White in dark mode, black in light mode (the outline or the fill carries the state).
-            val tintColor by animateColorAsState(onSurface, Motion.control.spec(), label = "bud")
+            val tintColor by animateColorAsState(onSurface, ToolbarMotion.budTint.spec(), label = "bud")
             Icon(
                 budIcon,
                 contentDescription = if (bud > 0.5f) budDescription else null,
@@ -248,14 +248,14 @@ internal fun ShellToolbar(
                     val j = jab.value
                     alpha = iconAlpha * budIconShown()
                     // In: down and squashed; out: up and stretched.
-                    translationY = j * 1.5.dp.toPx()
-                    scaleY = 1f - 0.07f * j
-                    scaleX = 1f + 0.03f * j
-                    rotationZ = -8f * kotlin.math.abs(j)
+                    translationY = j * ToolbarMotion.jabDrop.dp.toPx()
+                    scaleY = 1f - ToolbarMotion.jabSquash * j
+                    scaleX = 1f + ToolbarMotion.jabStretch * j
+                    rotationZ = -ToolbarMotion.jabTilt * kotlin.math.abs(j)
                     // The bubble's own wobble right after it pops free (scale only).
                     val w = wobble.value
-                    scaleX *= 1f + 0.1f * w
-                    scaleY *= 1f + 0.1f * w
+                    scaleX *= 1f + ToolbarMotion.wobbleAmount * w
+                    scaleY *= 1f + ToolbarMotion.wobbleAmount * w
                 }
             )
         }
@@ -294,19 +294,19 @@ private fun ToolbarTabs(
                     onDragStart = {
                         onInterrupt()
                         scope.launch {
-                            pop.animateTo(1f, Motion.playful.spec())
+                            pop.animateTo(1f, ToolbarMotion.popOut.spec())
                         }
                     },
                     onDragEnd = {
                         val position = pager.currentPage + pager.currentPageOffsetFraction
                         onTab(position.roundToInt().coerceIn(0, tabs.lastIndex))
                         scope.launch {
-                            pop.animateTo(0f, Motion.container.spec())
+                            pop.animateTo(0f, ToolbarMotion.popIn.spec())
                         }
                     },
                     onDragCancel = {
                         onTab(pager.currentPage)
-                        scope.launch { pop.animateTo(0f, Motion.dismiss.spec()) }
+                        scope.launch { pop.animateTo(0f, ToolbarMotion.popCancel.spec()) }
                     },
                     onDrag = { change, amount ->
                         change.consume()
@@ -315,7 +315,7 @@ private fun ToolbarTabs(
                                 ?: return@detectDragGesturesAfterLongPress
                         // One page per tab's width of finger travel (the unselected tabs' width), so
                         // it moves at the finger's pace rather than racing ahead.
-                        pager.dispatchRawDelta(amount.x * pagePx / (collapsedPx * 1.6f))
+                        pager.dispatchRawDelta(amount.x * pagePx / (collapsedPx * ToolbarMotion.slideTravel))
                     }
                 )
             }
@@ -328,7 +328,7 @@ private fun ToolbarTabs(
                 .height(44.dp)
                 .graphicsLayer {
                     // Popped out while held: a bit bigger, lifted with a soft shadow.
-                    val k = 1f + 0.12f * pop.value
+                    val k = 1f + ToolbarMotion.popScale * pop.value
                     scaleX = k
                     scaleY = k
                     shadowElevation = Elevation.Card.toPx() * pop.value
@@ -347,8 +347,8 @@ private fun ToolbarTabs(
                 LaunchedEffect(pressed) {
                     // In quickly; back out with a little bounce.
                     squeeze.animateTo(
-                        if (pressed) 0.86f else 1f,
-                        if (pressed) Motion.snappy.spec() else Motion.playful.spec()
+                        if (pressed) ToolbarMotion.pressScale else 1f,
+                        if (pressed) ToolbarMotion.pressDown.spec() else ToolbarMotion.pressUp.spec()
                     )
                 }
                 Row(

@@ -78,7 +78,10 @@ import androidx.core.content.edit
 import breezyweather.domain.location.model.Location
 import io.github.information89.motion.Motion
 import io.github.information89.motion.MotionPhysics
+import io.github.information89.motion.pageSettleFling
+import io.github.information89.motion.pageTransition
 import io.github.information89.motion.rememberMotionValue
+import io.github.information89.motion.rememberPageTransition
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
@@ -239,74 +242,11 @@ fun SolsticeShell(
     val glass = rememberGlassSource()
     // The sky alone, for the Forecast cards' blur.
     val skyGlass = rememberGlassSource()
-    // Tab jump This week <-> Places: a real crossfade. The page being left is snapshotted and drawn on
-    // top fading out, the new page is already underneath; both carry a little blur that clears
-    // quickly. The toolbar's highlight glides across on its own.
-    val leaving = rememberGraphicsLayer()
-    val leavingDraw = rememberGraphicsLayer()
-    var capture by remember { mutableStateOf(false) }
-    // A frozen image of the page being left (a recorded layer alone would keep showing live content).
-    var leavingImage by remember { mutableStateOf<ImageBitmap?>(null) }
-    val fadeOut = remember { Animatable(0f) }
-    val haze = remember { Animatable(0f) }
-    val toolbarPosition = remember { Animatable(-1f) }
-    var jumpDir by remember { mutableFloatStateOf(1f) }
-
-    // Navigation (reworked 2026-11-18): one place decides how to get to a page. Every page change
-    // (toolbar taps, requests from the host, "open Places", the toolbar slide) goes through here; a
-    // new one, or a finger, cancels the transition in progress and resets its state first, so
-    // nothing is left half-way (a fast second tap used to fight the first).
-    var navJob by remember { mutableStateOf<Job?>(null) }
-    suspend fun restJump() {
-        fadeOut.snapTo(0f)
-        haze.snapTo(0f)
-        toolbarPosition.snapTo(-1f)
-        leavingImage = null
-        capture = false
-    }
-    fun interruptNavigation() {
-        navJob?.cancel()
-        navJob = null
-    }
-    fun navigate(target: Int) {
-        navJob?.cancel()
-        navJob = scope.launch {
-            try {
-                restJump()
-                val here = (pager.currentPage + pager.currentPageOffsetFraction).roundToInt()
-                if (abs(target - here) >= 2 && abs(pager.currentPageOffsetFraction) < 0.01f) {
-                    // This week <-> Places (agreed): a slide with a frozen image of the page being left.
-                    val from = here.toFloat()
-                    capture = true
-                    withFrameNanos { }
-                    withFrameNanos { }
-                    leavingImage = runCatching { leaving.toImageBitmap() }.getOrNull()
-                    jumpDir = if (target > from) 1f else -1f
-                    fadeOut.snapTo(1f)
-                    haze.snapTo(1f)
-                    toolbarPosition.snapTo(from)
-                    pager.scrollToPage(target)
-                    coroutineScope {
-                        launch { haze.animateTo(0f, Motion.snappy.spec()) }
-                        launch {
-                            toolbarPosition.animateTo(
-                                target.toFloat(),
-                                // About the pace of a neighbouring tab change (user: edge to edge a touch faster).
-                                Motion.settle.spec()
-                            )
-                        }
-                        fadeOut.animateTo(0f, Motion.content.spec())
-                    }
-                } else {
-                    pager.animateScrollToPage(target)
-                }
-            } finally {
-                // Finished or interrupted: always back at rest (non-cancellable, so this runs even
-                // when a new navigation cancelled us).
-                withContext(NonCancellable) { restJump() }
-            }
-        }
-    }
+    // How the pages change (ShellNavigation, shared with the postcard window, 2026-11-21): tab taps
+    // and swipes switch the pager at once and :motion draws the slide, so taps are never lost.
+    val nav = rememberShellNavigation(pager)
+    fun visualPosition() = nav.visualPosition()
+    fun navigate(target: Int) = nav.navigate(target)
     LaunchedEffect(controller.request) {
         controller.request?.let {
             controller.request = null
@@ -465,12 +405,7 @@ fun SolsticeShell(
         }
     }
     val placesList = rememberLazyListState()
-    val titleHeight = with(LocalDensity.current) { 72.dp.toPx() }
-    val labelShown by remember {
-        derivedStateOf {
-            listOf(1f - titleVisible(daysList, titleHeight), 1f, 1f - titleVisible(placesList, titleHeight))
-        }
-    }
+    val labelShown by rememberTitleHandOff(listOf(daysList, null, placesList))
     // The moon button and sheet share one transition (Compose's container transform).
     MoonSharedLayout {
         Box(Modifier.fillMaxSize()) {
@@ -482,82 +417,33 @@ fun SolsticeShell(
                 pageGlass = glass,
                 // Only while the Forecast page shows some of it and no postcard window covers it.
                 visible = {
-                    abs(pager.currentPage + pager.currentPageOffsetFraction - PAGE_FORECAST) < 0.999f &&
+                    abs(visualPosition() - PAGE_FORECAST) < 0.999f &&
                         windowPresence.value < 0.999f
                 }
             ) {
-                Box(Modifier.fillMaxSize().plainPageBackdrop(pager, PAGE_FORECAST, page))
+                Box(Modifier.fillMaxSize().plainPageBackdrop({ visualPosition() }, PAGE_FORECAST, page))
                 HorizontalPager(
                     state = pager,
                     // All three pages stay built: going Places -> Forecast would otherwise build Outlook (ten
                     // sky cards) in the middle of the swipe.
                     beyondViewportPageCount = 2,
-                    flingBehavior = pageFling(pager),
+                    // Letting go of a swipe: the pager jumps to the page at once and the rest of the way is
+                    // drawn (2026-11-21), so a tap during it lands (MOTION.md: never block input).
+                    flingBehavior = nav.fling,
                     modifier = Modifier
                         .fillMaxSize()
-                        .drawWithContent {
-                            if (capture) {
-                                leaving.record { this@drawWithContent.drawContent() }
-                                capture = false
-                            }
-                            drawContent()
-                            // The page being left, on top, fading out (and blurring a little).
-                            val f = fadeOut.value
-                            val image = leavingImage
-                            if (f > 0.01f && image != null) {
-                                // A slide: the old page stays opaque and moves out; just a touch of blur.
-                                leavingDraw.alpha = 1f
-                                val b = 4.dp.toPx() * (1f - f)
-                                leavingDraw.renderEffect =
-                                    if (b > 0.5f &&
-                                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                                    ) {
-                                        BlurEffect(b, b, TileMode.Decal)
-                                    } else {
-                                        null
-                                    }
-                                leavingDraw.record { drawImage(image) }
-                                // Outside the moving layer (its blur would clip it): slides out the other way.
-                                translate(left = -jumpDir * size.width * (1f - f)) {
-                                    drawLayer(leavingDraw)
-                                }
-                            }
-                        }
-                        .graphicsLayer {
-                            // The tab jump: the arriving page slides in from the tapped side (a quarter of
-                            // the width) while the old one slides out under the crossfade.
-                            translationX = jumpDir * size.width * fadeOut.value
-                            // The tab jump's brief blur on the arriving page.
-                            val b = 5.dp.toPx() * haze.value
-                            renderEffect = if (b > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                BlurEffect(b, b, TileMode.Decal)
-                            } else {
-                                null
-                            }
-                        }
+                        .pageTransition(nav.pageChange)
                 ) { index ->
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .graphicsLayer {
-                                // Partly in view: a little blur that fades as the page comes fully in (read in
-                                // the draw phase, so it follows the finger and reverses with it).
-                                val here = pager.currentPage + pager.currentPageOffsetFraction
-                                val d = abs(here - index).coerceIn(0f, 1f)
-                                val b = 6.dp.toPx() * d
-                                val blurOk = b > 0.5f && d < 1f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                                renderEffect = if (blurOk) {
-                                    BlurEffect(b, b, TileMode.Decal)
-                                } else {
-                                    null
-                                }
-                            }
+                            .pageSwipeBlur({ visualPosition() }, index)
                     ) {
                         when (index) {
                             PAGE_DAYS -> DaysPage(location, onPage, page, daysList) {
                                 // The edge blur only comes in once the plain page is mostly there (it showed
                                 // over the sky as soon as a swipe started).
-                                edgeFade(pager.currentPage + pager.currentPageOffsetFraction)
+                                edgeFade(visualPosition())
                             }
                             PAGE_FORECAST -> ForecastPage(
                                 location = location,
@@ -640,7 +526,7 @@ fun SolsticeShell(
                                 },
                                 onSettings = actions::openSettings,
                                 listState = placesList,
-                                pageFade = { edgeFade(pager.currentPage + pager.currentPageOffsetFraction) }
+                                pageFade = { edgeFade(visualPosition()) }
                             )
                         }
                     }
@@ -656,8 +542,8 @@ fun SolsticeShell(
                     glass = glass,
                     labelShown = labelShown,
                     onTab = { navigate(it) },
-                    onInterrupt = { interruptNavigation() },
-                    position = { toolbarPosition.value.takeIf { it >= 0f } },
+                    onInterrupt = { nav.interrupt() },
+                    position = { nav.toolbarPosition() },
                     searchEnabled = !searchOpen,
                     onSearch = {
                         searchHandoff = false
@@ -760,16 +646,6 @@ private fun ChooseSourcesDialog(viewModel: MainActivityViewModel, sourceManager:
         locationExists = { viewModel.locationExists(it) }
     )
 }
-
-/** 1 while the list's big title (its first item) is fully on screen, 0 once it has scrolled away. */
-private fun titleVisible(state: LazyListState, titleHeight: Float): Float =
-    if (state.firstVisibleItemIndex >
-        0
-    ) {
-        0f
-    } else {
-        (1f - state.firstVisibleItemScrollOffset / titleHeight).coerceIn(0f, 1f)
-    }
 
 /** The sky for a location at [now], from its current weather and today's sunrise/sunset. */
 internal fun skyFor(location: Location, now: Long): SkyState {

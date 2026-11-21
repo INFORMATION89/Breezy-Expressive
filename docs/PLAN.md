@@ -2448,3 +2448,64 @@ Steps:
   blur in `:motion`, F3 a `:motion` dial (with or without text, drum curvature, haptics, ends), F4 sky
   effects in the AGSL sky (stars; twinkle built but off until agreed; ready for weather effects) and an
   ambient clock in `:motion`, then F5 the moon card. Section "Moon card redesign and its foundations".
+- **2026-11-21: minimum Android 10 (API 29), built.** `MIN_SDK = 29` in
+  `buildSrc/.../AndroidConfig.kt`. That's an upstream file: **a fork difference to keep when syncing
+  upstream**. Every module takes it from there.
+  - Our code (`ui/expressive/`, `:motion`) had no checks below Android 10 to drop; the Android 12
+    blur check stays.
+  - Upstream's old version checks and the `-v26`/`-v28` resource folders are left as they are, so
+    upstream merges stay easy.
+- **2026-11-21: taps are never blocked by animations (tonight's item 2), built and checked on the
+  Pixel.** Options agreed with the user: an instant switch with a `:motion` slide, and taps pass
+  through closing sheets.
+  - **Cause:** a tab tap to a neighbour ran `pager.animateScrollToPage`, and a pager that's
+    mid-scroll spends the next touch on stopping itself, so the place card never got the tap.
+  - **New `:motion` piece, `PageTransition`** (`rememberPageTransition`, `Modifier.pageTransition`,
+    `go(forward, switch, alongside)`). The pages switch at once; the piece draws the change (a frozen
+    image of the page left slides out, the new page slides in, each with a touch of blur; content
+    spring for the slide, snappy for the blur). Nothing underneath scrolls, so taps land.
+  - **Home:** every tab tap now uses it, neighbours included (before, only This week ↔ Places did).
+    The sky's fade into the plain page, the edge blur and the sky's pause follow the drawn slide
+    (`visualPosition()`), so leaving Forecast looks like a swipe.
+  - **Checked:** tapping Places, then a postcard about 250 ms into the slide, opens the postcard.
+    Taps go where things are drawn: a tap where the sliding card isn't yet misses it, as on iOS.
+  - **Closing sheets let taps through.**
+    - **Moon card:** once it heads back to the pill, its full-screen gestures and the dial's go away.
+      A catcher sized to the sheet as drawn each frame still lets you grab it mid-close.
+    - **Search:** the dimmed backdrop's click handler only exists while open (a disabled one still
+      covered the screen). The card itself only catches touches where it's drawn.
+  - **Not yet:** the postcard window's pager still animates its scroll; tonight's item 3 moves it
+    onto the same piece.
+- **2026-11-21: swipes don't block taps either** (reported by the user: swiping to Places, a postcard
+  couldn't be opened while the page settled), built.
+  - **What:** `:motion` `pageSettleFling` on home's pager. When a swipe is let go, it picks the page
+    (by momentum past 0.35 pages/s, else by position), jumps there at once (`scrollBy` inside the
+    fling), and `PageTransition.settle` draws the rest of the way from the finger's position at its
+    speed. The frozen image holds both pages as they were and is clipped to the part the new page
+    hasn't covered yet.
+  - **Following the drawn slide:** the toolbar, the sky's fade and the edge blur.
+  - **Not tested on the phone yet** (the user will test, or asks me to).
+- **2026-11-21: one shell system for home and the postcard window (tonight's item 3), built.**
+  - **`ShellNavigation`** (`shell/ShellNavigation.kt`): one piece both use.
+    - Tab taps (`navigate`) and swipes (`fling`) switch at once with `:motion`'s `PageTransition`.
+    - `visualPosition()` is followed by the sky's fade, the edge blur, the swipe blur
+      (`pageSwipeBlur`) and the toolbar (`toolbarPosition()`).
+    - `rememberTitleHandOff(lists)` handles the title hand-off.
+  - **The window now:**
+    - This week's toolbar title folds away while the page shows its own title (the reported bug).
+    - Tab taps make the same slide as home, and the swipe blur is the same.
+    - Taps are never swallowed.
+  - **Unchanged on purpose:** the window's fade-in, its bud (pin), and that it has no messages.
+  - **Toolbar animations in one place:** `shell/ToolbarMotion.kt` holds every toolbar spring and
+    amount, with the agreed values as defaults; `Toolbar.kt` reads them, with no change in how it
+    moves.
+    - The bud's neck, wobble and ripple.
+    - The pin's jab.
+    - Slide to switch: pop, sink, cancel, size and travel.
+    - The tab press, and the bud's colour.
+  - **Lab:** a "Toolbar" demo with the real toolbar over three stand-in pages on `ShellNavigation`,
+    the window's toolbar for the jab, and live controls (tap a spring to cycle the tokens, sliders
+    for amounts, a reset). Edits apply in the app too until it restarts. The finger-driven parts
+    aren't on `MotionValue` yet (that would change how they move: to propose).
+  - **Lab icon** is now "Motion Lab" (launcher and Settings).
+

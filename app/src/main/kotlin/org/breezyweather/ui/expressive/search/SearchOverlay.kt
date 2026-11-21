@@ -345,11 +345,18 @@ fun SearchOverlay(
                     alpha = sheet.backdrop()
                 }
                 .background(Color.Black.copy(alpha = 0.25f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = open,
-                    onClick = onClose
+                // Only while open: closing, taps reach the page underneath at once (a disabled click
+                // handler still sat over the whole screen; MOTION.md: animations never block input).
+                .then(
+                    if (open) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onClose
+                        )
+                    } else {
+                        Modifier
+                    }
                 )
         )
 
