@@ -56,8 +56,10 @@ The user leaves the session to work alone: **work in the motion environment** (`
 Lab), maximize work, minimize testing, and **test by yourself at the end** (profile build, Pixel 7).
 Research first where asked; the study is `docs/MORPH_STUDY.md`.
 
-1. **Reopen after it finishes:** once the new morph (`SpringMorph`) has closed, tapping the pill
-   doesn't open it again (still reported after the last fix).
+1. **Reopen while it's closing:** while the new morph (`SpringMorph`) is still closing, it can't be
+   reopened. The card only opens again once the close animation has fully finished. A tap (or grab)
+   on the shrinking card, and on where the pill is, must reopen it at once (MOTION.md: never block
+   input).
 2. **Text blur more obvious:** the label/heading blur replace (`MorphHandOff.Blur`, 8 dp) should read
    clearly as a blur.
 3. **Research blur in iOS animations, especially iOS 26/27** (Liquid Glass, blur replace, morphing

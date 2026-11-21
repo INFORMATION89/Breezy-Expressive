@@ -45,7 +45,7 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 
 ## 🗓 6 AM session (2026-11-21): new morph refining, research, plans
 
-See CONTINUE.md "6 AM session": reopen after closing, a stronger text blur, iOS 26/27 blur and
+See CONTINUE.md "6 AM session": reopen while it's still closing, a stronger text blur, iOS 26/27 blur and
 animation research, a velocity cap, a bit more opening bounce, the Motion Lab redesign plan (with a
 comparison to Google's libraries, no weather references), and Apple's principles for the toolbar.
 
