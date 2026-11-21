@@ -98,6 +98,12 @@ Built 2026-11-19 morning; not yet checked on the Pixel (it wasn't connected).
 - [ ] **Design audits** (DESIGN.md): empty/loading/error/offline states everywhere; affordances vs behaviour;
   dead ends and links between information; landscape/foldable/tablet layouts; settings that shouldn't exist.
 - [ ] **Summary wording** to WRITING.md's "natural, not generated" rule (week summary first).
+- [ ] 💬 **Moon card redesign** in Material 3 Expressive, designed in chat with the user before any code.
+- [ ] **Moon icon on the Forecast diagram follows the moon's real tilt** (reuse the moon card's calculation).
+- [ ] 💬 **Moon dial end indicator** (looks endless; capped at ±14 days).
+- [ ] 💬 **Haptics system in `:motion`** (study iOS first), then very subtle toolbar haptics.
+- [ ] **Fix:** taps blocked while a tab transition plays (MOTION.md "never block input").
+- [ ] **Fix:** the postcard window's pages lack home's blur between tabs (one page-transition piece).
 - [ ] 🔭 **Far future: native Smartspacer** Targets and Complications in Solstice, no bridge app (needs Android 10,
   the new minimum; check the SDK's license). PLAN.md "Far future".
 - [ ] **Icons vs M3** (PLAN.md "Icons", gaps 1–4): grade -25 for light icons on dark backgrounds; selected

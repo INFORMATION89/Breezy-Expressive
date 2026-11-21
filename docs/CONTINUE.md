@@ -50,6 +50,45 @@ State on 2026-11-19 evening: icons on Material Symbols Rounded (merged, selected
 left: the three documented timed exceptions). The focus now: **fix the two reported bugs, check by
 hand, build the motion lab (M5), then refine animations area by area.**
 
+### Tonight's plan (Saturday 2026-11-21, agreed with the user), in this order
+
+Read DESIGN.md, MOTION.md (morph never pop, never block input, `:motion` covers every interaction) and
+WRITING.md first. Each motion item: propose options, agree, then build.
+
+1. **Minimum Android 10** (section 00 below).
+2. **Taps are never blocked by animations** (MOTION.md rule, high priority). Reported: a place card
+   can't be opened while a tab transition plays. Likely cause: a tab tap to a neighbour runs
+   `pager.animateScrollToPage`, and the pager spends the first touch on stopping its scroll, so the
+   card never gets the tap. Fix it in `:motion` for every animation, not per screen.
+3. **One shell system in `:motion`:** the toolbar (section 0b.3, and section 0 point 6: its seven
+   `Animatable`s into `:motion` with lab controls) and the **page transitions**: home's swipe blur (6 dp
+   by distance) and tab-jump slide (frozen image, 4–5 dp blur) are written by hand in
+   `SolsticeShell.kt`; the postcard window's pager has neither (reported: "visiting doesn't have the
+   same blur between tabs"). One `:motion` page-transition piece, used by both.
+4. **Morph, never pop: the button itself becomes the card** (section 0, point 2) on search, the moon
+   pill and the postcard window.
+5. **Summary wording** to WRITING.md's "natural, not generated" rule: `week_warmest` and
+   `week_coldest_night` become "Monday will be the warmest day, at 35°. The coldest night will be on
+   Friday, at 21°."; `week_some_wet` becomes "It will rain on 3 days this week"; read the rest aloud.
+   Show the new texts to the user before committing.
+6. **Moon card.** The redesign in Material 3 Expressive is **designed in the chat environment with the
+   user first** (no code until the user has seen and approved it there). After that: text transitions on
+   it (blur while texts cross, section 0 points 3–4), and an end indicator for the dial (it's capped at
+   ±14 days but looks endless: options to propose, e.g. ticks fading at the ends, resistance with the
+   existing rubber-band and a haptic, a label).
+7. **Haptics as a `:motion` system**: today ~12 calls in 4 files (reorder, postcard, moon dial,
+   places), each picking its own type. Study iOS's feedback types first (impact light/medium/rigid/
+   soft, selection, success/warning/error) and map them to Android's; then the toolbar gets very
+   subtle ticks (to agree).
+8. **Moon icon on the Forecast diagram follows the moon's real tilt in the sky** (user's choice): reuse
+   the moon card's calculation (`MoonCard.kt`: bright limb angle from `MoonIllumination` and the
+   averaged `parallacticAngle`), moved into a shared helper, and rotate the phase icon
+   (`drawMoonPhaseIcon`, `ForecastPage.kt`) by it. Don't write a second calculation.
+
+Then, if time is left: "last updated" text and refresh on open (section 0b), audits (DESIGN.md).
+Research the chat environment does meanwhile (PLAN.md "Research queue"): the page recede done cheaply,
+long press alongside drag to reorder, proactive channels, what the summaries should say.
+
 ### 00. ASAP, first thing next session: minimum Android 10 (decided by the user 2026-11-20)
 
 Raise the minimum from Android 7 (API 24) to **Android 10 (API 29)**: `MIN_SDK = 29` in

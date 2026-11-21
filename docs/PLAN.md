@@ -2346,3 +2346,8 @@ Steps:
   morph, they never pop**, and `:motion`'s scope is every interaction in any app. Research queue: the
   page recede done cheaply as a `:motion` piece, long press alongside drag to reorder, proactive
   channels.
+- **2026-11-21 (agreed with the user): tonight's order** (CONTINUE.md "Tonight's plan"): Android 10;
+  taps never blocked; one shell system in `:motion` (toolbar + page transitions, home and window); the
+  button itself becomes the card; summary wording; moon card (redesign designed in chat first, then
+  text transitions and the dial's end); haptics system; moon icon follows the real tilt (reusing the
+  moon card's calculation).
